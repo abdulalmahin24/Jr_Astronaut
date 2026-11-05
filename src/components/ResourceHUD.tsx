@@ -1,0 +1,716 @@
+import React, { useState } from 'react';
+import type { ResourceState, DifficultyMode } from '../types/game';
+import { TIER_PROFILES } from '../data/difficultyTiers';
+import { Zap, Droplets, Wind, Apple, ShieldAlert, Award, Activity, SlidersHorizontal, Radio } from 'lucide-react';
+import { soundFx } from '../utils/audioEffects';
+
+interface ResourceHUDProps {
+  sol: number;
+  totalSols: number;
+  resources: ResourceState;
+  difficultyMode: DifficultyMode;
+  destination?: 'MOON' | 'MARS';
+  onSelectDifficulty?: (mode: DifficultyMode) => void;
+  onToggleDifficulty?: () => void;
+}
+
+export const ResourceHUD: React.FC<ResourceHUDProps> = ({
+  sol,
+  totalSols,
+  resources,
+  difficultyMode,
+  destination = 'MOON',
+  onSelectDifficulty,
+}) => {
+  const currentTier = TIER_PROFILES[difficultyMode] || TIER_PROFILES.CADET;
+  const isDefaultKidMode = difficultyMode === 'EXPLORER' || difficultyMode === 'CADET';
+  const [precisionMode, setPrecisionMode] = useState<boolean>(!isDefaultKidMode);
+
+  const getStatus = (val: number, isReverse = false) => {
+    if (isReverse) {
+      if (val > 60) return { label: 'CRITICAL', color: 'var(--color-error)', bg: 'rgba(239, 68, 68, 0.15)' };
+      if (val > 30) return { label: 'CAUTION', color: 'var(--color-accent)', bg: 'rgba(245, 158, 11, 0.15)' };
+      return { label: 'NOMINAL', color: 'var(--color-accent-green)', bg: 'rgba(16, 185, 129, 0.15)' };
+    }
+    if (val < 25) return { label: 'CRITICAL', color: 'var(--color-error)', bg: 'rgba(239, 68, 68, 0.15)' };
+    if (val < 50) return { label: 'CAUTION', color: 'var(--color-accent)', bg: 'rgba(245, 158, 11, 0.15)' };
+    return { label: 'NOMINAL', color: 'var(--color-accent-green)', bg: 'rgba(16, 185, 129, 0.15)' };
+  };
+
+  const primaryTiers: { id: DifficultyMode; label: string; age: string; code: string }[] = [
+    { id: 'EXPLORER', label: 'Cadet I', age: 'Ages 3–7', code: 'AS-01' },
+    { id: 'CADET', label: 'Cadet II', age: 'Ages 8–12', code: 'AS-02' },
+    { id: 'COMMANDER', label: 'Commander', age: 'Ages 13+', code: 'CDR' },
+  ];
+
+  return (
+    <div
+      className="hud-container"
+      style={{
+        background: 'var(--color-paper)',
+        borderRadius: 0,
+        border: '1px solid var(--rule-light)',
+        boxShadow: '0 16px 40px rgba(0, 0, 0, 0.75)',
+        padding: '16px 20px',
+      }}
+    >
+      {/* ── TOP TELEMETRY STRIP ── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          marginBottom: '14px',
+          paddingBottom: '12px',
+          borderBottom: '1px solid var(--rule-subtle)',
+        }}
+      >
+        {/* Outpost Telemetry Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 14px',
+              background: 'var(--color-paper-2)',
+              border: '1px solid var(--rule-subtle)',
+              borderRadius: 0,
+            }}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: 'var(--color-accent-green)',
+                boxShadow: '0 0 6px var(--color-accent-green)',
+                display: 'inline-block',
+              }}
+            />
+            <div>
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  color: 'var(--color-ink)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                SOL {sol.toString().padStart(2, '0')} // {totalSols} / ECLSS TELEMETRY
+              </div>
+              <div
+                style={{
+                  fontSize: '9.5px',
+                  color: 'var(--color-ink-faint)',
+                  letterSpacing: '0.06em',
+                  fontFamily: 'var(--font-mono, monospace)',
+                }}
+              >
+                BASE: {destination === 'MARS' ? 'JEZERO CRATER / 18.38°N 77.58°E' : 'SHACKLETON RIM / 89.9°S 0.0°E'} / DSN LINK ACTIVE
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Center: Precision Units Toggle */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+            background: 'var(--color-paper-2)',
+            padding: '3px',
+            borderRadius: 0,
+            border: '1px solid var(--rule-subtle)',
+          }}
+        >
+          <button
+            onClick={() => {
+              setPrecisionMode(false);
+              soundFx.playClick(850);
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 0,
+              border: 'none',
+              background: !precisionMode ? 'var(--color-paper-3)' : 'transparent',
+              color: !precisionMode ? 'var(--color-accent)' : 'var(--color-ink-faint)',
+              fontSize: '10.5px',
+              fontWeight: 700,
+              fontFamily: 'var(--font-mono, monospace)',
+              letterSpacing: '0.05em',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            STANDARD (%)
+          </button>
+          <button
+            onClick={() => {
+              setPrecisionMode(true);
+              soundFx.playClick(750);
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: 0,
+              border: 'none',
+              background: precisionMode ? 'var(--color-paper-3)' : 'transparent',
+              color: precisionMode ? 'var(--color-accent)' : 'var(--color-ink-faint)',
+              fontSize: '10.5px',
+              fontWeight: 700,
+              fontFamily: 'var(--font-mono, monospace)',
+              letterSpacing: '0.05em',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <SlidersHorizontal size={11} />
+            BVAD UNITS
+          </button>
+        </div>
+
+        {/* Right: Flight Tier Segmented Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span
+            style={{
+              fontSize: '9.5px',
+              color: 'var(--color-ink-faint)',
+              fontWeight: 700,
+              fontFamily: 'var(--font-mono, monospace)',
+              letterSpacing: '0.06em',
+            }}
+          >
+            TIER:
+          </span>
+          <div
+            style={{
+              display: 'flex',
+              gap: '4px',
+              background: 'var(--color-paper-2)',
+              padding: '3px',
+              borderRadius: 0,
+              border: '1px solid var(--rule-subtle)',
+            }}
+          >
+            {primaryTiers.map((t) => {
+              const active = difficultyMode === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    if (onSelectDifficulty) onSelectDifficulty(t.id);
+                    soundFx.playClick(800);
+                  }}
+                  style={{
+                    padding: '4px 9px',
+                    borderRadius: 0,
+                    border: 'none',
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-mono, monospace)',
+                    letterSpacing: '0.04em',
+                    cursor: 'pointer',
+                    background: active ? 'var(--color-accent)' : 'transparent',
+                    color: active ? '#000000' : 'var(--color-ink-muted)',
+                  }}
+                  title={`${t.label} (${t.age})`}
+                >
+                  {t.code}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── ECLSS TELEMETRY GAUGES GRID ── */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))',
+          gap: '10px',
+        }}
+      >
+        {/* 1. POWER */}
+        {(() => {
+          const status = getStatus(resources.power);
+          return (
+            <div
+              style={{
+                background: 'var(--color-paper-2)',
+                border: '1px solid var(--rule-subtle)',
+                borderRadius: 0,
+                padding: '10px 12px',
+                borderLeft: `3px solid ${status.color}`,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: 'var(--color-ink-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <Zap size={13} style={{ color: 'var(--color-accent)' }} />
+                  PWR // KRUSTY
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: status.color,
+                    background: status.bg,
+                    padding: '1px 5px',
+                    borderRadius: 0,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  {status.label}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginBottom: '6px',
+                }}
+              >
+                {precisionMode ? `${(resources.power * 0.4).toFixed(1)} kW` : `${resources.power}%`}
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, resources.power))}%`,
+                    height: '100%',
+                    background: status.color,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 2. WATER */}
+        {(() => {
+          const status = getStatus(resources.water);
+          return (
+            <div
+              style={{
+                background: 'var(--color-paper-2)',
+                border: '1px solid var(--rule-subtle)',
+                borderRadius: 0,
+                padding: '10px 12px',
+                borderLeft: `3px solid ${status.color}`,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: 'var(--color-ink-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <Droplets size={13} style={{ color: 'var(--color-accent-2)' }} />
+                  H2O // LOOP
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: status.color,
+                    background: status.bg,
+                    padding: '1px 5px',
+                    borderRadius: 0,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  {status.label}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginBottom: '6px',
+                }}
+              >
+                {precisionMode ? `${Math.round(resources.water * 2.5)} L` : `${resources.water}%`}
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, resources.water))}%`,
+                    height: '100%',
+                    background: status.color,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 3. OXYGEN */}
+        {(() => {
+          const status = getStatus(resources.oxygen);
+          return (
+            <div
+              style={{
+                background: 'var(--color-paper-2)',
+                border: '1px solid var(--rule-subtle)',
+                borderRadius: 0,
+                padding: '10px 12px',
+                borderLeft: `3px solid ${status.color}`,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: 'var(--color-ink-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <Wind size={13} style={{ color: 'var(--color-accent-2)' }} />
+                  O2 // PARTIAL
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: status.color,
+                    background: status.bg,
+                    padding: '1px 5px',
+                    borderRadius: 0,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  {status.label}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginBottom: '6px',
+                }}
+              >
+                {precisionMode ? `${(resources.oxygen * 0.213).toFixed(1)} kPa` : `${resources.oxygen}%`}
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, resources.oxygen))}%`,
+                    height: '100%',
+                    background: status.color,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 4. FOOD */}
+        {(() => {
+          const status = getStatus(resources.food * 5);
+          return (
+            <div
+              style={{
+                background: 'var(--color-paper-2)',
+                border: '1px solid var(--rule-subtle)',
+                borderRadius: 0,
+                padding: '10px 12px',
+                borderLeft: `3px solid ${status.color}`,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: 'var(--color-ink-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <Apple size={13} style={{ color: 'var(--color-accent-green)' }} />
+                  RATIONS
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: status.color,
+                    background: status.bg,
+                    padding: '1px 5px',
+                    borderRadius: 0,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  {status.label}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginBottom: '6px',
+                }}
+              >
+                {precisionMode ? `${resources.food} SOLS` : `${resources.food} Meals`}
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, resources.food * 4.5))}%`,
+                    height: '100%',
+                    background: status.color,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 5. DOSIMETRY */}
+        {(() => {
+          const status = getStatus(resources.radiation, true);
+          return (
+            <div
+              style={{
+                background: 'var(--color-paper-2)',
+                border: '1px solid var(--rule-subtle)',
+                borderRadius: 0,
+                padding: '10px 12px',
+                borderLeft: `3px solid ${status.color}`,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: 'var(--color-ink-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <ShieldAlert size={13} style={{ color: 'var(--color-error)' }} />
+                  DOSIMETRY
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: status.color,
+                    background: status.bg,
+                    padding: '1px 5px',
+                    borderRadius: 0,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  {status.label}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginBottom: '6px',
+                }}
+              >
+                {precisionMode ? `${(resources.radiation * 0.85).toFixed(1)} mSv` : `${resources.radiation} Rad`}
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, resources.radiation))}%`,
+                    height: '100%',
+                    background: status.color,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 6. RESEARCH SCORE */}
+        <div
+          style={{
+            background: 'var(--color-paper-2)',
+            border: '1px solid var(--rule-subtle)',
+            borderRadius: 0,
+            padding: '10px 12px',
+            borderLeft: '3px solid var(--color-accent)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span
+              style={{
+                fontSize: '10.5px',
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                color: 'var(--color-accent)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontFamily: 'var(--font-mono, monospace)',
+              }}
+            >
+              <Award size={13} style={{ color: 'var(--color-accent)' }} />
+              SCIENCE RP
+            </span>
+            <span
+              style={{
+                fontSize: '9px',
+                fontWeight: 700,
+                color: 'var(--color-accent)',
+                background: 'rgba(245, 158, 11, 0.15)',
+                padding: '1px 5px',
+                borderRadius: 0,
+                fontFamily: 'var(--font-mono, monospace)',
+              }}
+            >
+              RANK {Math.min(5, Math.floor(resources.science / 60) + 1)}
+            </span>
+          </div>
+          <div
+            style={{
+              fontSize: '16px',
+              fontWeight: 700,
+              color: 'var(--color-accent)',
+              fontFamily: 'var(--font-mono, monospace)',
+              fontVariantNumeric: 'tabular-nums',
+              marginBottom: '6px',
+            }}
+          >
+            {resources.science} / 300
+          </div>
+          <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+            <div
+              style={{
+                width: `${Math.min(100, (resources.science / 300) * 100)}%`,
+                height: '100%',
+                background: 'var(--color-accent)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 7. CREW VITALS */}
+        {(() => {
+          const status = getStatus(resources.crewHealth);
+          return (
+            <div
+              style={{
+                background: 'var(--color-paper-2)',
+                border: '1px solid var(--rule-subtle)',
+                borderRadius: 0,
+                padding: '10px 12px',
+                borderLeft: `3px solid ${status.color}`,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: 'var(--color-ink-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <Activity size={13} style={{ color: 'var(--color-accent-green)' }} />
+                  CREW VITALS
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: status.color,
+                    background: status.bg,
+                    padding: '1px 5px',
+                    borderRadius: 0,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  {status.label}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginBottom: '6px',
+                }}
+              >
+                {precisionMode ? `${Math.round(62 + (100 - resources.crewHealth) * 0.4)} BPM` : `${resources.crewHealth}%`}
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, resources.crewHealth))}%`,
+                    height: '100%',
+                    background: status.color,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  );
+};

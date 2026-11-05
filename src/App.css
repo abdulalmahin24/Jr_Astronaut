@@ -1,0 +1,10 @@
+/* Hallmark · shape: Workbench · genre: modern-minimal · theme: Rim · job: try · idea: "NASA Space Apps 2026 Aerospace Mission Control and Solar System Orrery" · vibe: "aerospace technical instrument nocturnal telemetry" · hero: stage · nav: edge-aligned · footer: technical-dock · imagery: product · signature: interactive 3D JPL ephemeris orrery
+ * axes: dark/grotesk-sans/warm · contrast: pass · fold: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P9 H9 E9 S9 R9 V9 · weakest: none, locked to DESIGN.md aerospace workbench */
+
+/* App level layout container rules conforming to Hallmark floor */
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,50 @@
+# 🛰️ Jr_AstroCamp: Space Apps Bangladesh & Global Survival Guide
+**NASA International Space Apps Challenge 2026**  
+**Team Mysterio | Operational Cheat Sheet & Judging Alignment Guide**
+
+---
+
+## ⏰ 1. Critical Deadlines & Deliverables Checklist
+
+| Timestamp | Deliverable | Hard Constraint | Action Required |
+| :--- | :--- | :--- | :--- |
+| **Day 1 (Fri) 18:30** | **Video 2 (Local Judging Cut)** | **Max 240 seconds (4:00)** | Upload MP4 to Local Lead's Google Drive folder + YouTube link in Bangladesh Google Form. |
+| **Day 1 (Fri) 23:00** | **NASA Project Page Draft** | English, complete fields | Fill in High-Level Summary, Why/What/How, AI disclosure, and NASA data list. |
+| **Day 2 (Sat) 09:00** | **Video 3 (Global Judging Cut)** | **Strictly ≤ 30 seconds** | Upload to YouTube or Vimeo; paste link into NASA Project Page and Bangladesh Form. |
+| **Day 2 (Sat) 11:00** | **Local Judging Presentation** | **240 Seconds of Glory** | Live 4-minute presentation to the 5-judge panel followed by Q&A. |
+| **Day 2 (Sat) 12:00** | **Final NASA Submission** | spaceappschallenge.org | Verify all 6 team members are tagged, repository link works in Incognito mode, hit **SUBMIT**. |
+
+---
+
+## 🎯 2. The 118-Point Score Sheet: How Team Mysterio Scores 100%
+
+| Criterion | Max Pts | Target Score | How Jr_AstroCamp Satisfies It to Win |
+| :--- | :---: | :---: | :--- |
+| **1. Impact** | 20 | **20 (Wow)** | Addresses global STEM retention; multi-format learning eliminates format barriers for young minds; 100% offline access for underserved schools. |
+| **2. Creativity** | 20 | **20 (Wow)** | Dual-engine architecture: combining heavy desktop 60 FPS flight dynamics with web turn-based life-support management; authentic safe failure loops. |
+| **3. Validity** | 20 | **20 (Wow)** | 100% scientifically sound: derived from NASA BVAD stoichiometric baseline, LRO LOLA topography, and Kilopower KRUSTY reactor physics. 8/8 automated test suite passes. |
+| **4. Relevance** | 20 | **20 (Wow)** | Direct, uncompromising fit for "Build a Junior Astronaut Mission Trainer"; NASA data sits at the core of all mechanics, not as a decorative afterthought. |
+| **5. Presentation** | 20 | **20 (Wow)** | Flawless 240s & 30s scripts with structured narrative (Who, Why, What, How); all 6 team members introduced; NASA datasets spoken aloud on camera. |
+| **6. Teamwork** | 5 | **5** | All 6 roles clearly defined (Systems Engineer, Game Physicist, Aerospace Researcher, UI/UX Designer, ML Engineer, QA Specialist). |
+| **7. User Experience** | 5 | **5** | Intuitive, responsive web UI with HUD telemetry, playable rover canvas, and interactive Astronaut Academy widgets. |
+| **8. NASA Data Usage**| 5 | **5** | 6 verified NASA open datasets explicitly attributed and labeled `[REAL NASA DATA]`. |
+| **9. Challenge Category**| 1 | **1** | Officially registered under "Build a Junior Astronaut Mission Trainer". |
+| **10. Repo Access** | 1 | **1** | Public GitHub repository tested in private browsing window. |
+| **11. Complete Page** | 1 | **1** | Every field on spaceappschallenge.org completed before final deadline. |
+| **Bonus** | +5% | **+5%** | Applied to aggregate score for inclusive, multi-gender team participation. |
+
+---
+
+## ⚠️ 3. Non-Negotiable Rules to Prevent Disqualification
+
+1. **Strict Time Limits**:
+   - 240-second videos that hit 241 seconds get **cut off**, not excused. Stick to the ~450-word script.
+   - The 30-second global video must stay **under 30.0 seconds**.
+2. **Under-18 Safety Rule**:
+   - Recognizable names, voices, or faces of anyone under the age of 18 **must not appear** in any video or photo submission. Use adult team members or synthetic avatar voices.
+3. **NASA Data Must Be Spoken Aloud**:
+   - In Video 2, judges specifically check if NASA open datasets are named out loud on camera. Do not rely solely on on-screen text.
+4. **Incognito Link Test**:
+   - Test your GitHub link and YouTube video links in an **Incognito / Private Window** before submitting. If a judge sees a "Private Video" or "Sign-in Required" screen, the project cannot be scored.
+5. **Two Separate Registrations**:
+   - Ensure the team is fully registered on **both** the Bangladesh local form ([nasaspaceappsbd.com](https://www.nasaspaceappsbd.com/)) and the global NASA site ([spaceappschallenge.org](https://spaceappschallenge.org)).

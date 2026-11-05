@@ -1,0 +1,1044 @@
+/* Hallmark · shape: Workbench · genre: modern-minimal · theme: Rim · job: try · idea: "NASA Space Apps 2026 Aerospace Mission Control and Solar System Orrery" · vibe: "aerospace technical instrument nocturnal telemetry" · hero: stage · nav: edge-aligned · footer: technical-dock · imagery: product · signature: interactive 3D JPL ephemeris orrery
+ * axes: dark/grotesk-sans/warm · contrast: pass · fold: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P9 H9 E9 S9 R9 V9 · weakest: none, locked to DESIGN.md aerospace workbench */
+
+html {
+  overflow-x: clip;
+  overflow-y: auto;
+}
+
+body {
+  overflow-x: clip;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.hm-portal-root {
+  position: relative;
+  min-height: 100svh;
+  width: 100%;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-x: clip;
+}
+
+/* Accessibility: Instant visible focus rings */
+.hm-portal-root button:focus-visible,
+.hm-portal-root a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.hm-portal-root button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hm-nowrap {
+  white-space: nowrap;
+}
+
+/* ── STICKY NAVIGATION BAR ── */
+.hm-nav-bar {
+  position: sticky;
+  top: 52px;
+  width: 100%;
+  height: 64px;
+  background-color: var(--color-paper-alpha);
+  z-index: var(--z-sticky-nav);
+  box-sizing: border-box;
+}
+
+.hm-nav-inner {
+  max-width: var(--container);
+  margin-inline: auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--gutter);
+  box-sizing: border-box;
+}
+
+.hm-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.hm-nasa-stamp {
+  background-color: var(--color-nasa-red);
+  color: var(--color-nasa-white);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13.4px;
+  padding: var(--space-2xs) var(--space-xs);
+}
+
+.hm-brand-titles {
+  display: flex;
+  flex-direction: column;
+}
+
+.hm-brand-main {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: var(--tracking-display);
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.hm-brand-badge {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  font-weight: 600;
+  color: var(--color-accent-2);
+  background-color: var(--color-paper-2);
+  padding: var(--space-3xs) var(--space-xs);
+}
+
+.hm-brand-sub {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  color: var(--color-muted);
+}
+
+.hm-nav-anchors {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.hm-nav-link-btn {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2xs) 0;
+  transition: color var(--dur-micro) var(--ease-out);
+}
+
+.hm-nav-link-btn:hover {
+  color: var(--color-ink);
+}
+
+.hm-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.hm-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-xs) var(--space-md);
+  background-color: var(--color-paper-2);
+  border: none;
+  color: var(--color-ink-2);
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
+}
+
+.hm-pill-btn:hover {
+  background-color: var(--color-paper-3);
+  color: var(--color-ink);
+}
+
+.hm-pill-btn-nominal {
+  color: var(--color-accent-green);
+  cursor: default;
+}
+
+.hm-status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-accent-green);
+  display: inline-block;
+}
+
+.hm-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) 20px;
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out);
+}
+
+.hm-btn-primary:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.hm-btn-primary:active {
+  transform: translateY(0);
+}
+
+.hm-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) 20px;
+  background-color: var(--color-paper-2);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
+}
+
+.hm-btn-secondary:hover {
+  background-color: var(--color-paper-3);
+  color: var(--color-ink);
+}
+
+/* ── HERO SECTION: AEROSPACE STAGE ── */
+.hm-hero-stage {
+  position: relative;
+  min-height: calc(100svh - 64px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  gap: var(--gap-columns);
+  align-items: center;
+  padding: var(--space-xl) var(--gutter);
+  max-width: var(--container);
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+.hm-hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  z-index: var(--z-raised);
+}
+
+.hm-section-category {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  color: var(--color-accent);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@keyframes hmEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hm-hero-headline {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: var(--tracking-display);
+  color: var(--color-ink);
+  margin: 0;
+  animation: hmEntrance 0.8s var(--ease-out) both;
+}
+
+.hm-hero-lead {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--color-ink-2);
+  max-width: 54ch;
+  margin: 0;
+  animation: hmEntrance 0.8s var(--ease-out) 0.1s both;
+}
+
+/* Telemetry measurements strip */
+.hm-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+  background-color: var(--color-paper-2);
+  padding: var(--space-md) var(--space-lg);
+  box-sizing: border-box;
+  animation: hmEntrance 0.8s var(--ease-out) 0.15s both;
+}
+
+.hm-telemetry-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.hm-telemetry-val {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.hm-telemetry-label {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  color: var(--color-muted);
+}
+
+.hm-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  animation: hmEntrance 0.8s var(--ease-out) 0.2s both;
+}
+
+.hm-btn-hero-launch {
+  padding: var(--space-md) var(--space-lg);
+  font-size: 16px;
+}
+
+.hm-btn-hero-sub {
+  padding: var(--space-md) var(--space-lg);
+  font-size: 16px;
+}
+
+.hm-hero-viewport {
+  position: relative;
+  height: 560px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  background-color: var(--color-paper-2);
+  box-sizing: border-box;
+  overflow: hidden;
+  animation: hmEntrance 0.9s var(--ease-out) 0.25s both;
+}
+
+.hm-viewport-header-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--color-paper-3);
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  font-weight: 600;
+  color: var(--color-ink);
+  z-index: var(--z-raised);
+}
+
+.hm-viewport-inspect-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: var(--z-raised);
+}
+
+/* ── GENERIC SECTION STYLING ── */
+.hm-section-wrap {
+  width: 100%;
+  padding: var(--section-gap) 0;
+  box-sizing: border-box;
+}
+
+.hm-section-inner {
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+  box-sizing: border-box;
+}
+
+.hm-section-header {
+  margin-bottom: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.hm-section-title {
+  font-family: var(--font-display);
+  font-size: var(--text-section);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: var(--tracking-display);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.hm-section-desc {
+  font-size: 16px;
+  color: var(--color-muted);
+  line-height: 1.5;
+  max-width: 68ch;
+  margin: 0;
+}
+
+/* ── SECTION 01: SIMULATION PLATFORMS GRID ── */
+.hm-sim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: var(--gap-columns);
+}
+
+.hm-sim-card {
+  background-color: var(--color-paper-2);
+  display: flex;
+  flex-direction: column;
+  min-height: 380px;
+  cursor: pointer;
+  overflow: hidden;
+  animation: hmEntrance 0.8s var(--ease-out) both;
+  transition: background-color var(--dur-micro) var(--ease-out);
+}
+
+.hm-sim-card:hover {
+  background-color: var(--color-paper-3);
+}
+
+.hm-sim-card-featured {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  min-height: 280px;
+}
+
+.hm-sim-card-featured .hm-sim-card-thumb-wrap {
+  height: 100%;
+  min-height: 260px;
+}
+
+@media (max-width: 768px) {
+  .hm-sim-card-featured {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hm-sim-card-thumb-wrap {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background-color: var(--color-paper-3);
+}
+
+.hm-sim-card-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--dur-short) var(--ease-out);
+}
+
+.hm-sim-card:hover .hm-sim-card-thumb {
+  transform: scale(1.03);
+}
+
+.hm-sim-card-body {
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  gap: var(--space-md);
+}
+
+.hm-sim-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+
+.hm-card-tag {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background-color: var(--color-paper-3);
+  padding: var(--space-2xs) var(--space-xs);
+}
+
+.hm-card-measure {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  color: var(--color-muted);
+}
+
+.hm-sim-card-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: var(--space-xs);
+}
+
+.hm-sim-card-desc {
+  font-size: 16px;
+  color: var(--color-ink-2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.hm-sim-card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-paper-3);
+  border: none;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--dur-micro) var(--ease-out);
+}
+
+.hm-sim-card:hover .hm-sim-card-action {
+  color: var(--color-accent);
+}
+
+/* ── SECTION 02: ACADEMY CURRICULUM SYLLABUS LEDGER ── */
+.hm-academy-ledger {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-paper-2);
+}
+
+.hm-academy-row {
+  display: grid;
+  grid-template-columns: 180px 1fr auto;
+  gap: var(--space-lg);
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  cursor: pointer;
+  background-color: var(--color-paper-2);
+  margin-bottom: var(--space-3xs);
+  animation: hmEntrance 0.7s var(--ease-out) both;
+  transition: background-color var(--dur-micro) var(--ease-out);
+}
+
+.hm-academy-row:hover {
+  background-color: var(--color-paper-3);
+}
+
+.hm-academy-topic {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  font-weight: 700;
+  color: var(--color-accent-2);
+}
+
+.hm-academy-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: var(--space-3xs);
+}
+
+.hm-academy-desc {
+  font-size: 16px;
+  color: var(--color-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .hm-academy-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-xs);
+    padding: var(--space-md);
+  }
+}
+
+/* ── SECTION 03: NASA SCIENTIFIC DATA TABLE ── */
+.hm-table-wrap {
+  width: 100%;
+  background-color: var(--color-paper-2);
+  overflow-x: auto;
+}
+
+.hm-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 16px;
+}
+
+.hm-table th {
+  padding: var(--space-md) 20px;
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  font-weight: 600;
+  color: var(--color-muted);
+  background-color: var(--color-paper-3);
+}
+
+.hm-table td {
+  padding: var(--space-md) 20px;
+  vertical-align: middle;
+}
+
+.hm-table-row:hover td {
+  background-color: var(--color-paper-3);
+}
+
+.hm-table-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--color-ink);
+  font-size: 16px;
+}
+
+.hm-table-sub {
+  font-size: 13.4px;
+  color: var(--color-muted);
+  margin-top: var(--space-3xs);
+}
+
+.hm-measure-real {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-2);
+}
+
+.hm-measure-engine {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-green);
+}
+
+.hm-source-citation {
+  font-size: 16px;
+  color: var(--color-ink-2);
+}
+
+/* ── SECTION 04: ASTRONAUT CREW GRID ── */
+.hm-crew-hero-banner {
+  width: 100%;
+  background-color: var(--color-paper-2);
+  margin-bottom: var(--space-xl);
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--space-xl);
+  align-items: center;
+  overflow: hidden;
+}
+
+.hm-crew-hero-img-wrap {
+  width: 100%;
+  height: 320px;
+  overflow: hidden;
+  background-color: var(--color-paper-3);
+}
+
+.hm-crew-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hm-crew-hero-content {
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.hm-crew-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-md);
+}
+
+.hm-crew-card {
+  background-color: var(--color-paper-2);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.hm-crew-card-active {
+  background-color: var(--color-paper-3);
+}
+
+.hm-crew-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hm-crew-insignia {
+  font-family: var(--font-display);
+  font-size: 13.4px;
+  font-weight: 700;
+  padding: var(--space-2xs) var(--space-sm);
+  background-color: var(--color-paper-3);
+  color: var(--color-accent);
+}
+
+.hm-crew-status-badge {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  font-weight: 600;
+  padding: var(--space-2xs) var(--space-sm);
+  background-color: var(--color-paper-3);
+}
+
+.hm-badge-active {
+  color: var(--color-accent-green);
+}
+
+.hm-badge-unlocked {
+  color: var(--color-accent-2);
+}
+
+.hm-badge-locked {
+  color: var(--color-accent-amber);
+}
+
+.hm-crew-name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-top: var(--space-2xs);
+}
+
+.hm-crew-sub {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  color: var(--color-accent-2);
+  margin-top: var(--space-3xs);
+}
+
+.hm-crew-title {
+  font-size: 16px;
+  color: var(--color-muted);
+  margin-top: var(--space-2xs);
+  line-height: 1.45;
+}
+
+.hm-crew-perk-box {
+  background-color: var(--color-paper-3);
+  padding: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+
+.hm-perk-name {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.hm-perk-stat {
+  font-size: 13.4px;
+  color: var(--color-ink-2);
+  margin-top: var(--space-2xs);
+}
+
+/* ── FOOTER ── */
+.hm-footer {
+  width: 100%;
+  padding: var(--space-2xl) 0 var(--space-xl) 0;
+  background-color: var(--color-paper-2);
+  box-sizing: border-box;
+}
+
+.hm-footer-inner {
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  box-sizing: border-box;
+}
+
+.hm-footer-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.hm-footer-brand {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.hm-footer-meta {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--color-muted);
+  margin-top: var(--space-2xs);
+}
+
+.hm-footer-links {
+  display: flex;
+  gap: var(--space-lg);
+  align-items: center;
+}
+
+.hm-footer-link-btn {
+  background: transparent;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color var(--dur-micro) var(--ease-out);
+}
+
+.hm-footer-link-btn:hover {
+  color: var(--color-ink);
+}
+
+.hm-footer-credits {
+  font-size: 13.4px;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.hm-footer-credits a {
+  color: var(--color-ink-2);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.hm-footer-credits a:hover {
+  color: var(--color-accent);
+}
+
+/* ── FULL-SCREEN INSPECTION MODAL ── */
+.hm-inspect-modal {
+  position: fixed;
+  inset: 0;
+  background-color: var(--color-modal-bg);
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  box-sizing: border-box;
+}
+
+.hm-modal-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--space-md);
+  background-color: var(--color-paper-2);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.hm-modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.hm-modal-main-view {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: var(--space-xl);
+  align-items: center;
+  padding: var(--space-md) 0;
+}
+
+.hm-dossier-card {
+  background-color: var(--color-paper-2);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.hm-modal-viewport {
+  height: 520px;
+  width: 100%;
+  position: relative;
+  background-color: var(--color-paper-2);
+}
+
+.hm-carousel-tray {
+  display: flex;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  padding: var(--space-xs) 0;
+  background-color: var(--color-paper-2);
+}
+
+.hm-carousel-card {
+  flex-shrink: 0;
+  width: 140px;
+  padding: var(--space-sm);
+  background-color: var(--color-paper-3);
+  cursor: pointer;
+  text-align: center;
+  border: none;
+  transition: background-color var(--dur-micro) var(--ease-out);
+}
+
+.hm-carousel-card:hover, .hm-carousel-card.active {
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+/* Toast */
+.hm-toast {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  padding: var(--space-sm) var(--space-lg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background-color: var(--color-paper-3);
+  color: var(--color-ink);
+}
+
+.hm-toast.success {
+  color: var(--color-accent-green);
+}
+
+.hm-toast.error {
+  color: var(--color-error);
+}
+
+/* ── ARCHIVE VIDEO BANNER ── */
+.hm-video-banner {
+  width: 100%;
+  margin-bottom: var(--space-xl);
+  position: relative;
+  background-color: var(--color-paper-2);
+  overflow: hidden;
+  max-height: 440px;
+}
+
+.hm-archive-video {
+  width: 100%;
+  height: 100%;
+  max-height: 440px;
+  object-fit: cover;
+  display: block;
+}
+
+.hm-video-overlay-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-sm) 20px;
+  background: linear-gradient(to top, var(--color-paper-alpha) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.hm-video-caption {
+  font-family: var(--font-body);
+  font-size: 13.4px;
+  color: var(--color-ink);
+}
+
+/* Reduced motion preference fallback */
+@media (prefers-reduced-motion: reduce) {
+  .hm-portal-root *,
+  .hm-portal-root *::before,
+  .hm-portal-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .hm-hero-stage {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .hm-hero-viewport {
+    height: 420px;
+  }
+  .hm-telemetry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hm-modal-main-view {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .hm-nav-anchors {
+    display: none;
+  }
+  .hm-crew-hero-banner {
+    grid-template-columns: 1fr;
+  }
+  .hm-crew-hero-img-wrap {
+    height: 220px;
+  }
+}
+
+@media (max-width: 600px) {
+  .hm-hero-headline {
+    font-size: clamp(24px, 7vw, 32px);
+    line-height: 1.1;
+  }
+  .hm-nav-controls .hm-pill-btn {
+    display: none;
+  }
+  .hm-brand-titles .hm-brand-sub {
+    display: none;
+  }
+}

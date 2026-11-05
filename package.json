@@ -1,0 +1,33 @@
+{
+  "name": "jr-astrocamp",
+  "version": "1.0.0",
+  "description": "Jr_AstroCamp: 76-Mission Flight Simulator & Multi-Format Learning Platform for NASA International Space Apps Challenge 2026",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc -b && vite build",
+    "lint": "oxlint",
+    "test": "node tests/test_simulation.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@types/three": "^0.186.0",
+    "canvas-confetti": "^1.9.4",
+    "lucide-react": "^1.47.0",
+    "phaser": "^4.2.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}
