@@ -34,8 +34,8 @@ export const NASA_DATASETS: NasaDatasetInfo[] = [
     accessDate: '2026-10-15',
     relevantFactOrData: 'Shackleton Crater rim (89.9°S) features peaks with up to 86–92% illumination annually, with adjacent floor temperatures dipping below 40 Kelvin (-233°C) in Permanently Shadowed Regions (PSRs).',
     units: 'Meters elevation, Kelvin (K), % annual illumination',
-    howUsedInGame: 'Defines the topographic map, solar angle calculations, crater obstacles, and volatile ice waypoint coordinates in the 3D base and rover simulator.',
-    limitationsOrSimplifications: 'Elevation contours are quantized for real-time 60 FPS WebGL mesh rendering and top-down canvas physics.',
+    howUsedInGame: 'Provides the cited lunar polar context for maps and rover content. The Shackleton Ice Run prototype uses a separate procedural practice route.',
+    limitationsOrSimplifications: 'The current 3D rover route is an illustrative GAME SIMULATION VALUE, not elevation samples from a LOLA DEM. It must not be presented as a sampled or validated slope map.',
     isRealData: true,
   },
   {

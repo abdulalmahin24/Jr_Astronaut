@@ -1,0 +1,321 @@
+.shackleton-game-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  padding:
+    max(10px, env(safe-area-inset-top))
+    max(10px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom))
+    max(10px, env(safe-area-inset-left));
+  overflow: hidden;
+  color: #eef4ff;
+  background: #070a11;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.shackleton-game-root * {
+  box-sizing: border-box;
+}
+
+.shackleton-header,
+.shackleton-hud,
+.shackleton-data-note,
+.shackleton-controls,
+.shackleton-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.shackleton-header h1 {
+  margin: 2px 0 0;
+  font-size: clamp(18px, 2.4vw, 26px);
+}
+
+.shackleton-eyebrow,
+.shackleton-hud > div > span {
+  color: #91a1b9;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.shackleton-icon-button,
+.shackleton-touch-button,
+.shackleton-game-root button {
+  min-height: 44px;
+  border: 1px solid #40516a;
+  border-radius: 8px;
+  color: #eef4ff;
+  background: #162033;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shackleton-icon-button {
+  width: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.shackleton-game-root button:hover:not(:disabled) {
+  border-color: #72d8ef;
+  background: #1d2b42;
+}
+
+.shackleton-game-root button:focus-visible {
+  outline: 3px solid #f4c95d;
+  outline-offset: 2px;
+}
+
+.shackleton-game-root button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.shackleton-primary-button {
+  border-color: #f4c95d !important;
+  color: #1c1709 !important;
+  background: #f4c95d !important;
+}
+
+.shackleton-hud {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(110px, 1fr));
+  gap: 7px;
+}
+
+.shackleton-hud > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid #263349;
+  border-radius: 7px;
+  background: #101725;
+}
+
+.shackleton-hud strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.shackleton-hud small {
+  color: #91a1b9;
+  font-size: 9px;
+}
+
+.shackleton-data-note {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  color: #b6c4d9;
+  font-size: 11px;
+}
+
+.shackleton-data-note a {
+  color: #72d8ef;
+}
+
+.shackleton-weather-source {
+  margin-left: auto;
+  font-weight: 700;
+}
+
+.shackleton-play-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.shackleton-canvas-frame {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #283449;
+  border-radius: 9px;
+  background: #090d16;
+}
+
+.shackleton-canvas-frame canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.shackleton-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: clamp(16px, 4vw, 40px);
+  overflow-y: auto;
+  text-align: center;
+  background: rgba(5, 9, 17, 0.88);
+}
+
+.shackleton-overlay h2 {
+  max-width: 680px;
+  margin: 0;
+  font-size: clamp(21px, 3vw, 34px);
+}
+
+.shackleton-overlay p {
+  max-width: 660px;
+  margin: 0;
+  color: #c4d1e4;
+  line-height: 1.55;
+}
+
+.shackleton-overlay ol {
+  max-width: 660px;
+  margin: 0;
+  padding-left: 22px;
+  color: #d7e3f4;
+  text-align: left;
+  line-height: 1.55;
+}
+
+.shackleton-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+  border: 1px solid #263349;
+  border-radius: 9px;
+  background: #101725;
+}
+
+.shackleton-side-panel h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.shackleton-side-panel p,
+.shackleton-tradeoff span,
+.shackleton-data-label span,
+.shackleton-small-note {
+  margin: 0;
+  color: #b6c4d9;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shackleton-tradeoff,
+.shackleton-data-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #2b3a50;
+  border-radius: 7px;
+  background: #0c1320;
+}
+
+.shackleton-tradeoff button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 10px;
+}
+
+.shackleton-data-label strong {
+  color: #f4c95d;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.shackleton-small-note {
+  font-size: 10px;
+}
+
+.shackleton-controls {
+  min-height: 48px;
+  color: #aab9cf;
+  font-size: 11px;
+}
+
+.shackleton-drive-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.shackleton-touch-button {
+  width: 46px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+@media (max-width: 760px) {
+  .shackleton-game-root {
+    gap: 7px;
+    overflow-y: auto;
+  }
+
+  .shackleton-hud {
+    grid-template-columns: repeat(5, minmax(92px, 1fr));
+    overflow-x: auto;
+  }
+
+  .shackleton-play-area {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(260px, 1fr) auto;
+  }
+
+  .shackleton-side-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+  }
+
+  .shackleton-side-panel h2,
+  .shackleton-side-panel > p,
+  .shackleton-small-note {
+    grid-column: 1 / -1;
+  }
+
+  .shackleton-controls {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .shackleton-side-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .shackleton-weather-source {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shackleton-game-root *,
+  .shackleton-game-root *::before,
+  .shackleton-game-root *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

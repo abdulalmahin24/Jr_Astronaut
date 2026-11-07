@@ -26,6 +26,13 @@ The outpost simulation displays radiation as a **simulated percentage of mission
 
 The debrief's static NASA Twins Study card is labelled **ARCHIVED NASA RESEARCH FINDING** and links to the 2019 *Science* paper, DOI [10.1126/science.aau8650](https://doi.org/10.1126/science.aau8650), and the [NASA OSDR portal](https://osdr.nasa.gov/). It is historical research, not live telemetry or a universal prediction.
 
+### Shackleton Ice Run terrain and sample readings
+
+- **Reference context:** NASA LRO LOLA polar elevation models ([PDS Geosciences Node](https://pds-geosciences.wustl.edu/missions/lro/lola.htm)).
+- **Current implementation:** the prototype's generated relief, slopes, hydrogen signals, ice-likelihood readings, battery use, and water/fuel rewards are all **GAME SIMULATION VALUES**.
+- **Important limitation:** the route is not sampled from a LOLA DEM. The NASA citation provides lunar surface context only; it does not validate the prototype's slope values. Do not describe the current practice terrain as real LOLA slope data.
+- **Storm timer:** a NASA DONKI event may supply the warning-time input, but its displayed short-run countdown is time-compressed game behavior and is labelled accordingly.
+
 ## 1. NASA Mission Catalog & Historical Datasets
 * **Mission Dataset:** 76 historical NASA missions compiled in [`nasa_missions_catalog.csv`](file:///Users/md.mehedihasan/Documents/NASAC-2026/nasa_missions_catalog.csv) and [`nasaMissionCatalog.ts`](file:///Users/md.mehedihasan/Documents/NASAC-2026/src/data/nasaMissionCatalog.ts).
 * **Programs Covered:**

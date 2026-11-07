@@ -8,7 +8,7 @@
 ## 1. Testing Summary & Quality Standards
 
 Jr_AstroCamp maintains a dual-verification strategy covering both the interactive web expedition platform (React 19 / TypeScript / Vite / Three.js) and the desktop 60 FPS flight simulator (Python 3 / Pygame-ce):
-1. **Automated Web Tests (`npm test`):** Validates deterministic simulation math, cargo mass validation, BVAD consumption formulas, Kilopower night generation, shift actions, boundary clamping, game-over triggers, DONKI mapping/source selection, the simulated radiation budget limit, Cadet/Explorer/Advanced HUD meter selection, and resource costs for every Cadet lunar and Mars choice.
+1. **Automated Web Tests (`npm test`):** Validates deterministic simulation math, cargo mass validation, BVAD consumption formulas, Kilopower night generation, shift actions, boundary clamping, game-over triggers, DONKI mapping/source selection, the simulated radiation budget limit, Cadet/Explorer/Advanced HUD meter selection, resource costs for every Cadet lunar and Mars choice, simulated terrain risk, storm timer scaling, rover energy trade-offs, and Rapier WASM initialization.
 2. **Automated Pygame Engine Headless Tests (`python tests/test_game.py`):** Validates 76 cataloged missions, procedural audio synthesis, 6 flight disciplines, and save file persistence.
 3. **TypeScript & Static Linting Verification (`npm run build`):** Enforces strict types (`tsc -b`) and fast modern linting (`oxlint`).
 4. **End-to-End Browser & Usability Verification:** A mobile Playwright smoke test is still pending; the current automated suites do not claim browser-flow coverage.
@@ -34,6 +34,7 @@ Jr_AstroCamp maintains a dual-verification strategy covering both the interactiv
   11. `[PASS]` A linked DONKI record generates an event carrying its record ID and honest source label; unavailable data stays a game scenario.
   12. `[PASS]` Cadet HUD has exactly three meters (Power, Life Support, Radiation Dose Budget); Explorer and Advanced tier meter sets remain distinct.
   13. `[PASS]` Every option in the lunar and Mars Cadet event decks has a written trade-off and at least one negative resource delta.
+  14. `[PASS]` Shackleton practice terrain has rollover-risk slopes, game-only values are labelled, and Rapier WASM applies lunar gravity.
 
 ### Cadet HUD manual smoke check
 
@@ -77,6 +78,7 @@ npm test
 node tests/test_simulation.mjs
 node tests/test_donki.mjs
 node tests/test_resource_hud.mjs
+node tests/test_shackleton.mjs
 ```
 
 ### Production Build:
