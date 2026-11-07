@@ -7,7 +7,8 @@ export type AppRoute =
   | 'simulators'
   | 'campaign'
   | 'learning'
-  | 'teacher';
+  | 'teacher'
+  | 'locker';
 
 export interface RouteState {
   route: AppRoute;
@@ -32,6 +33,8 @@ const ROUTE_HASH_MAP: Record<string, AppRoute> = {
   '#/learning': 'learning',
   '#teacher': 'teacher',
   '#/teacher': 'teacher',
+  '#locker': 'locker',
+  '#/locker': 'locker',
 };
 
 function parseHash(hash: string): RouteState {
