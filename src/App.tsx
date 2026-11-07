@@ -22,8 +22,15 @@ import type { OutpostConfiguration } from './types/game';
 import { soundFx } from './utils/audioEffects';
 import { speechEngine } from './utils/speechEngine';
 import { JudgePreviewBadge, JudgePreviewModal } from './components/JudgePreviewMode';
+import { WarpBackgroundCanvas } from './components/arcade/WarpBackgroundCanvas';
+import { ArcadeNavBar } from './components/arcade/ArcadeNavBar';
+import { CadetEnlistModal, type CadetProfile } from './components/arcade/CadetEnlistModal';
 
 // Code-split Dedicated Pages
+const LaunchpadPage = lazy(() => import('./pages/LaunchpadPage'));
+const AcademyTrailPage = lazy(() => import('./pages/AcademyTrailPage'));
+const ArcadeSimulatorsPage = lazy(() => import('./pages/ArcadeSimulatorsPage'));
+const AstronautLockerPage = lazy(() => import('./pages/AstronautLockerPage'));
 const OrreryHomePage = lazy(() => import('./pages/OrreryHomePage'));
 const MissionControlPage = lazy(() => import('./pages/MissionControlPage'));
 const AstronautAcademyPage = lazy(() => import('./pages/AstronautAcademyPage'));
@@ -149,6 +156,47 @@ export const App: React.FC = () => {
   const [isJudgeMode, setIsJudgeMode] = useState(() => {
     try { return localStorage.getItem('astro_camp_judge_mode') === 'true'; } catch { return false; }
   });
+
+  // Cadet Arcade Profile & XP State
+  const [cadetProfile, setCadetProfile] = useState<CadetProfile>(() => {
+    try {
+      const saved = localStorage.getItem('astro_cadet_profile');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      callsign: 'MAYA-01',
+      avatar: '/cinematic/maya.jpg',
+      characterName: 'Maya',
+      rank: 'ASCAN Grade 1 Pilot'
+    };
+  });
+
+  const [spaceXp, setSpaceXp] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('astro_space_xp');
+      if (saved) return parseInt(saved, 10);
+    } catch {}
+    return 1250;
+  });
+
+  const [isEnlistModalOpen, setIsEnlistModalOpen] = useState(false);
+
+  const handleSaveCadetProfile = (profile: CadetProfile) => {
+    setCadetProfile(profile);
+    try {
+      localStorage.setItem('astro_cadet_profile', JSON.stringify(profile));
+    } catch {}
+  };
+
+  const handleAddSpaceXp = (amount: number) => {
+    setSpaceXp((prev) => {
+      const next = prev + amount;
+      try {
+        localStorage.setItem('astro_space_xp', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Transient Modal Dialogs State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -470,59 +518,47 @@ export const App: React.FC = () => {
     switch (route) {
       case 'home':
         return (
-          <OrreryHomePage
+          <LaunchpadPage
             onNavigate={navigate}
-            hasSavedGame={!!savedGameInfo}
-            savedGameSol={savedGameInfo?.currentSol}
-            savedGameDest={savedGameInfo?.destination === 'MARS' ? 'Mars' : 'Moon'}
-            currentUser={currentUser}
-            onUserUpdate={setCurrentUser}
-            onOpenAuth={() => setIsAuthModalOpen(true)}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
-            onOpenCertificate={() => setIsCertificateOpen(true)}
-            isJudgeMode={isJudgeMode}
-            onOpenJudgePreview={() => setIsJudgeModalOpen(true)}
-            onOpenTelemetry={() => setIsTelemetryOpen(true)}
-            onOpenScienceHub={() => setIsNasaDataOpen(true)}
-            onOpenCredits={() => setIsAboutOpen(true)}
-            onOpenCharacterLocker={() => setIsCharacterModalOpen(true)}
-            onOpenLiveActivity={() => setIsLiveActivityModalOpen(true)}
-            onOpenMultiplayerLobby={() => setIsMultiplayerLobbyOpen(true)}
-            onStartMission={() => setIsConstructionModalOpen(true)}
-            onContinueMission={() => {
-              const saved = loadGameStateFromStorage() || savedGameInfo;
-              if (saved) setGameState(saved);
-              navigate('simulators');
-            }}
-          />
-        );
-
-      case 'mission':
-        return (
-          <SimulatorsHubPage
-            initialSimulator={params.sim}
-            onNavigate={navigate}
-            onCompleteRoverMission={handleCompleteRoverEVA}
+            cadetProfile={cadetProfile}
+            onOpenEnlistModal={() => setIsEnlistModalOpen(true)}
+            onAddXp={handleAddSpaceXp}
+            onStartBaseMission={() => setIsConstructionModalOpen(true)}
+            onOpenComic={(issueId) => navigate('learning', { tab: 'COMIC', issue: issueId ? String(issueId) : '1' })}
           />
         );
 
       case 'academy':
         return (
-          <AstronautAcademyPage
-            initialTab={params.tab || 'CURRICULUM'}
-            completedMissions={completedMissions}
-            onLaunchMission={handleLaunchMissionGame}
+          <AcademyTrailPage
             onNavigate={navigate}
+            onAddXp={handleAddSpaceXp}
+            onOpenFullCurriculum={() => setIsAboutOpen(true)}
           />
         );
 
       case 'simulators':
+      case 'mission':
         return (
-          <SimulatorsHubPage
-            initialSimulator={params.sim}
+          <ArcadeSimulatorsPage
             onNavigate={navigate}
-            onCompleteRoverMission={handleCompleteRoverEVA}
+            onAddXp={handleAddSpaceXp}
+            onLaunchMarsEDL={() => handleLaunchMissionGame('NASA-M057')}
+            onLaunchRover={() => handleLaunchMissionGame('NASA-M057')}
+            onLaunchBlackHole={() => setIsPlanetaryMapOpen(true)}
+            onLaunchOrrery={() => setIsPlanetaryMapOpen(true)}
+            onLaunchCampaign={() => navigate('campaign')}
+          />
+        );
+
+      case 'locker':
+        return (
+          <AstronautLockerPage
+            onNavigate={navigate}
+            cadetProfile={cadetProfile}
+            onOpenEnlistModal={() => setIsEnlistModalOpen(true)}
+            spaceXp={spaceXp}
+            onOpenCertificateModal={() => setIsCertificateOpen(true)}
           />
         );
 
@@ -561,59 +597,49 @@ export const App: React.FC = () => {
 
       default:
         return (
-          <OrreryHomePage
+          <LaunchpadPage
             onNavigate={navigate}
-            hasSavedGame={!!savedGameInfo}
-            savedGameSol={savedGameInfo?.currentSol}
-            savedGameDest={savedGameInfo?.destination === 'MARS' ? 'Mars' : 'Moon'}
-            currentUser={currentUser}
-            onUserUpdate={setCurrentUser}
-            onOpenAuth={() => setIsAuthModalOpen(true)}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
-            onOpenCertificate={() => setIsCertificateOpen(true)}
-            isJudgeMode={isJudgeMode}
-            onOpenJudgePreview={() => setIsJudgeModalOpen(true)}
-            onOpenTelemetry={() => setIsTelemetryOpen(true)}
-            onOpenScienceHub={() => setIsNasaDataOpen(true)}
-            onOpenCredits={() => setIsAboutOpen(true)}
-            onOpenCharacterLocker={() => setIsCharacterModalOpen(true)}
-            onOpenLiveActivity={() => setIsLiveActivityModalOpen(true)}
-            onOpenMultiplayerLobby={() => setIsMultiplayerLobbyOpen(true)}
+            cadetProfile={cadetProfile}
+            onOpenEnlistModal={() => setIsEnlistModalOpen(true)}
+            onAddXp={handleAddSpaceXp}
+            onStartBaseMission={() => setIsConstructionModalOpen(true)}
+            onOpenComic={(issueId) => navigate('learning', { tab: 'COMIC', issue: issueId ? String(issueId) : '1' })}
           />
         );
     }
   };
 
   return (
-    <div className="app-root-shell" style={{ minHeight: '100vh', background: 'var(--color-space-950, #04070e)', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-root-shell relative" style={{ minHeight: '100vh', background: '#040711', color: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Universal Quiet Aerospace Navigation Bar */}
-      <GlobalNavBar
+      {/* Interactive 3D Warp-Speed Starfield Canvas in Background */}
+      <WarpBackgroundCanvas />
+
+      {/* High-Octane Arcade Flight Deck Topbar */}
+      <ArcadeNavBar
         currentRoute={route}
         onNavigate={navigate}
-        currentUser={currentUser}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
-        onOpenCertificate={() => setIsCertificateOpen(true)}
-        isJudgeMode={isJudgeMode}
+        cadetProfile={cadetProfile}
+        onOpenEnlistModal={() => setIsEnlistModalOpen(true)}
+        spaceXp={spaceXp}
         onOpenJudgePreview={() => setIsJudgeModalOpen(true)}
-        completedMissionsCount={completedMissions.length}
-        onOpenTelemetry={() => setIsTelemetryOpen(true)}
-        onOpenPlanetaryMap={() => setIsPlanetaryMapOpen(true)}
-        onOpenNasaData={() => setIsNasaDataOpen(true)}
-        onOpenAIDisclosure={() => setIsAIModalOpen(true)}
-        onOpenAbout={() => setIsAboutOpen(true)}
-        onOpenMultiplayerLobby={() => setIsMultiplayerLobbyOpen(true)}
+        onOpenTeacherHub={() => navigate('teacher')}
       />
 
       {/* Main Page Area Mounted via URL Router */}
-      <main style={{ flex: 1, position: 'relative' }}>
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 w-full space-y-8 relative z-10" style={{ flex: 1 }}>
         <Suspense fallback={<PageFallback />}>
           {renderActivePage()}
         </Suspense>
       </main>
+
+      {/* Cadet Enlistment Profile Modal */}
+      <CadetEnlistModal
+        isOpen={isEnlistModalOpen}
+        onClose={() => setIsEnlistModalOpen(false)}
+        currentProfile={cadetProfile}
+        onSaveProfile={handleSaveCadetProfile}
+      />
 
       {/* Global Transient Utility Dialogs */}
       <Suspense fallback={null}>

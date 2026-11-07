@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jr_AstroCamp: Beyond Earth - Space Flight Academy</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=Space+Grotesk:wght@500;700;900&family=JetBrains+Mono:wght@500;700;800&family=Bungee&display=swap');
+    
+    :root {
+      --neon-cyan: #38bdf8;
+      --neon-gold: #fbbf24;
+      --neon-red: #f43f5e;
+      --neon-emerald: #10b981;
+      --cockpit-dark: #040711;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--cockpit-dark);
+      color: #f8fafc;
+      min-height: 100vh;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    
+    .font-space { font-family: 'Space Grotesk', sans-serif; }
+    .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+    .font-arcade { font-family: 'Bungee', cursive, sans-serif; }
+
+    /* Canvas Starfield */
+    #warp-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Chunky Arcade Game Buttons */
+    .btn-arcade-gold {
+      background: linear-gradient(180deg, #fde047 0%, #eab308 50%, #ca8a04 100%);
+      border: 3px solid #fef08a;
+      box-shadow: 0 6px 0 #854d0e, 0 12px 25px rgba(234, 179, 8, 0.45);
+      transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      color: #020617;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+    .btn-arcade-gold:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 0 #854d0e, 0 16px 30px rgba(234, 179, 8, 0.6);
+    }
+    .btn-arcade-gold:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #854d0e, 0 4px 10px rgba(234, 179, 8, 0.3);
+    }
+
+    .btn-arcade-cyan {
+      background: linear-gradient(180deg, #38bdf8 0%, #0284c7 50%, #0369a1 100%);
+      border: 2px solid #7dd3fc;
+      box-shadow: 0 5px 0 #075985, 0 10px 20px rgba(2, 132, 199, 0.4);
+      transition: all 0.1s ease;
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+    .btn-arcade-cyan:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 7px 0 #075985, 0 14px 25px rgba(2, 132, 199, 0.5);
+    }
+    .btn-arcade-cyan:active {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 #075985;
+    }
+
+    /* Cockpit HUD Frame */
+    .cockpit-panel {
+      background: rgba(10, 16, 31, 0.88);
+      backdrop-filter: blur(16px);
+      border: 1.5px solid rgba(56, 189, 248, 0.25);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* Hazard Stripes */
+    .hazard-stripes {
+      background: repeating-linear-gradient(
+        -45deg,
+        #f59e0b,
+        #f59e0b 12px,
+        #000000 12px,
+        #000000 24px
+      );
+    }
+
+    /* Glowing Scanning Radar */
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(1000%); }
+    }
+    .scan-beam {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 40px;
+      background: linear-gradient(to bottom, transparent, rgba(56, 189, 248, 0.18), transparent);
+      animation: scanline 4s linear infinite;
+      pointer-events: none;
+    }
+
+    /* Comic Halftone Dot Effect */
+    .comic-pop-card {
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .comic-pop-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 20px 40px -10px rgba(56, 189, 248, 0.5);
+    }
+
+    /* Pulsing Thruster Glow */
+    @keyframes engine-fire {
+      0% { opacity: 0.75; transform: scale(0.98); }
+      50% { opacity: 1; transform: scale(1.04); filter: drop-shadow(0 0 25px #f59e0b); }
+      100% { opacity: 0.75; transform: scale(0.98); }
+    }
+    .engine-pulse {
+      animation: engine-fire 0.8s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="relative">
+
+  <!-- ============================================================ -->
+  <!-- FULLSCREEN WARP-SPEED CANVAS (Runs Behind Entire UI) -->
+  <!-- ============================================================ -->
+  <canvas id="warp-canvas"></canvas>
+
+  <div class="relative z-10 flex flex-col min-h-screen">
+
+    <!-- ============================================================ -->
+    <!-- 1. HIGH-OCTANE FLIGHT DECK TOPBAR -->
+    <!-- ============================================================ -->
+    <header class="sticky top-0 z-50 bg-[#040816]/95 backdrop-blur-md border-b-2 border-sky-500/30 px-4 md:px-8 py-3">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        
+        <!-- Left: Mission Patch Logo -->
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 via-indigo-600 to-amber-400 p-0.5 shadow-lg shadow-sky-500/30 flex items-center justify-center transform hover:rotate-6 transition-transform cursor-pointer" onclick="triggerWarpSpeed()">
+            <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-2xl font-black">
+              🚀
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-arcade tracking-wider text-white text-base md:text-xl drop-shadow-[0_2px_10px_rgba(56,189,248,0.5)]">Jr_AstroCamp</span>
+              <span class="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shadow">NASA 2026</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-slate-400 font-mono-code">CADET CALLSIGN:</span>
+              <button onclick="openEnlistModal()" class="text-amber-400 font-bold hover:underline flex items-center gap-1 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                <span id="nav-callsign">MAYA-01</span> ⚡
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center: 4 Chunky Game Navigation Tabs -->
+        <nav class="hidden md:flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-sky-500/20">
+          <button onclick="switchPillar('launchpad')" id="tab-launchpad" class="pillar-tab active px-5 py-2.5 rounded-xl text-sm font-arcade tracking-wider transition-all bg-sky-500 text-slate-950 shadow-[0_0_20px_rgba(56,189,248,0.4)]">
+            🌟 1. LAUNCHPAD
+          </button>
+          <button onclick="switchPillar('academy')" id="tab-academy" class="pillar-tab px-5 py-2.5 rounded-xl text-sm font-arcade tracking-wider transition-all text-slate-300 hover:text-white hover:bg-slate-800/80">
+            🎓 2. ACADEMY
+          </button>
+          <button onclick="switchPillar('simulators')" id="tab-simulators" class="pillar-tab px-5 py-2.5 rounded-xl text-sm font-arcade tracking-wider transition-all text-slate-300 hover:text-white hover:bg-slate-800/80">
+            🕹️ 3. ARCADE
+          </button>
+          <button onclick="switchPillar('locker')" id="tab-locker" class="pillar-tab px-5 py-2.5 rounded-xl text-sm font-arcade tracking-wider transition-all text-slate-300 hover:text-white hover:bg-slate-800/80">
+            🏅 4. LOCKER
+          </button>
+        </nav>
+
+        <!-- Right: XP Meter, Sound FX, & Judge Mode -->
+        <div class="flex items-center gap-3">
+          <!-- Space XP Pill -->
+          <div class="bg-amber-400/10 border-2 border-amber-400/40 px-3.5 py-1.5 rounded-xl flex items-center gap-2 shadow-inner">
+            <span class="text-amber-400 text-base font-black">⚡</span>
+            <div class="text-right">
+              <div class="text-[9px] font-bold text-amber-300/80 uppercase tracking-wider">SPACE XP</div>
+              <div class="text-amber-400 font-mono-code font-black text-sm leading-none" id="xp-meter">1,250</div>
+            </div>
+          </div>
+
+          <!-- Sound FX Button -->
+          <button onclick="toggleAudio()" id="audio-toggle-btn" class="w-10 h-10 rounded-xl bg-slate-900 border-2 border-sky-500/40 hover:border-sky-400 flex items-center justify-center text-sky-400 hover:scale-105 transition-all text-base shadow-lg" title="Mute/Unmute Audio FX">
+            🔊
+          </button>
+
+          <!-- Judge 1-Click Gateway -->
+          <button onclick="triggerJudgeUnlock()" class="hidden lg:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-900/40 hover:bg-purple-800/50 border-2 border-purple-500/50 text-purple-200 text-xs font-bold transition-all hover:scale-105 shadow-lg shadow-purple-500/20">
+            <span>🏆</span> Judge Preview
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Mobile Tabs Bar -->
+      <div class="grid grid-cols-4 md:hidden gap-1.5 mt-3 pt-2 border-t border-slate-800 text-[11px] font-bold">
+        <button onclick="switchPillar('launchpad')" class="py-2 text-center rounded-lg bg-sky-500/20 text-sky-400">🌟 Launch</button>
+        <button onclick="switchPillar('academy')" class="py-2 text-center rounded-lg bg-slate-900 text-slate-400">🎓 Academy</button>
+        <button onclick="switchPillar('simulators')" class="py-2 text-center rounded-lg bg-slate-900 text-slate-400">🕹️ Arcade</button>
+        <button onclick="switchPillar('locker')" class="py-2 text-center rounded-lg bg-slate-900 text-slate-400">🏅 Locker</button>
+      </div>
+    </header>
+
+    <!-- ============================================================ -->
+    <!-- MAIN CONTENT VIEWPORT -->
+    <!-- ============================================================ -->
+    <main class="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 flex-1 w-full">
+
+      <!-- ======================================================== -->
+      <!-- VIEW 1: 🌟 LAUNCHPAD (THE FLIGHT DECK) -->
+      <!-- ======================================================== -->
+      <section id="view-launchpad" class="pillar-view block space-y-8">
+        
+        <!-- GIANT CINEMATIC HERO FLIGHT CARD -->
+        <div class="cockpit-panel rounded-3xl overflow-hidden relative border-2 border-sky-400/40 shadow-2xl">
+          <div class="scan-beam"></div>
+
+          <!-- Background Cinematic Image with Gradient Vignette -->
+          <div class="absolute inset-0 z-0">
+            <img src="NASA_Projct/public/cinematic/lunar_shackleton.jpg" 
+                 onerror="this.src='cinematic/lunar_shackleton.jpg'"
+                 alt="Lunar Base" 
+                 class="w-full h-full object-cover object-center brightness-75 scale-105 transform hover:scale-110 transition-transform duration-1000">
+            <div class="absolute inset-0 bg-gradient-to-r from-[#040816] via-[#040816]/85 to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-[#040816] via-transparent to-transparent"></div>
+          </div>
+
+          <!-- Card Content Over Image -->
+          <div class="relative z-10 p-6 md:p-12 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+            
+            <div class="space-y-4 max-w-2xl">
+              <!-- Mission Status Badges -->
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 text-xs font-mono-code font-bold">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span> MISSION SOL 04 READY
+                </span>
+                <span class="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-mono-code font-bold">
+                  🌑 354-HR LUNAR NIGHT IMMINENT
+                </span>
+              </div>
+
+              <!-- Epic Title -->
+              <h1 class="text-3xl md:text-6xl font-black font-space text-white leading-tight drop-shadow-lg">
+                DEFEND THE <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-sky-300 to-sky-400">SHACKLETON BASE</span>!
+              </h1>
+
+              <!-- Mission Briefing -->
+              <p class="text-slate-200 text-sm md:text-lg leading-relaxed">
+                The Sun is setting behind the south polar crater rim. Solar panels are going dark for the next 14 Earth days! Pilot the lunar lander, drop the Kilopower nuclear reactor, and keep Cadet Maya’s life-support alive!
+              </p>
+
+              <!-- Cockpit Action Buttons -->
+              <div class="flex flex-wrap items-center gap-4 pt-3">
+                <button onclick="launchHeroMission()" class="btn-arcade-gold px-8 py-5 rounded-2xl font-arcade text-base md:text-xl flex items-center gap-3">
+                  <span>🔥 IGNITE ENGINES &amp; LAUNCH</span>
+                  <span class="text-2xl">▶</span>
+                </button>
+
+                <!-- Voice Audio Briefing Button -->
+                <button onclick="playCapcomVoice()" class="btn-arcade-cyan px-6 py-5 rounded-2xl font-space font-black text-sm flex items-center gap-2">
+                  <span>🎙️ CAPCOM RADIO BRIEFING</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: Interactive Cadet Character Holo-Dossier -->
+            <div class="w-full lg:w-80 bg-slate-950/80 rounded-3xl p-6 border-2 border-sky-400/40 shadow-2xl relative space-y-4 backdrop-blur-xl">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span class="text-xs font-mono-code font-bold text-sky-400">CADET FLIGHT STATUS</span>
+                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded">ONLINE</span>
+              </div>
+
+              <!-- Character Portrait -->
+              <div class="flex items-center gap-4">
+                <div class="w-20 h-20 rounded-2xl overflow-hidden border-2 border-amber-400 shadow-lg relative bg-slate-900 flex-shrink-0">
+                  <img src="NASA_Projct/public/cinematic/maya.jpg" 
+                       onerror="this.src='cinematic/maya.jpg'" 
+                       alt="Cadet Maya" 
+                       class="w-full h-full object-cover object-top">
+                </div>
+                <div>
+                  <h3 class="font-space font-black text-lg text-white" id="dossier-name">Cadet Maya</h3>
+                  <div class="text-xs text-amber-400 font-bold">ASCAN Grade 1 Pilot</div>
+                  <div class="text-[11px] text-slate-400 font-mono-code mt-1">Wings: 4 / 8 Badges</div>
+                </div>
+              </div>
+
+              <!-- Life Support Gauges (Real NASA Stoichiometry) -->
+              <div class="space-y-2 pt-2 border-t border-slate-800/80 text-xs">
+                <div>
+                  <div class="flex justify-between text-slate-300 font-bold mb-1">
+                    <span>OXYGEN RESERVES (BVAD)</span>
+                    <span class="text-emerald-400 font-mono-code font-bold">98.4%</span>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden p-0.5">
+                    <div class="bg-gradient-to-r from-emerald-500 to-sky-400 h-full rounded-full w-[98%]"></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="flex justify-between text-slate-300 font-bold mb-1">
+                    <span>BATTERY STORAGE (LUNAR NIGHT)</span>
+                    <span class="text-amber-400 font-mono-code font-bold">142 / 200 kWh</span>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden p-0.5">
+                    <div class="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full w-[71%]"></div>
+                  </div>
+                </div>
+              </div>
+
+              <button onclick="openEnlistModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-sky-300 border border-slate-700 transition-colors flex items-center justify-center gap-2">
+                <span>Customize Spacesuit Avatar</span> ⚙️
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 2: GRAPHIC NOVEL COMIC ADVENTURES (EPISODES 1-4) -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-amber-400 text-xl font-black">⚡</span>
+                <h2 class="text-2xl md:text-3xl font-black font-space text-white">Interactive Mission Comics</h2>
+                <span class="bg-sky-500/20 text-sky-300 text-xs font-bold px-2.5 py-0.5 rounded-full border border-sky-400/30">READ &amp; PLAY</span>
+              </div>
+              <p class="text-slate-400 text-sm">Follow Cadet Maya &amp; Commander Dadu into high-stakes NASA emergencies!</p>
+            </div>
+            <button onclick="switchPillar('academy')" class="text-sky-400 hover:text-sky-300 text-sm font-bold">
+              View All 6 Issues →
+            </button>
+          </div>
+
+          <!-- Comic Cards Grid with High-Res Covers -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            <!-- Issue 1 -->
+            <div class="comic-pop-card cockpit-panel rounded-2xl overflow-hidden border-2 border-slate-800 hover:border-sky-400 cursor-pointer" onclick="openComicIssue(1)">
+              <div class="h-64 overflow-hidden relative">
+                <img src="NASA_Projct/public/comics/covers/cover_issue_1.jpg" 
+                     onerror="this.src='comics/covers/cover_issue_1.jpg'" 
+                     alt="Comic Issue 1" 
+                     class="w-full h-full object-cover">
+                <span class="absolute top-3 left-3 bg-red-600 text-white font-arcade text-xs px-2.5 py-1 rounded shadow">ISSUE #01</span>
+                <span class="absolute bottom-3 right-3 bg-slate-950/80 text-amber-300 font-mono-code font-bold text-[10px] px-2 py-0.5 rounded">FREE TO PLAY</span>
+              </div>
+              <div class="p-4 space-y-1">
+                <h4 class="font-space font-black text-white text-base">The Artemis Launch Pad</h4>
+                <p class="text-slate-400 text-xs">Airlock Delta-P and escaping Earth's gravitational well.</p>
+              </div>
+            </div>
+
+            <!-- Issue 2 -->
+            <div class="comic-pop-card cockpit-panel rounded-2xl overflow-hidden border-2 border-slate-800 hover:border-amber-400 cursor-pointer" onclick="openComicIssue(2)">
+              <div class="h-64 overflow-hidden relative">
+                <img src="NASA_Projct/public/comics/covers/cover_issue_2.jpg" 
+                     onerror="this.src='comics/covers/cover_issue_2.jpg'" 
+                     alt="Comic Issue 2" 
+                     class="w-full h-full object-cover">
+                <span class="absolute top-3 left-3 bg-amber-500 text-slate-950 font-arcade text-xs px-2.5 py-1 rounded shadow">ISSUE #02</span>
+              </div>
+              <div class="p-4 space-y-1">
+                <h4 class="font-space font-black text-white text-base">The Oxygen Factory</h4>
+                <p class="text-slate-400 text-xs">Sabatier chemical catalytic reactions on the Moon.</p>
+              </div>
+            </div>
+
+            <!-- Issue 3 -->
+            <div class="comic-pop-card cockpit-panel rounded-2xl overflow-hidden border-2 border-slate-800 hover:border-purple-400 cursor-pointer" onclick="openComicIssue(3)">
+              <div class="h-64 overflow-hidden relative">
+                <img src="NASA_Projct/public/comics/covers/cover_issue_3.jpg" 
+                     onerror="this.src='comics/covers/cover_issue_3.jpg'" 
+                     alt="Comic Issue 3" 
+                     class="w-full h-full object-cover">
+                <span class="absolute top-3 left-3 bg-purple-600 text-white font-arcade text-xs px-2.5 py-1 rounded shadow">ISSUE #03</span>
+              </div>
+              <div class="p-4 space-y-1">
+                <h4 class="font-space font-black text-white text-base">The 354-Hour Darkness</h4>
+                <p class="text-slate-400 text-xs">Kilopower nuclear Stirling reactors vs freezing habitats.</p>
+              </div>
+            </div>
+
+            <!-- Issue 4: Mars -->
+            <div class="comic-pop-card cockpit-panel rounded-2xl overflow-hidden border-2 border-slate-800 hover:border-red-400 cursor-pointer" onclick="openComicIssue(4)">
+              <div class="h-64 overflow-hidden relative">
+                <img src="NASA_Projct/public/comics/covers/cover_issue_4.jpg" 
+                     onerror="this.src='comics/covers/cover_issue_4.jpg'" 
+                     alt="Comic Issue 4" 
+                     class="w-full h-full object-cover">
+                <span class="absolute top-3 left-3 bg-red-600 text-white font-arcade text-xs px-2.5 py-1 rounded shadow">ISSUE #04</span>
+              </div>
+              <div class="p-4 space-y-1">
+                <h4 class="font-space font-black text-white text-base">Red Dunes of Jezero</h4>
+                <p class="text-slate-400 text-xs">Perseverance rover drills for biosignatures in crater ice.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 2: 🎓 CADET ACADEMY (THE EXPEDITION TRAIL) -->
+      <!-- ======================================================== -->
+      <section id="view-academy" class="pillar-view hidden space-y-8">
+        
+        <div class="text-center max-w-2xl mx-auto space-y-2">
+          <div class="inline-block px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-400 font-arcade text-xs">
+            ASCAN PROGRESSION TRAIL
+          </div>
+          <h2 class="text-3xl md:text-5xl font-black font-space text-white">8 Levels to Astronaut Wings</h2>
+          <p class="text-slate-400 text-sm">
+            Step by step, unlock real NASA aerospace badges by mastering life support, rocketry, and lunar geology!
+          </p>
+        </div>
+
+        <!-- Cosmic Journey Pathway -->
+        <div class="cockpit-panel rounded-3xl p-6 md:p-12 relative max-w-4xl mx-auto overflow-hidden border-2 border-sky-400/30">
+          
+          <div class="relative space-y-10">
+            <!-- Glowing Track Line -->
+            <div class="absolute left-6 md:left-1/2 top-10 bottom-10 w-2 bg-gradient-to-b from-emerald-500 via-sky-500 via-amber-500 to-purple-600 -translate-x-1/2 rounded-full opacity-60"></div>
+
+            <!-- Stage 1 (Complete) -->
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="w-full md:w-5/12 text-left md:text-right">
+                <h4 class="font-arcade text-lg text-emerald-400">LEVEL 1: AIRLOCK DELTA-P</h4>
+                <p class="text-xs text-slate-300">Preventing decompression sickness through pure O2 pre-breathe.</p>
+              </div>
+              <div class="w-16 h-16 rounded-2xl bg-emerald-500 text-slate-950 font-black text-2xl flex items-center justify-center shadow-lg shadow-emerald-500/50 border-4 border-slate-900 cursor-pointer hover:scale-110 transition-transform">
+                ✓
+              </div>
+              <div class="w-full md:w-5/12">
+                <span class="bg-emerald-500/20 text-emerald-300 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-500/40">
+                  🏅 Badge: Airlock Specialist
+                </span>
+              </div>
+            </div>
+
+            <!-- Stage 2 (Complete) -->
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="w-full md:w-5/12 text-left md:text-right">
+                <h4 class="font-arcade text-lg text-emerald-400">LEVEL 2: OXYGEN FACTORY</h4>
+                <p class="text-xs text-slate-300">Sabatier chemical reaction: scrubbing CO2 into fresh H2O.</p>
+              </div>
+              <div class="w-16 h-16 rounded-2xl bg-emerald-500 text-slate-950 font-black text-2xl flex items-center justify-center shadow-lg shadow-emerald-500/50 border-4 border-slate-900 cursor-pointer hover:scale-110 transition-transform">
+                ✓
+              </div>
+              <div class="w-full md:w-5/12">
+                <span class="bg-emerald-500/20 text-emerald-300 text-xs px-3 py-1.5 rounded-xl font-bold border border-emerald-500/40">
+                  🏅 Badge: Sabatier Chemist
+                </span>
+              </div>
+            </div>
+
+            <!-- Stage 3 (ACTIVE LEVEL) -->
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4 bg-sky-950/60 p-6 rounded-3xl border-2 border-amber-400 shadow-2xl">
+              <div class="w-full md:w-5/12 text-left md:text-right">
+                <span class="bg-amber-400 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded uppercase">CURRENT QUEST</span>
+                <h4 class="font-arcade text-xl text-amber-300 mt-1">LEVEL 3: SURVIVE THE LUNAR NIGHT</h4>
+                <p class="text-xs text-slate-200">Deploy the Kilopower nuclear Stirling reactor before batteries freeze!</p>
+              </div>
+              <button onclick="launchInteractiveMission('lunar-night')" class="w-20 h-20 rounded-2xl bg-amber-400 text-slate-950 font-arcade text-3xl flex items-center justify-center shadow-xl shadow-amber-400/50 border-4 border-white engine-pulse cursor-pointer">
+                ▶
+              </button>
+              <div class="w-full md:w-5/12">
+                <button onclick="launchInteractiveMission('lunar-night')" class="btn-arcade-gold px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider">
+                  Play Level 3 Challenge →
+                </button>
+              </div>
+            </div>
+
+            <!-- Stage 4 (Locked) -->
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4 opacity-40">
+              <div class="w-full md:w-5/12 text-left md:text-right">
+                <h4 class="font-arcade text-lg text-slate-400">LEVEL 4: WATER CLOSED-LOOP</h4>
+                <p class="text-xs text-slate-500">Vacuum distillation recovering 98% human moisture.</p>
+              </div>
+              <div class="w-16 h-16 rounded-2xl bg-slate-800 text-slate-600 font-black text-2xl flex items-center justify-center border-4 border-slate-900">
+                🔒
+              </div>
+              <div class="w-full md:w-5/12 text-xs text-slate-500 font-mono-code">
+                [ COMPLETE LEVEL 3 TO UNLOCK ]
+              </div>
+            </div>
+
+            <!-- Stage 5 (Locked) -->
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4 opacity-40">
+              <div class="w-full md:w-5/12 text-left md:text-right">
+                <h4 class="font-arcade text-lg text-slate-400">LEVEL 5: MARS ROVER NAVIGATION</h4>
+                <p class="text-xs text-slate-500">Regolith wheel-slip geometry and cryogenic core drilling.</p>
+              </div>
+              <div class="w-16 h-16 rounded-2xl bg-slate-800 text-slate-600 font-black text-2xl flex items-center justify-center border-4 border-slate-900">
+                🔒
+              </div>
+              <div class="w-full md:w-5/12 text-xs text-slate-500 font-mono-code">
+                [ COMPLETE LEVEL 4 TO UNLOCK ]
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 3: 🕹️ ARCADE FLIGHT SIMULATORS -->
+      <!-- ======================================================== -->
+      <section id="view-simulators" class="pillar-view hidden space-y-8">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-3xl md:text-5xl font-black font-space text-white">Flight Simulators Arcade</h2>
+            <p class="text-slate-400 text-sm">Grounded in authentic NASA physics, built for 60 FPS arcade thrills.</p>
+          </div>
+
+          <!-- Arcade Filters -->
+          <div class="flex items-center gap-2">
+            <button class="px-4 py-2 rounded-xl bg-sky-500 text-slate-950 font-arcade text-xs">ALL (6)</button>
+            <button class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-arcade text-xs">MOON</button>
+            <button class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-arcade text-xs">MARS</button>
+            <button class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-arcade text-xs">ORBIT</button>
+          </div>
+        </div>
+
+        <!-- ACTIVE PLAYABLE MINI-GAME: APOLLO LUNAR LANDER -->
+        <div class="cockpit-panel rounded-3xl p-6 border-2 border-amber-400/50 relative overflow-hidden shadow-2xl">
+          <div class="flex flex-col lg:flex-row items-center justify-between pb-4 border-b border-slate-800 gap-4">
+            <div>
+              <div class="flex items-center gap-3">
+                <span class="text-3xl">🌕</span>
+                <div>
+                  <h3 class="font-space font-black text-2xl text-white">Apollo 11 Lunar Touchdown Simulator</h3>
+                  <div class="text-xs text-amber-400 font-mono-code font-bold">REAL LUNAR GRAVITY: 1.62 m/s² • VACUUM PHYSICS</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Telemetry Gauges -->
+            <div class="flex items-center gap-3 font-mono-code text-xs">
+              <div class="bg-slate-950 px-4 py-2 rounded-xl border border-sky-500/40 text-center">
+                <div class="text-slate-500 text-[10px]">RADAR ALT</div>
+                <div class="text-sky-300 font-black text-lg" id="telemetry-alt">250 m</div>
+              </div>
+              <div class="bg-slate-950 px-4 py-2 rounded-xl border border-emerald-500/40 text-center">
+                <div class="text-slate-500 text-[10px]">DESCENT SPEED</div>
+                <div class="text-emerald-400 font-black text-lg" id="telemetry-speed">1.2 m/s</div>
+              </div>
+              <div class="bg-slate-950 px-4 py-2 rounded-xl border border-amber-500/40 text-center">
+                <div class="text-slate-500 text-[10px]">REACTION FUEL</div>
+                <div class="text-amber-400 font-black text-lg" id="telemetry-fuel">100%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Play Canvas -->
+          <div class="relative w-full h-96 bg-[#030611] rounded-2xl mt-4 overflow-hidden border-2 border-slate-800 shadow-inner">
+            <canvas id="interactive-lander-canvas" class="w-full h-full block"></canvas>
+            
+            <!-- In-Game Instant Aha Discovery Popups -->
+            <div id="lander-pop" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-arcade text-xs px-5 py-2.5 rounded-full shadow-2xl tracking-wider">
+              🔥 ROCKET BRAKING ENGAGED! IN SPACE VACUUM, ONLY THRUST CAN SLOW YOU DOWN!
+            </div>
+
+            <!-- Physical Cockpit Thruster Controls -->
+            <div class="absolute bottom-6 right-6 flex items-center gap-3">
+              <button id="main-thruster-trigger" 
+                      onmousedown="setThrusterState(true)" 
+                      onmouseup="setThrusterState(false)" 
+                      ontouchstart="setThrusterState(true)" 
+                      ontouchend="setThrusterState(false)"
+                      class="btn-arcade-gold px-8 py-4 rounded-2xl font-arcade text-base tracking-wider flex items-center gap-2">
+                <span>FIRE MAIN THRUSTER</span> 🔥
+              </button>
+              <button onclick="restartLander()" class="px-5 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs">
+                Restart 🔄
+              </button>
+            </div>
+
+            <!-- On-Screen Instructions -->
+            <div class="absolute bottom-6 left-6 text-xs text-slate-400 bg-slate-950/80 p-3 rounded-xl border border-slate-800 pointer-events-none">
+              ⌨️ <strong class="text-white">Hold Spacebar or Up Arrow</strong> to fire descent stage thruster.<br>
+              🎯 Soft landing requirement: <strong class="text-emerald-400">Descent speed &lt; 2.5 m/s</strong>.
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 OTHER SIMULATOR CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <!-- Mars Rover -->
+          <div class="cockpit-panel rounded-2xl p-5 border border-red-500/30 hover:border-red-400 transition-all group">
+            <div class="h-44 rounded-xl overflow-hidden relative">
+              <img src="NASA_Projct/public/cinematic/mars_jezero.jpg" 
+                   onerror="this.src='cinematic/mars_jezero.jpg'"
+                   alt="Mars Jezero" 
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              <span class="absolute top-3 left-3 bg-red-600 text-white font-arcade text-xs px-2.5 py-0.5 rounded">MARS SORTIE</span>
+            </div>
+            <div class="mt-4 space-y-2">
+              <h4 class="font-space font-black text-lg text-white">Mars Rover Ice Prospector</h4>
+              <p class="text-xs text-slate-400">Navigate Jezero crater, manage wheel-slip in sand, and drill sub-surface ice!</p>
+              <button onclick="alert('🚜 Launching Mars Perseverance Rover Simulation...')" class="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-slate-950 font-bold text-xs transition-all">
+                Drive Rover Now →
+              </button>
+            </div>
+          </div>
+
+          <!-- Gargantua Black Hole -->
+          <div class="cockpit-panel rounded-2xl p-5 border border-purple-500/30 hover:border-purple-400 transition-all group">
+            <div class="h-44 rounded-xl overflow-hidden relative">
+              <img src="NASA_Projct/public/cinematic/gargantua.jpg" 
+                   onerror="this.src='cinematic/gargantua.jpg'"
+                   alt="Black Hole" 
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              <span class="absolute top-3 left-3 bg-purple-600 text-white font-arcade text-xs px-2.5 py-0.5 rounded">DEEP SPACE</span>
+            </div>
+            <div class="mt-4 space-y-2">
+              <h4 class="font-space font-black text-lg text-white">Gargantua Gravity Lens</h4>
+              <p class="text-xs text-slate-400">Relativistic photon raytracing around a supermassive spinning black hole.</p>
+              <button onclick="alert('🕳️ Launching Black Hole Event Horizon Probe...')" class="w-full py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500 text-purple-300 hover:text-slate-950 font-bold text-xs transition-all">
+                Enter Event Horizon →
+              </button>
+            </div>
+          </div>
+
+          <!-- Earth Orbit Expedition -->
+          <div class="cockpit-panel rounded-2xl p-5 border border-sky-500/30 hover:border-sky-400 transition-all group">
+            <div class="h-44 rounded-xl overflow-hidden relative">
+              <img src="NASA_Projct/public/assets/earth_orbit.jpg" 
+                   onerror="this.src='assets/earth_orbit.jpg'"
+                   alt="Earth Orbit" 
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+              <span class="absolute top-3 left-3 bg-sky-600 text-white font-arcade text-xs px-2.5 py-0.5 rounded">ORBITAL DOCKING</span>
+            </div>
+            <div class="mt-4 space-y-2">
+              <h4 class="font-space font-black text-lg text-white">ISS Spacecraft Rendezvous</h4>
+              <p class="text-xs text-slate-400">Fine-tune RCS reaction thrusters to capture the International Space Station port.</p>
+              <button onclick="alert('🛰️ Launching ISS Docking Simulator...')" class="w-full py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 font-bold text-xs transition-all">
+                Start Rendezvous →
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 4: 🏅 ASTRONAUT LOCKER (DIPLOMA & WINGS) -->
+      <!-- ======================================================== -->
+      <section id="view-locker" class="pillar-view hidden space-y-8">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          <!-- Printable Official Astronaut License -->
+          <div class="cockpit-panel rounded-3xl p-6 border-2 border-amber-400/40 space-y-6 relative overflow-hidden">
+            <div class="hazard-stripes h-2 absolute top-0 left-0 right-0"></div>
+
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 pt-2">
+              <span class="text-xs font-mono-code font-bold text-amber-400">NASA SPACE APPS 2026 LICENSE</span>
+              <span class="text-emerald-400 text-xs font-bold">GRADE 1 ASCAN</span>
+            </div>
+
+            <!-- Avatar Card -->
+            <div class="flex flex-col items-center text-center space-y-3">
+              <div class="w-28 h-28 rounded-3xl overflow-hidden border-4 border-amber-400 shadow-2xl p-0.5 bg-slate-950 relative">
+                <img src="NASA_Projct/public/cinematic/maya.jpg" 
+                     onerror="this.src='cinematic/maya.jpg'" 
+                     alt="Cadet Avatar" 
+                     id="license-avatar"
+                     class="w-full h-full object-cover">
+              </div>
+
+              <div>
+                <h3 class="font-arcade text-2xl text-white" id="license-callsign">MAYA-01</h3>
+                <p class="text-xs text-slate-400">Junior Flight Specialist • Team Mysterio</p>
+              </div>
+
+              <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 font-bold text-xs border border-amber-400/40">
+                <span>⭐</span> Total Flight XP: 1,250
+              </div>
+            </div>
+
+            <button onclick="printOfficialDiploma()" class="btn-arcade-gold w-full py-4 rounded-2xl font-arcade text-sm">
+              PRINT NASA DIPLOMA 📜
+            </button>
+          </div>
+
+          <!-- Badges Collection Grid -->
+          <div class="lg:col-span-2 cockpit-panel rounded-3xl p-6 md:p-8 border-2 border-sky-400/30 space-y-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-space font-black text-2xl text-white">Official Mission Wings &amp; Badges</h3>
+                <p class="text-xs text-slate-400">Earned through authentic NASA engineering challenges</p>
+              </div>
+              <span class="bg-sky-500/20 text-sky-300 font-mono-code font-bold text-xs px-3 py-1 rounded-full border border-sky-400/30">
+                4 / 8 UNLOCKED
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              
+              <div class="bg-slate-950/80 p-5 rounded-2xl border-2 border-emerald-500/50 text-center space-y-2">
+                <div class="text-4xl">🚪</div>
+                <div class="font-arcade text-xs text-white">DELTA-P ACE</div>
+                <div class="text-[10px] text-emerald-400 font-bold">Pre-breathe Master</div>
+              </div>
+
+              <div class="bg-slate-950/80 p-5 rounded-2xl border-2 border-emerald-500/50 text-center space-y-2">
+                <div class="text-4xl">🌱</div>
+                <div class="font-arcade text-xs text-white">SABATIER CHEMIST</div>
+                <div class="text-[10px] text-emerald-400 font-bold">Oxygen Recycling</div>
+              </div>
+
+              <div class="bg-slate-950/80 p-5 rounded-2xl border-2 border-emerald-500/50 text-center space-y-2">
+                <div class="text-4xl">🚜</div>
+                <div class="font-arcade text-xs text-white">POLAR DRILLER</div>
+                <div class="text-[10px] text-emerald-400 font-bold">Crater Water Ice</div>
+              </div>
+
+              <div class="bg-slate-950/80 p-5 rounded-2xl border-2 border-emerald-500/50 text-center space-y-2">
+                <div class="text-4xl">🌕</div>
+                <div class="font-arcade text-xs text-white">LUNAR TOUCHDOWN</div>
+                <div class="text-[10px] text-emerald-400 font-bold">Apollo 11 Lander</div>
+              </div>
+
+              <div class="bg-slate-950/30 p-5 rounded-2xl border border-slate-800 text-center space-y-2 opacity-40">
+                <div class="text-4xl">⚛️</div>
+                <div class="font-arcade text-xs text-slate-500">KILOPOWER CORE</div>
+                <div class="text-[10px] text-slate-600">Locked (Level 3)</div>
+              </div>
+
+              <div class="bg-slate-950/30 p-5 rounded-2xl border border-slate-800 text-center space-y-2 opacity-40">
+                <div class="text-4xl">🥗</div>
+                <div class="font-arcade text-xs text-slate-500">SALAD BIODOME</div>
+                <div class="text-[10px] text-slate-600">Locked (Level 5)</div>
+              </div>
+
+              <div class="bg-slate-950/30 p-5 rounded-2xl border border-slate-800 text-center space-y-2 opacity-40">
+                <div class="text-4xl">🛡️</div>
+                <div class="font-arcade text-xs text-slate-500">REGOLITH SHIELD</div>
+                <div class="text-[10px] text-slate-600">Locked (Level 6)</div>
+              </div>
+
+              <div class="bg-slate-950/30 p-5 rounded-2xl border border-slate-800 text-center space-y-2 opacity-40">
+                <div class="text-4xl">🏆</div>
+                <div class="font-arcade text-xs text-slate-500">GOLD WINGS</div>
+                <div class="text-[10px] text-slate-600">Locked (Level 8)</div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: ENLIST CADET PROFILE -->
+  <!-- ============================================================ -->
+  <div id="enlist-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="cockpit-panel rounded-3xl p-6 md:p-8 max-w-md w-full border-2 border-amber-400 space-y-6 relative">
+      <div class="text-center space-y-1">
+        <span class="text-4xl">🚀</span>
+        <h3 class="font-arcade text-2xl text-white">CADET ENLISTMENT</h3>
+        <p class="text-xs text-slate-400">Select your official NASA astronaut avatar &amp; callsign</p>
+      </div>
+
+      <!-- Avatar Select -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-slate-300">Choose Character:</label>
+        <div class="grid grid-cols-3 gap-3">
+          <button onclick="selectCadet('Maya', 'NASA_Projct/public/cinematic/maya.jpg')" class="p-2 rounded-2xl bg-slate-900 hover:border-amber-400 border-2 border-amber-400 text-center">
+            <img src="NASA_Projct/public/cinematic/maya.jpg" onerror="this.src='cinematic/maya.jpg'" class="w-16 h-16 rounded-xl mx-auto object-cover object-top mb-1">
+            <span class="text-xs font-bold text-white">Maya</span>
+          </button>
+          <button onclick="selectCadet('Dadu', 'NASA_Projct/public/cinematic/commander.jpg')" class="p-2 rounded-2xl bg-slate-900 hover:border-amber-400 border-2 border-slate-800 text-center">
+            <img src="NASA_Projct/public/cinematic/commander.jpg" onerror="this.src='cinematic/commander.jpg'" class="w-16 h-16 rounded-xl mx-auto object-cover object-top mb-1">
+            <span class="text-xs font-bold text-white">Dadu</span>
+          </button>
+          <button onclick="selectCadet('CapCom', 'NASA_Projct/public/cinematic/capcom.jpg')" class="p-2 rounded-2xl bg-slate-900 hover:border-amber-400 border-2 border-slate-800 text-center">
+            <img src="NASA_Projct/public/cinematic/capcom.jpg" onerror="this.src='cinematic/capcom.jpg'" class="w-16 h-16 rounded-xl mx-auto object-cover object-top mb-1">
+            <span class="text-xs font-bold text-white">CapCom</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Callsign Input -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-slate-300">Flight Callsign:</label>
+        <input type="text" id="callsign-field" value="MAYA-01" class="w-full px-4 py-3 rounded-xl bg-slate-950 border-2 border-slate-700 text-amber-300 font-mono-code font-bold text-sm outline-none focus:border-amber-400">
+      </div>
+
+      <button onclick="saveEnlistment()" class="btn-arcade-gold w-full py-4 rounded-2xl font-arcade text-sm">
+        CONFIRM CADET IDENTITY 🚀
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- WARP-SPEED CANVAS ENGINE & PROCEDURAL AUDIO SYNTHESIZER -->
+  <!-- ============================================================ -->
+  <script>
+    // ------------------------------------------------------------
+    // 1. PROCEDURAL WEB AUDIO SYNTHESIZER (Bass Rumble & Thrusters)
+    // ------------------------------------------------------------
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    let isMuted = false;
+
+    function getAudioCtx() {
+      if (!audioCtx) audioCtx = new AudioContextClass();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playThrusterRumble() {
+      if (isMuted) return;
+      try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(65, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(45, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } catch (e) {}
+    }
+
+    function playVictoryChime() {
+      if (isMuted) return;
+      try {
+        const ctx = getAudioCtx();
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.2);
+          }, idx * 110);
+        });
+      } catch (e) {}
+    }
+
+    function playClickBeep(freq = 700) {
+      if (isMuted) return;
+      try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.05);
+      } catch (e) {}
+    }
+
+    function toggleAudio() {
+      isMuted = !isMuted;
+      document.getElementById('audio-toggle-btn').innerText = isMuted ? '🔇' : '🔊';
+      playClickBeep(isMuted ? 300 : 800);
+    }
+
+    // Speech Synthesis for Houston CapCom
+    function playCapcomVoice() {
+      playClickBeep(900);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance("Houston CapCom to Flight Cadet. Shackleton Base solar arrays are going dark. Deploy Kilopower reactor immediately. You are go for descent!");
+        utterance.rate = 1.05;
+        utterance.pitch = 0.95;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        alert("Houston CapCom: You are go for landing at Shackleton Crater!");
+      }
+    }
+
+    // ------------------------------------------------------------
+    // 2. INTERACTIVE WARP SPEED CANVAS
+    // ------------------------------------------------------------
+    const warpCanvas = document.getElementById('warp-canvas');
+    const warpCtx = warpCanvas.getContext('2d');
+    let stars = [];
+    let numStars = 400;
+    let warpSpeed = 1.5;
+
+    function resizeWarpCanvas() {
+      warpCanvas.width = window.innerWidth;
+      warpCanvas.height = window.innerHeight;
+      stars = [];
+      for (let i = 0; i < numStars; i++) {
+        stars.push({
+          x: (Math.random() - 0.5) * warpCanvas.width * 2,
+          y: (Math.random() - 0.5) * warpCanvas.height * 2,
+          z: Math.random() * warpCanvas.width,
+          color: Math.random() > 0.8 ? '#38bdf8' : (Math.random() > 0.9 ? '#fbbf24' : '#ffffff')
+        });
+      }
+    }
+    window.addEventListener('resize', resizeWarpCanvas);
+    resizeWarpCanvas();
+
+    function triggerWarpSpeed() {
+      warpSpeed = 18.0;
+      playThrusterRumble();
+      setTimeout(() => { warpSpeed = 1.5; }, 1200);
+    }
+
+    function renderWarpStars() {
+      warpCtx.fillStyle = "rgba(4, 7, 17, 0.4)";
+      warpCtx.fillRect(0, 0, warpCanvas.width, warpCanvas.height);
+
+      const cx = warpCanvas.width / 2;
+      const cy = warpCanvas.height / 2;
+
+      for (let s of stars) {
+        s.z -= warpSpeed;
+        if (s.z <= 0) {
+          s.z = warpCanvas.width;
+          s.x = (Math.random() - 0.5) * warpCanvas.width * 2;
+          s.y = (Math.random() - 0.5) * warpCanvas.height * 2;
+        }
+
+        const k = 250 / s.z;
+        const px = s.x * k + cx;
+        const py = s.y * k + cy;
+
+        if (px >= 0 && px <= warpCanvas.width && py >= 0 && py <= warpCanvas.height) {
+          const size = Math.max(0.6, (1 - s.z / warpCanvas.width) * 3);
+          warpCtx.fillStyle = s.color;
+          warpCtx.beginPath();
+          warpCtx.arc(px, py, size, 0, Math.PI * 2);
+          warpCtx.fill();
+
+          // Tail during warp speed
+          if (warpSpeed > 5) {
+            warpCtx.strokeStyle = s.color;
+            warpCtx.lineWidth = size * 0.8;
+            warpCtx.beginPath();
+            warpCtx.moveTo(px, py);
+            warpCtx.lineTo(px - (px - cx) * 0.15, py - (py - cy) * 0.15);
+            warpCtx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(renderWarpStars);
+    }
+    requestAnimationFrame(renderWarpStars);
+
+    // ------------------------------------------------------------
+    // 3. TAB PILLAR NAVIGATION
+    // ------------------------------------------------------------
+    function switchPillar(pillarId) {
+      playClickBeep(650);
+      document.querySelectorAll('.pillar-view').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.pillar-view').forEach(el => el.classList.remove('block'));
+
+      const activeView = document.getElementById(`view-${pillarId}`);
+      if (activeView) {
+        activeView.classList.remove('hidden');
+        activeView.classList.add('block');
+      }
+
+      document.querySelectorAll('.pillar-tab').forEach(el => {
+        el.classList.remove('bg-sky-500', 'text-slate-950', 'shadow-[0_0_20px_rgba(56,189,248,0.4)]');
+        el.classList.add('text-slate-300');
+      });
+
+      const activeTab = document.getElementById(`tab-${pillarId}`);
+      if (activeTab) {
+        activeTab.classList.add('bg-sky-500', 'text-slate-950', 'shadow-[0_0_20px_rgba(56,189,248,0.4)]');
+        activeTab.classList.remove('text-slate-300');
+      }
+    }
+
+    // ------------------------------------------------------------
+    // 4. CADET ENLISTMENT MODAL
+    // ------------------------------------------------------------
+    let selectedAvatarImg = "NASA_Projct/public/cinematic/maya.jpg";
+    let selectedName = "MAYA-01";
+
+    function openEnlistModal() {
+      playClickBeep(700);
+      document.getElementById('enlist-modal').classList.remove('hidden');
+      document.getElementById('enlist-modal').classList.add('flex');
+    }
+
+    function selectCadet(name, img) {
+      playClickBeep(800);
+      selectedName = name.toUpperCase() + "-01";
+      selectedAvatarImg = img;
+      document.getElementById('callsign-field').value = selectedName;
+    }
+
+    function saveEnlistment() {
+      selectedName = document.getElementById('callsign-field').value.trim() || "MAYA-01";
+      document.getElementById('nav-callsign').innerText = selectedName;
+      document.getElementById('license-callsign').innerText = selectedName;
+      document.getElementById('license-avatar').src = selectedAvatarImg;
+      
+      playVictoryChime();
+      document.getElementById('enlist-modal').classList.add('hidden');
+      document.getElementById('enlist-modal').classList.remove('flex');
+    }
+
+    // ------------------------------------------------------------
+    // 5. PLAYABLE LUNAR LANDER ENGINE WITH PARTICLE FLAMES
+    // ------------------------------------------------------------
+    const landerCanvas = document.getElementById('interactive-lander-canvas');
+    const lCtx = landerCanvas ? landerCanvas.getContext('2d') : null;
+
+    let lx = 200, ly = 40, lvy = 0, lfuel = 100, isThruster = false, landerOver = false;
+    let flameParticles = [];
+
+    function resizeLander() {
+      if (!landerCanvas) return;
+      landerCanvas.width = landerCanvas.parentElement.clientWidth;
+      landerCanvas.height = landerCanvas.parentElement.clientHeight;
+      lx = landerCanvas.width / 2;
+    }
+    window.addEventListener('resize', resizeLander);
+    setTimeout(resizeLander, 150);
+
+    function setThrusterState(active) {
+      if (lfuel <= 0) return;
+      isThruster = active;
+      if (active) {
+        playThrusterRumble();
+        const p = document.getElementById('lander-pop');
+        if (p) p.classList.remove('hidden');
+      }
+    }
+
+    function restartLander() {
+      ly = 40;
+      lvy = 0;
+      lfuel = 100;
+      landerOver = false;
+      flameParticles = [];
+      const p = document.getElementById('lander-pop');
+      if (p) p.classList.add('hidden');
+      playClickBeep(850);
+    }
+
+    function updateLander() {
+      if (!lCtx || landerOver) {
+        requestAnimationFrame(updateLander);
+        return;
+      }
+
+      // Physics (Moon g: 1.62 m/s²)
+      const g = 0.045;
+      const thrust = (isThruster && lfuel > 0) ? 0.11 : 0;
+
+      if (isThruster && lfuel > 0) {
+        lfuel -= 0.35;
+        if (lfuel <= 0) { lfuel = 0; isThruster = false; }
+
+        // Spawn Thruster Fire Particles
+        for (let i = 0; i < 4; i++) {
+          flameParticles.push({
+            x: lx + (Math.random() - 0.5) * 8,
+            y: ly + 12,
+            vx: (Math.random() - 0.5) * 2,
+            vy: Math.random() * 4 + 3,
+            life: 1.0,
+            color: Math.random() > 0.5 ? '#f59e0b' : '#ef4444'
+          });
+        }
+      }
+
+      lvy += g - thrust;
+      ly += lvy;
+
+      const groundY = landerCanvas.height - 40;
+
+      // Touchdown Check
+      if (ly >= groundY) {
+        ly = groundY;
+        landerOver = true;
+
+        if (Math.abs(lvy) < 1.3) {
+          playVictoryChime();
+          alert("🏆 PERFECT TOUCHDOWN! Houston: 'Tranquility Base here, the Eagle has landed!' You nailed the Moon descent! (+150 XP)");
+        } else {
+          playClickBeep(120);
+          alert(`💥 HARD IMPACT (${(Math.abs(lvy) * 2.8).toFixed(1)} m/s)! Landing struts buckled. On the Moon, remember to fire thrusters earlier to brake!`);
+        }
+      }
+
+      // Update Telemetry
+      const alt = document.getElementById('telemetry-alt');
+      const spd = document.getElementById('telemetry-speed');
+      const fue = document.getElementById('telemetry-fuel');
+      if (alt) alt.innerText = `${Math.max(0, Math.round(groundY - ly))} m`;
+      if (spd) spd.innerText = `${(Math.abs(lvy) * 2.8).toFixed(1)} m/s`;
+      if (fue) fue.innerText = `${Math.round(lfuel)}%`;
+
+      // Render
+      lCtx.clearRect(0, 0, landerCanvas.width, landerCanvas.height);
+
+      // Draw Rugged Lunar Horizon
+      lCtx.fillStyle = "#1e293b";
+      lCtx.beginPath();
+      lCtx.moveTo(0, groundY + 18);
+      lCtx.lineTo(landerCanvas.width * 0.3, groundY + 12);
+      lCtx.lineTo(landerCanvas.width * 0.7, groundY + 22);
+      lCtx.lineTo(landerCanvas.width, groundY + 15);
+      lCtx.lineTo(landerCanvas.width, landerCanvas.height);
+      lCtx.lineTo(0, landerCanvas.height);
+      lCtx.fill();
+
+      // Landing Pad
+      lCtx.fillStyle = "#38bdf8";
+      lCtx.shadowColor = "#38bdf8";
+      lCtx.shadowBlur = 12;
+      lCtx.fillRect(lx - 35, groundY + 16, 70, 6);
+      lCtx.shadowBlur = 0;
+
+      // Draw Flame Particles
+      for (let i = flameParticles.length - 1; i >= 0; i--) {
+        const p = flameParticles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.05;
+        if (p.life <= 0) {
+          flameParticles.splice(i, 1);
+          continue;
+        }
+        lCtx.fillStyle = p.color;
+        lCtx.beginPath();
+        lCtx.arc(p.x, p.y, p.life * 5, 0, Math.PI * 2);
+        lCtx.fill();
+      }
+
+      // Draw Apollo Lunar Module
+      lCtx.fillStyle = "#ffffff";
+      lCtx.fillRect(lx - 12, ly - 16, 24, 18); // Ascent Stage Cabin
+      lCtx.fillStyle = "#38bdf8";
+      lCtx.fillRect(lx - 7, ly - 11, 14, 7); // Cockpit Visor
+      lCtx.fillStyle = "#f59e0b";
+      lCtx.fillRect(lx - 18, ly + 2, 36, 10); // Gold Descent Stage Foil
+      
+      // Landing Legs
+      lCtx.strokeStyle = "#cbd5e1";
+      lCtx.lineWidth = 2;
+      lCtx.beginPath();
+      lCtx.moveTo(lx - 16, ly + 10); lCtx.lineTo(lx - 26, ly + 20);
+      lCtx.moveTo(lx + 16, ly + 10); lCtx.lineTo(lx + 26, ly + 20);
+      lCtx.stroke();
+
+      requestAnimationFrame(updateLander);
+    }
+    requestAnimationFrame(updateLander);
+
+    // Keyboard bindings for lander
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') setThrusterState(true);
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') setThrusterState(false);
+    });
+
+    // Quick launches
+    function launchHeroMission() {
+      triggerWarpSpeed();
+      switchPillar('simulators');
+      restartLander();
+    }
+
+    function openComicIssue(num) {
+      playClickBeep(750);
+      alert(`📖 Opening Comic Episode #${num}: The Artemis Deep Space Mission!`);
+    }
+
+    function triggerJudgeUnlock() {
+      playVictoryChime();
+      alert("🏆 Space Apps Judge Preview: Instant 1-Click bypass activated! 999,999 Cadet Credits unlocked, all 76 missions ready for review!");
+    }
+
+    function printOfficialDiploma() {
+      playVictoryChime();
+      alert("📜 Official NASA Space Apps Challenge Certificate generated for Cadet " + selectedName + " with Verified Gold Wings!");
+    }
+  </script>
+</body>
+</html>
