@@ -219,7 +219,10 @@ export const LearningHubModal: React.FC<LearningHubModalProps> = ({
 
           {/* ── COMIC READER ─────────────────────────────────────────────── */}
           {activeTab === 'COMIC' && (() => {
-            const currentEvent = MISSION_EVENTS[selectedComicIdx] || activeEvent || MISSION_EVENTS[0];
+            const selectedEvent = MISSION_EVENTS[selectedComicIdx];
+            const currentEvent = activeEvent?.id === selectedEvent?.id
+              ? activeEvent
+              : selectedEvent || activeEvent || MISSION_EVENTS[0];
             return (
               <div>
                 {/* Comic Mode Switcher: 8 Graphic Novels vs Mars Sol Strips */}

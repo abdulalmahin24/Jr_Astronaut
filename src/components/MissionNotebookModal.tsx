@@ -51,7 +51,7 @@ export const MissionNotebookModal: React.FC<MissionNotebookModalProps> = ({
       `- Power Reserve: ${resources.power}%`,
       `- Water Reserve: ${resources.water}%`,
       `- Atmospheric Oxygen: ${resources.oxygen}%`,
-      `- Radiation Absorbed: ${resources.radiation} mSv`,
+      `- Mission Dose Budget (game simulation): ${resources.radiation}%`,
       `- Crew Health: ${resources.crewHealth}%`,
       ``,
       `FLIGHT LOG ENTRIES (${history.length} Sols Logged):`,

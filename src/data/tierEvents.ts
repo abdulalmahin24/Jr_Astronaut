@@ -18,6 +18,8 @@
 
 import type { MissionEvent } from '../types/game';
 import type { DifficultyTier } from './difficultyTiers';
+import type { DonkiDataResult } from '../utils/donkiMapper';
+import { createSolarStormMissionEvent } from './events';
 
 // ─── SHARED RESOURCE DELTAS (SCIENTIFICALLY INVARIANT) ───────────────────────
 // These are the SAME physics for every tier. Only the UI text differs.
@@ -74,7 +76,7 @@ const DELTAS = {
  * The physics (resource deltas) are IDENTICAL across all tiers.
  * Only the narrative text and number of choices vary.
  */
-export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
+export function getEventDeck(tier: DifficultyTier, donkiData?: DonkiDataResult): MissionEvent[] {
   const deck: MissionEvent[] = [];
 
   // ── SOL 1: ARRIVAL ────────────────────────────────────────────────────────
@@ -222,27 +224,22 @@ export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
     title: tierText(tier, {
       EXPLORER: '☀️💥 The sun is sneezing! Danger!',
       CADET: 'Sol 12: ALERT — Solar Flare Detected!',
-      ENGINEER: 'Sol 12 — Class X Solar Particle Event Imminent',
-      SCIENTIST: 'SOL 012 — NASA DONKI ALERT: X3.4 Class Flare + CME Shock Front, 6h ETA',
-      COMMANDER: 'SOL 012 CRITICAL — SWPC ALERT: X3.4/S3 SPE · DONKI CME Arrival T-6h · Crew dose limit risk elevated',
+      ENGINEER: 'Sol 12 — Solar Storm Response Scenario',
+      SCIENTIST: 'SOL 012 — Solar Storm Response Scenario',
+      COMMANDER: 'SOL 012 — Solar Storm Response Scenario',
     }),
     urgency: 'CRITICAL',
-    weatherNotice: tierText(tier, {
-      EXPLORER: '⚠️ Dangerous rays coming from the sun in 6 hours!',
-      CADET: '⚠️ NASA space weather alert: solar storm arriving in 6 hours!',
-      ENGINEER: 'NOAA SWPC S3 Rating: Proton flux >10,000 pfu | CME ΔV: 1,800 km/s | ETA: 6h',
-      SCIENTIST: 'DONKI API: CME shock speed 1842 km/s (Richardson-Stone model). Predicted SPE dose rate: 120 mSv/hr unshielded. 30-day NASA limit: 250 mSv (NASA-STD-3001 Table 6.1).',
-      COMMANDER: 'DONKI CME ID: 2026-11-13-C01. ACE EPAM proton flux: 1.2×10⁴ pfu (>10 MeV). GOES-16 X3.4 XRSB peak. SRAG advisory: recommend immediate crew shelter. Unshielded BFO dose: ~2000 mSv over event duration (Townsend et al. 1992).',
-    }),
+    weatherNotice: 'No verified DONKI record loaded. This event is a game scenario. [GAME SIMULATION VALUE]',
+    dataAttribution: { label: 'GAME SIMULATION' },
     nasaCitation: {
-      title: 'NASA DONKI + NOAA SWPC + NASA-STD-3001',
-      docNumber: 'Townsend et al. NASA/TM-4527 (1992) + NASA-STD-3001 Vol 1 Sect. 5.6',
+      title: 'Simulated solar-storm training scenario',
+      docNumber: 'GAME SCENARIO',
       description: tierText(tier, {
         EXPLORER: 'Sometimes the sun shoots out super fast tiny things that can hurt people in space — but we can hide behind thick moon dirt!',
         CADET: 'The Sun sometimes fires off dangerous energy bursts called solar flares. Thick lunar soil protects us just like a super-strong sunscreen!',
-        ENGINEER: 'The 1972 August SPE (worst recorded) delivered ~2000 mSv unshielded BFO dose. NASA 30-day crew limit: 250 mSv (NASA-STD-3001 Table 6.1). Regolith shielding of 10 g/cm² reduces GCR by ~50%; 50 g/cm² reduces by ~85%.',
-        SCIENTIST: 'Class X SPE worst-case unshielded: 2000 mSv BFO (Townsend et al. 1992, NASA/TM-4527). NASA-STD-3001 limit: 250 mSv/30-day. Regolith attenuation: 160 g/cm² (100 cm bulk) achieves 95% GCR+SPE dose reduction (Townsend & Wilson 1992, Health Physics 62:273).',
-        COMMANDER: 'SRAG protocol (NASA JSC heritage): >100 pfu flux → shelter advisory; >1000 pfu → mandatory shelter. Vault design: 2m sintered regolith + water-jacket inner wall → residual dose <10 mSv over X3.4 event. Active magnetic shielding (Winglee et al. 2000): 10⁴ nT at habitat → 90% particle deflection, but 500 kW required.',
+        ENGINEER: 'Solar flares and coronal mass ejections are different events. This training scenario uses a linked flare class as a rough size cue.',
+        SCIENTIST: 'DONKI reports observed event records; this game estimates travel time using one CME speed and the Sun–Earth distance.',
+        COMMANDER: 'Flare class is not a radiation dose or a direct prediction of astronaut exposure. Shielding outcomes here are simulated.',
       }),
     },
     comicPanels: [
@@ -250,10 +247,10 @@ export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
         speaker: 'HOUSTON_CAPCOM',
         dialogue: tierText(tier, {
           EXPLORER: '📡 Run inside and hide! The sun is shooting danger rays! ⚠️',
-          CADET: 'Outpost Shackleton — Houston! Big solar flare in 6 hours. Get the crew safe NOW!',
-          ENGINEER: 'Shackleton Base, SRAG confirms X3.4 flare. SPE arrival T-6h. Predicted unshielded dose: 120 mSv/hr. NASA limit: 250 mSv/30-day. Seek shelter immediately.',
-          SCIENTIST: 'DONKI CME arrival computed via Richardson-Stone model: T+6h ± 1h. Predicted proton flux: >10,000 pfu. Recommended action: crew to storm shelter within T+2h per SRAG JPL Advisory 2026-11-13.',
-          COMMANDER: 'SRAG mandatory shelter advisory issued. X3.4 event + CME co-arrival. BFO dose projection: 1600–2000 mSv unshielded over 18-hr event. This exceeds NASA-STD-3001 30-day limit by 6.4×. Execute STORM SHELTER protocol immediately.',
+          CADET: 'Outpost Shackleton — Houston! A solar storm may be on its way. Get the crew safe!',
+          ENGINEER: 'Shackleton Base, solar-storm scenario detected. Check the estimated warning time and move the crew to shelter.',
+          SCIENTIST: 'The linked flare and CME records are historical observations; the game does not predict particle flux or crew dose.',
+          COMMANDER: 'Execute the simulated storm-shelter procedure and compare its power cost with the risk of remaining outside.',
         }),
         mood: 'warning',
         illustrationType: 'SUN_FLARE',
@@ -264,8 +261,8 @@ export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
           EXPLORER: 'Quick Maya! Inside the safe room under all the moon dirt! 🏃',
           CADET: 'Maya — drop everything and get into the regolith vault NOW!',
           ENGINEER: 'Vault protocol: seal bulkhead, route water-jacket, power down external instruments.',
-          SCIENTIST: 'Storm shelter activation: 2m regolith + 30cm water-jacket = ~95% BFO dose reduction. Residual dose ≈ 80–100 mSv over 18h event. Within NASA-STD-3001 30-day limit (250 mSv).',
-          COMMANDER: 'Shelter-in-place confirmed. External instrument stow sequence initiated. VSAT panel stow commanded — prevent mechanical damage from SPE-induced differential charging.',
+          SCIENTIST: 'Storm shelter activation reduces the game’s simulated mission-dose-budget meter; the percentage is not a clinical dose estimate.',
+          COMMANDER: 'Shelter-in-place confirmed. External instruments are paused in this training scenario.',
         }),
         mood: 'heroic',
         illustrationType: 'SUN_FLARE',
@@ -284,31 +281,31 @@ export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
         description: tierText(tier, {
           EXPLORER: 'We go underground where thick moon dirt stops the dangerous sun rays!',
           CADET: 'The whole crew goes into the special underground room with thick moon soil above it — it blocks the dangerous radiation.',
-          ENGINEER: 'The 2m sintered regolith vault provides 160 g/cm² shielding → 95% dose reduction. Residual BFO dose over X3.4 event: ~80 mSv (within NASA 30-day limit of 250 mSv).',
-          SCIENTIST: 'Vault shielding: 2.0 m sintered lunar regolith (ρ ≈ 1.8 g/cm³) = 360 g/cm². SPE dose reduction at 360 g/cm²: >99% (Wilson et al. 1995). Residual dose: <20 mSv for X3.4 class event.',
-          COMMANDER: 'Full STORM SHELTER PROTOCOL ALPHA: (1) crew to vault T-4h, (2) VSAT stow T-3h, (3) instrument safing T-2h, (4) DSN comm blackout acknowledged T-0h. Expected blackout: 18±3 hr. Post-event EVA clearance: when proton flux <100 pfu.',
+          ENGINEER: 'The shelter reduces the simulated mission-dose-budget meter. Actual shielding performance depends on particle energy and material.',
+          SCIENTIST: 'This game does not calculate absorbed dose, effective dose, or shielding transport physics.',
+          COMMANDER: 'Follow the simulated shelter checklist; the event duration and shelter effect are game values.',
         }),
         tradeOffText: tierText(tier, {
           EXPLORER: 'Safe but we miss science today.',
           CADET: 'Crew is 100% safe. Power drops a bit. No science discoveries.',
-          ENGINEER: 'Δ Radiation: +5 mSv residual | Crew: +5% | Power: -15 kWh (vault life support) | Science: 0',
-          SCIENTIST: 'ΔRad: +5 mSv (vault residual) · ΔCrewH: +5% · ΔPow: -15 kWh · ΔSci: 0 RP — Optimal safety choice',
-          COMMANDER: 'ΔRad: +5 mSv · ΔCrewH: +5% · ΔPow: -15 kWh · ΔSci: 0 RP · Risk reduction: HIGH (BFO safety margin retained)',
+          ENGINEER: 'GAME SIMULATION: Mission-dose budget rises 5 points; crew improves 5%; power falls 15 points; no science gained.',
+          SCIENTIST: 'GAME SIMULATION: dose budget +5 points · crew +5% · power -15 points · science +0.',
+          COMMANDER: 'GAME SIMULATION: dose budget +5 points · crew +5% · power -15 points · science +0.',
         }),
         resourceDelta: DELTAS.FLARE_VAULT,
         consequenceNarrative: tierText(tier, {
           EXPLORER: 'The crew is safe inside! Billions of tiny sun bullets hit the moon outside, but the thick dirt stops them all! 🛡️✅',
           CADET: 'Safely inside the vault, the crew watches the dosimeter stay low while the storm rages outside for 18 hours.',
-          ENGINEER: 'Storm duration: 18.5 hours. Vault cumulative dose: 6.2 mSv. Far below the 250 mSv NASA 30-day limit. Instruments safed; no permanent damage.',
-          SCIENTIST: 'SPE event duration: 18.5h. Vault dose: 5.8 mSv (measured; within 95% shielding prediction). Cumulative crew dosimeter: +5.8 mSv. Annual allowance (500 mSv/yr, NASA-STD-3001) remains 98.8% available.',
-          COMMANDER: 'STORM SHELTER PROTOCOL ALPHA executed flawlessly. Crew dose: 5.8 mSv (vault). Instruments stowed; no solar panel damage. DSN comm restoration at T+20h. SRAG clear-to-return advisory issued when flux < 100 pfu at T+19h.',
+          ENGINEER: 'The crew is sheltered. The game’s mission-dose-budget meter changes by a simulated amount.',
+          SCIENTIST: 'No measured crew dose is available from this historical event record; displayed resource changes are simulated.',
+          COMMANDER: 'Shelter response complete in the game scenario. No real-time crew dosimetry is represented.',
         }),
         educationalInsight: tierText(tier, {
           EXPLORER: 'Moon dirt is like super armor! It stops dangerous invisible rays from the sun, just like sunscreen but a million times stronger!',
           CADET: 'Lunar regolith (moon soil) is rich in silica and minerals that block radiation. 2 meters is like being behind a thick concrete wall!',
           ENGINEER: 'Radiation shielding effectiveness scales with areal density (g/cm²). 2m of lunar regolith (ρ = 1.8 g/cm³) = 360 g/cm². SPE proton range in silicate: ~200 g/cm² at 300 MeV. 99%+ attenuation achieved. Ref: Townsend & Wilson (1992) Health Physics.',
           SCIENTIST: 'Key references: (1) Townsend et al. (1992) NASA/TM-4527 — worst-case SPE dose. (2) Wilson et al. (1995) "Shielding Strategies for Human Space Exploration," NASA CP-3360. (3) NASA-STD-3001 Vol 1 (2015) Table 6.1 — dose limits. (4) Hayatsu et al. (2008) Adv. Space Res. 42:1155 — regolith shielding measurements.',
-          COMMANDER: 'Integrated storm response architecture: DONKI API feed → SRAG advisory → crew shelter → instrument safe → post-event survey → EVA clearance. Full protocol traceability: NASA JSC-62809 (Radiation Monitoring Requirements). Lessons applied from Apollo 17 sub-event and MRO 2012 SPE data (Zeitlin et al. 2012).',
+          COMMANDER: 'Use the event record as context, then compare the game’s simulated shelter and power trade-offs.',
         }),
       },
       {
@@ -330,16 +327,16 @@ export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
         tradeOffText: tierText(tier, {
           EXPLORER: 'Uses a LOT of power but protects without going underground.',
           CADET: 'Crew stays safe and does some science! But uses 40% of the battery.',
-          ENGINEER: 'Power: -42 kWh | Radiation: +10 mSv residual | Science: +25 RP (instruments stay active)',
-          SCIENTIST: 'ΔPow: -42 kWh (40% SoC draw) · ΔRad: +10 mSv · ΔSci: +25 RP — HIGH power risk, moderate radiation risk',
-          COMMANDER: 'ΔPow: -42 kWh (critical reserve risk) · ΔRad: +10 mSv · ΔSci: +25 RP — Battery risk creates downstream life-support cascade if night onset occurs before recharge',
+          ENGINEER: 'GAME SIMULATION: Power -42 points | Mission-dose budget +10 points | Science +25 points.',
+          SCIENTIST: 'GAME SIMULATION: power -42 points · dose budget +10 points · science +25 points.',
+          COMMANDER: 'GAME SIMULATION: power -42 points · dose budget +10 points · science +25 points; lower power can affect later life support.',
         }),
         resourceDelta: DELTAS.FLARE_MAGSHIELD,
         consequenceNarrative: tierText(tier, {
           EXPLORER: 'The force bubble glows blue! The dangerous rays bend around us like raindrops on a bubble! But the power is almost gone… 😬',
           CADET: 'The magnetic field deflects most radiation! Science instruments keep working. But the battery warning light turns red…',
-          ENGINEER: 'Magnetic shield performed at 88% efficiency. Residual dose: 10 mSv. However, battery SoC dropped to 22% — dangerously close to the 15% ECLSS minimum threshold.',
-          SCIENTIST: 'Shielding efficiency: 88% (vs. theoretical 90%: losses due to solar wind pressure-induced field compression). Residual dose: 10 mSv. Battery SoC: 22% — only 7% margin above minimum ECLSS threshold. Risk flag: ORANGE.',
+          ENGINEER: 'The simulated shield action lowers the mission-dose-budget increase but uses a large share of stored power.',
+          SCIENTIST: 'This experimental shield is a fictional game mechanic; its protection is not a real engineering estimate.',
           COMMANDER: 'Magnetic shield nominal but battery reserve critically degraded. SoC: 22% — below ECLSS safe buffer of 25% (Rucker 2016). If lunar night onset occurs before recharge, ECLSS thermal control will fail within 4 hours. Immediate post-event VSAT recharge ordered.',
         }),
         educationalInsight: tierText(tier, {
@@ -698,16 +695,16 @@ export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
         description: tierText(tier, {
           EXPLORER: 'The tough rover drives into the pitch-black freezing crater to bring back giant chunks of moon ice!',
           CADET: 'Drive the rover down into the freezing shadows to drill pure ice trapped on the Moon for billions of years.',
-          ENGINEER: 'Sortie into Shackleton crater Permanently Shadowed Region (40 K). Scrapes 50 kg of primordial volatiles. High power cost, +10 mSv radiation.',
+          ENGINEER: 'GAME SIMULATION: the rover trip raises the mission dose-budget meter by 10 points and uses substantial power.',
           SCIENTIST: 'Direct harvesting of surface ice deposits confirmed by LRO LAMP and M3 data (Li et al. 2018). Consumes 25 kWh rover battery.',
           COMMANDER: 'ISRU demonstration sortie: drills 50 kg core at 40 K. Validates Artemis ISRU architecture while refilling water reserves.',
         }),
         tradeOffText: tierText(tier, {
           EXPLORER: 'Giant ice treasure! But rover gets cold and tired.',
           CADET: 'Massive water gain (+35 L) and science (+20 RP); drains power.',
-          ENGINEER: 'Water: +35 L | Power: -25 kWh | Science: +20 RP | Radiation: +10 mSv',
-          SCIENTIST: 'ΔWater: +35 L · ΔPow: -25 kWh · ΔSci: +20 RP · ΔRad: +10 mSv',
-          COMMANDER: 'ΔH2O: +35 L · ΔPow: -25 kWh · ΔSci: +20 RP · ΔRad: +10 mSv — Aggressive ISRU play',
+          ENGINEER: 'GAME SIMULATION: Water +35 points | Power -25 points | Science +20 points | Mission dose budget +10 points.',
+          SCIENTIST: 'GAME SIMULATION: water +35 · power -25 · science +20 · mission dose budget +10 points.',
+          COMMANDER: 'GAME SIMULATION: water +35 · power -25 · science +20 · mission dose budget +10 points — aggressive ISRU play.',
         }),
         resourceDelta: DELTAS.WATER_ICE_ROVER,
         consequenceNarrative: tierText(tier, {
@@ -1025,7 +1022,9 @@ export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
     ],
   });
 
-  return deck.sort((a, b) => a.sol - b.sol);
+  return deck
+    .sort((a, b) => a.sol - b.sol)
+    .map((event) => createSolarStormMissionEvent(event, donkiData));
 }
 
 // ─── HELPER FUNCTION ──────────────────────────────────────────────────────────

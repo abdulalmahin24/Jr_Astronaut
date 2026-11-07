@@ -13,6 +13,15 @@ export interface NasaDatasetInfo {
   isRealData: boolean;
 }
 
+export const OSDR_ASTRONAUT_FINDING = {
+  label: 'ARCHIVED NASA RESEARCH FINDING',
+  title: 'Some measured biology changed during a year in space',
+  finding: 'In NASA’s Twins Study, researchers observed changes in several biological measures during Scott Kelly’s year-long spaceflight. Many moved back toward preflight levels after he returned, while some changes lasted longer. This is a study finding, not a prediction for every astronaut.',
+  sourceName: 'NASA Open Science Data Repository · NASA Twins Study',
+  sourceUrl: 'https://doi.org/10.1126/science.aau8650',
+  repositoryUrl: 'https://osdr.nasa.gov/',
+} as const;
+
 export const NASA_DATASETS: NasaDatasetInfo[] = [
   // 1. Lunar Environment & Surface Exploration
   {
@@ -55,8 +64,8 @@ export const NASA_DATASETS: NasaDatasetInfo[] = [
     accessDate: '2026-10-15',
     relevantFactOrData: 'Coronal Mass Ejections (CMEs) travel from 250 km/s to over 3,000 km/s, driving Solar Energetic Particle (SEP) proton flux exceeding 100 MeV that can deliver lethal absorbed doses (>1,000 mGy) to unshielded astronauts.',
     units: 'km/s velocity, MeV proton energy, Particle Flux Units (pfu)',
-    howUsedInGame: 'Drives the Sol 10 Coronal Mass Ejection crisis event, requiring astronauts to seal the storm vault or activate magnetic shielding to prevent acute radiation illness.',
-    limitationsOrSimplifications: 'Game models flare transit time deterministically across Sol turns rather than continuous interplanetary shock wave tracking.',
+    howUsedInGame: 'Provides the linked CME and flare record shown in the solar-storm training event. The flare class is shown as an observed classification, not a dose forecast.',
+    limitationsOrSimplifications: 'The game estimates Sun–Earth travel time as 1 AU divided by the reported CME speed. This ignores CME acceleration, direction, width, and interaction with the solar wind; flare class is only used as a rough event-size cue. The event’s resource changes are simulated.',
     isRealData: true,
   },
 
@@ -87,8 +96,8 @@ export const NASA_DATASETS: NasaDatasetInfo[] = [
     accessDate: '2026-10-15',
     relevantFactOrData: 'Ambient unshielded Galactic Cosmic Ray (GCR) surface dose at the Moon ranges from 0.4 to 0.7 mSv/day at solar maximum up to 1.5 mSv/day at solar minimum. Sintered lunar regolith (bulk density 1.5 to 1.9 g/cm³) provides 50% GCR attenuation at ~45 cm depth and >85% attenuation at 150 cm.',
     units: 'mSv/day (millisieverts), g/cm³ regolith density, cm shield thickness',
-    howUsedInGame: 'Calibrates daily radiation exposure accumulation and rewards constructing the 2-meter Sintered Regolith Vault in Outpost Construction.',
-    limitationsOrSimplifications: 'Linearized exponential attenuation model in game simulation instead of full Monte Carlo GEANT4 nuclear spallation code.',
+    howUsedInGame: 'Provides scientific context for radiation hazards and shielding. The outpost game meter is a simulated percentage of a mission dose budget, not an mSv or mGy measurement.',
+    limitationsOrSimplifications: 'The game does not convert the mission-dose-budget meter into absorbed dose (Gy), equivalent/effective dose (Sv), or a medical risk. Shielding behavior in gameplay is simplified and is not a substitute for transport modeling.',
     isRealData: true,
   },
 

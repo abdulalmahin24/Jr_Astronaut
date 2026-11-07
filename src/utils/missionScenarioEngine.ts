@@ -10,6 +10,7 @@
 import type { MissionEvent } from '../types/game';
 import type { DifficultyTier } from '../data/difficultyTiers';
 import type { NasaMission } from '../data/nasaMissions';
+import type { DonkiDataResult } from './donkiMapper';
 import { getEventDeck } from '../data/tierEvents';
 
 /**
@@ -18,13 +19,17 @@ import { getEventDeck } from '../data/tierEvents';
  *  - MOON: Peer-reviewed Artemis Base Camp at Shackleton Crater Rim (NASA BVAD & LRO LOLA)
  *  - MARS: Peer-reviewed AstroCamp Mars Outpost at Jezero Crater (NASA Mars 2020 MOXIE & HiRISE)
  */
-export function getMissionScenarioDeck(mission: NasaMission, tier: DifficultyTier): MissionEvent[] {
+export function getMissionScenarioDeck(
+  mission: NasaMission,
+  tier: DifficultyTier,
+  donkiData?: DonkiDataResult
+): MissionEvent[] {
   if (mission.destination === 'MARS') {
     return getMarsOutpostDeck(tier);
   }
 
   // Default / Moon: Artemis Base Camp at Shackleton Crater Rim
-  return getEventDeck(tier);
+  return getEventDeck(tier, donkiData);
 }
 
 // ─── MARS JEZERO OUTPOST 40-SOL EVENT DECK ────────────────────────────────────

@@ -257,7 +257,7 @@ export const OutpostMap: React.FC<OutpostMapProps> = ({ currentSol, modules, res
                 </p>
                 <div className="inspector-metrics">
                   <div>Shielding: <span className="text-emerald-400">200 cm Sintered Regolith</span></div>
-                  <div>Crew Dosimeter: <span className="text-amber-400">{resources.radiation} mSv</span></div>
+                  <div>Mission Dose Budget (simulated): <span className="text-amber-400">{resources.radiation}%</span></div>
                   <div>Vault Seal: <span className="text-cyan-400">Ready for Emergency Evacuation</span></div>
                 </div>
               </>

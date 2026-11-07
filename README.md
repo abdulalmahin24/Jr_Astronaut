@@ -42,13 +42,13 @@ The project features a **unified dual-engine architecture**:
 
 ## 👥 2. Team Mysterio & Roles
 
-| Role | Name / Placeholder | Key Contribution |
+| Role | Key Contribution |
 | :--- | :--- | :--- |
-| **Full-Stack & Systems Engineer** | *[Team Member Name]* | Web expedition architecture, simulation engine, state machine, and test runner |
-| **Game & Simulation Developer** | *[Team Member Name]* | Pygame 60 FPS flight engine, rover canvas physics, and 3D lunar rendering |
-| **Aerospace Data Researcher** | *[Team Member Name]* | BVAD life-support stoichiometry, LOLA topography, and Kilopower reactor integration |
-| **UI/UX & Instructional Designer** | *[Team Member Name]* | Astronaut Academy curriculum, comic storyboards, audio synthesis, and HUD design |
-| **QA & Verification Engineer** | *[Team Member Name]* | Automated unit tests, deterministic simulation assertions, and cross-platform verification |
+| **Full-Stack & Systems Engineer** | Web expedition architecture, simulation engine, state machine, and test runner |
+| **Game & Simulation Developer** | Pygame 60 FPS flight engine, rover canvas physics, and 3D lunar rendering |
+| **Aerospace Data Researcher** | BVAD life-support stoichiometry, LOLA topography, and Kilopower reactor integration |
+| **UI/UX & Instructional Designer** | Astronaut Academy curriculum, comic storyboards, audio synthesis, and HUD design |
+| **QA & Verification Engineer** | Automated unit tests, deterministic simulation assertions, and cross-platform verification |
 
 ---
 
@@ -143,7 +143,7 @@ flowchart TD
 ## 🚀 5. Installation & Quick Start
 
 ### Prerequisites
-- **Node.js:** v18+ (v20+ recommended)
+- **Node.js:** v20.19+ or v22.12+ (required by the current Vite toolchain)
 - **Python:** v3.10+ (for Pygame desktop flight engine)
 
 ---
@@ -151,13 +151,13 @@ flowchart TD
 ### Option A: Launch the Web Expedition (Primary Platform)
 ```bash
 # 1. Clone repository
-git clone https://github.com/meetmehedi/Jr_AstroCamp.git
-cd Jr_AstroCamp
+git clone https://github.com/assassinyousuf/nasa2026_nehal-s_extended_version.git
+cd nasa2026_nehal-s_extended_version
 
 # 2. Install Node dependencies
 npm install
 
-# 3. Run automated simulation test suite (8 assertions)
+# 3. Run automated simulation and NASA data tests
 npm test
 
 # 4. Start local development server
@@ -210,7 +210,9 @@ All scientific baselines in Jr_AstroCamp cite verified, publicly accessible NASA
 | **Life Support (ECLSS)** | *Baseline Values and Assumptions Document (BVAD)* (NASA/TP-2015-218570) | [NASA NTRS](https://ntrs.nasa.gov/citations/20150002905) | Daily crew metabolic consumption: 0.84 kg O2, 2.50 kg water, 0.62 kg dry food per crew-day. |
 | **Lunar Lighting & Topography** | *Lunar Reconnaissance Orbiter (LRO) LOLA Science Team* | [LRO LOLA](https://lola.gsfc.nasa.gov/) | Shackleton crater rim polar lighting (>80% solar illumination) vs permanent shadow cold traps (<40 K). |
 | **Fission Surface Power** | *Kilopower Reactor Using Stirling Technology (KRUSTY)* (NASA Glenn / LANL) | [NASA STMD Kilopower](https://www.nasa.gov/directorates/stmd/game-changing-development-program/kilopower/) | Continuous 10 kWe / 25 kW baseline fission power independent of lunar night or solar dust occlusion. |
-| **Cosmic Radiation** | *Cosmic Ray Telescope for the Effects of Radiation (CRaTER)* | [LRO CRaTER](https://crater.unh.edu/) | Deep-space GCR exposure rates (0.5 mSv/day) and 1.5m sintered regolith shielding attenuation. |
+| **Cosmic Radiation** | *Cosmic Ray Telescope for the Effects of Radiation (CRaTER)* | [LRO CRaTER](https://crater.unh.edu/) | Radiation science context; the outpost game meter is a simulated percentage of mission dose budget, not mSv or mGy. |
+| **Space Weather** | *NASA DONKI* CME, flare, SEP, and GST event records | [NASA DONKI](https://kauai.ccmc.gsfc.nasa.gov/DONKI/) | Linked CME/flare observations are labelled LIVE or ARCHIVED; travel time and gameplay effects are explicitly simplified/simulated. |
+| **Astronaut Research** | *NASA Twins Study* | [NASA OSDR](https://osdr.nasa.gov/) · [Study DOI](https://doi.org/10.1126/science.aau8650) | A static, archived research finding is shown in the mission debrief. |
 | **Martian Atmosphere** | *Curiosity Rover Rover Environmental Monitoring Station (REMS)* | [NASA JPL MSL REMS](https://mars.nasa.gov/msl/spacecraft/instruments/rems/) | Thin surface pressure (610 Pa), diurnal thermal swings, and atmospheric dust opacity ($\tau$). |
 | **Historical Flight Archive** | *NASA Master Catalog & National Space Science Data Center* | [NASA NSSDC](https://nssdc.gsfc.nasa.gov/) | 76 authentic historical mission flight parameters across Mercury, Apollo, Skylab, Shuttle, and Artemis. |
 
@@ -221,8 +223,8 @@ All scientific baselines in Jr_AstroCamp cite verified, publicly accessible NASA
 ## 🧪 8. Automated Testing & Verification
 
 Jr_AstroCamp includes comprehensive automated test suites:
-- **`npm test`**: Runs `tests/test_simulation.mjs` verifying initial state, mass budget capping, day/night transitions, Kilopower night generation, shift actions, battery failure detection, victory conditions, and resource clamping (8/8 pass).
-- **`npm run build`**: Runs `tsc -b` and `vite build` verifying zero TypeScript type errors across 1,935 modules.
+- **`npm test`**: Runs the simulation suite plus DONKI mapping/source-selection and simulated radiation-budget tests.
+- **`npm run build`**: Runs `tsc -b` and `vite build` to verify the production bundle and TypeScript types.
 - **`python tests/test_game.py`**: Headless automated test suite verifying 76 flight missions, procedural sound synthesis, 6 simulation scenes, and save progression (100% pass).
 
 *For full testing logs and protocols, see [docs/TESTING.md](./docs/TESTING.md).*
@@ -242,7 +244,11 @@ Jr_AstroCamp includes comprehensive automated test suites:
 
 - **Device Support:** Fully responsive across desktop, laptop, Chromebook, tablet, and mobile.
 - **3D Graphics Fallback:** A toggle in Settings (`SettingsModal.tsx`) switches between WebGL Three.js rendering and an optimized 2D schematic HUD for ultra-low-power student laptops.
-- **Offline First:** 100% playable offline without internet connectivity.
+- **Offline First:** Core gameplay runs offline. Optional NASA DONKI live data requires connectivity; a dated archive is used when available. With no verified data, the solar-storm event is labelled as a game simulation.
+
+### Space weather data refresh
+
+Use `npm run fetch:donki` to fetch NASA DONKI CME, FLR, SEP, and GST data for the latest 30 days into `public/data/donki_snapshot.json`. The script reads `NASA_API_KEY` or `VITE_NASA_API_KEY` from the environment (or uses NASA's rate-limited `DEMO_KEY`); never commit a personal key. The current snapshot is intentionally empty until a successful fetch.
 
 ---
 

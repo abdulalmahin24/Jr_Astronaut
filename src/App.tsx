@@ -2,6 +2,8 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import type { GameState, ChoiceOption, SolHistoryEntry, DifficultyMode } from './types/game';
 import type { DifficultyTier } from './data/difficultyTiers';
 import { getMissionScenarioDeck } from './utils/missionScenarioEngine';
+import { loadDonkiSolarWeather } from './utils/donkiService';
+import type { DonkiDataResult } from './utils/donkiMapper';
 import { NASA_MISSIONS, type NasaMission } from './data/nasaMissions';
 import { TEACHING_FLASHCARDS, type TeachingFlashcard } from './data/teachingFlashcards';
 import { useAppRouter, type AppRoute } from './router/useAppRouter';
@@ -120,6 +122,7 @@ export const App: React.FC = () => {
     const saved = loadGameStateFromStorage();
     return saved || INITIAL_GAME_STATE;
   });
+  const [donkiData, setDonkiData] = useState<DonkiDataResult>({ source: 'UNAVAILABLE' });
   const [savedGameInfo, setSavedGameInfo] = useState<GameState | null>(loadGameStateFromStorage);
   const [currentMission, setCurrentMission] = useState<NasaMission>(() => {
     const saved = loadGameStateFromStorage();
@@ -230,6 +233,36 @@ export const App: React.FC = () => {
     }
   }, [gameState]);
 
+  useEffect(() => {
+    let isCurrent = true;
+    loadDonkiSolarWeather()
+      .then((result) => {
+        if (!isCurrent) return;
+        setDonkiData(result);
+        setGameState((previous) => {
+          if (previous.destination !== 'MOON' || previous.activeEvent?.id !== 'sol-12-solar-flare') {
+            return previous;
+          }
+          const solarEvent = getMissionScenarioDeck(
+            currentMission,
+            previous.difficultyMode as DifficultyTier,
+            result
+          ).find((event) => event.id === 'sol-12-solar-flare');
+          return solarEvent ? { ...previous, activeEvent: solarEvent } : previous;
+        });
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent) return;
+        setDonkiData({
+          source: 'UNAVAILABLE',
+          error: error instanceof Error ? error.message : 'Unexpected NASA DONKI service error.',
+        });
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [currentMission]);
+
   // Route change: dismiss all transient overlay modals so the user lands cleanly on the chosen page
   useEffect(() => {
     setActiveMissionGameId(null);
@@ -281,7 +314,7 @@ export const App: React.FC = () => {
   }, [gameState.activeEvent?.id]);
 
   const handleSelectDifficulty = (mode: DifficultyMode) => {
-    const newDeck = getMissionScenarioDeck(currentMission, mode as DifficultyTier);
+    const newDeck = getMissionScenarioDeck(currentMission, mode as DifficultyTier, donkiData);
     const currentSol = gameState.activeEvent ? gameState.activeEvent.sol : gameState.currentSol;
     const matchedEvent = newDeck.find((e) => e.sol === currentSol) || newDeck[0];
     setGameState((prev) => ({
@@ -334,7 +367,7 @@ export const App: React.FC = () => {
       soundFx.playClick(680);
     }
 
-    const currentDeck = getMissionScenarioDeck(currentMission, gameState.difficultyMode as DifficultyTier);
+    const currentDeck = getMissionScenarioDeck(currentMission, gameState.difficultyMode as DifficultyTier, donkiData);
     const nextEventIndex = currentDeck.findIndex((e) => e.id === gameState.activeEvent?.id) + 1;
     const nextEvent = currentDeck[nextEventIndex] || null;
 
@@ -372,7 +405,7 @@ export const App: React.FC = () => {
   const handleSwitchOutpostDestination = (dest: 'MOON' | 'MARS') => {
     const targetMission = dest === 'MARS' ? MARS_JEZERO_BASE_MISSION : ARTEMIS_LUNAR_BASE_MISSION;
     setCurrentMission(targetMission);
-    const missionDeck = getMissionScenarioDeck(targetMission, gameState.difficultyMode as DifficultyTier);
+    const missionDeck = getMissionScenarioDeck(targetMission, gameState.difficultyMode as DifficultyTier, donkiData);
     const initialObjectives = generateMissionObjectives(dest);
     const config = dest === 'MARS' ? DEFAULT_MARS_OUTPOST : DEFAULT_LUNAR_OUTPOST;
 
@@ -434,7 +467,7 @@ export const App: React.FC = () => {
 
   const handleConfirmConstruction = (config: OutpostConfiguration) => {
     setIsConstructionModalOpen(false);
-    const missionDeck = getMissionScenarioDeck(currentMission, gameState.difficultyMode as DifficultyTier);
+    const missionDeck = getMissionScenarioDeck(currentMission, gameState.difficultyMode as DifficultyTier, donkiData);
     const initialObjectives = generateMissionObjectives(currentMission.destination === 'MARS' ? 'MARS' : 'MOON');
 
     const startingResources = {

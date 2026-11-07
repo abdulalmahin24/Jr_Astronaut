@@ -504,6 +504,16 @@ export const MissionControlPage: React.FC<MissionControlPageProps> = ({
                     </div>
                     <div className="context-title">{gameState.activeEvent.nasaCitation.title}</div>
                     <p className="context-desc">{gameState.activeEvent.nasaCitation.description}</p>
+                    {gameState.activeEvent.dataAttribution && (
+                      <div className="context-desc">
+                        <strong>{gameState.activeEvent.dataAttribution.label}</strong>
+                        {gameState.activeEvent.dataAttribution.recordId && ` · Record ${gameState.activeEvent.dataAttribution.recordId}`}
+                        {gameState.activeEvent.dataAttribution.fetchedAt && ` · Snapshot fetched ${gameState.activeEvent.dataAttribution.fetchedAt}`}
+                        {gameState.activeEvent.dataAttribution.sourceUrl && (
+                          <> · <a href={gameState.activeEvent.dataAttribution.sourceUrl} target="_blank" rel="noreferrer">Source record</a></>
+                        )}
+                      </div>
+                    )}
                     {gameState.activeEvent.weatherNotice && (
                       <div className="weather-alert-strip">
                         <AlertTriangle size={14} className="text-amber-400 shrink-0" />
@@ -544,6 +554,16 @@ export const MissionControlPage: React.FC<MissionControlPageProps> = ({
                   </div>
                   <div className="context-title">{gameState.activeEvent.nasaCitation.title}</div>
                   <p className="context-desc">{gameState.activeEvent.nasaCitation.description}</p>
+                  {gameState.activeEvent.dataAttribution && (
+                    <div className="context-desc">
+                      <strong>{gameState.activeEvent.dataAttribution.label}</strong>
+                      {gameState.activeEvent.dataAttribution.recordId && ` · Record ${gameState.activeEvent.dataAttribution.recordId}`}
+                      {gameState.activeEvent.dataAttribution.fetchedAt && ` · Snapshot fetched ${gameState.activeEvent.dataAttribution.fetchedAt}`}
+                      {gameState.activeEvent.dataAttribution.sourceUrl && (
+                        <> · <a href={gameState.activeEvent.dataAttribution.sourceUrl} target="_blank" rel="noreferrer">Source record</a></>
+                      )}
+                    </div>
+                  )}
                   {gameState.activeEvent.weatherNotice && (
                     <div className="weather-alert-strip">
                       <AlertTriangle size={14} className="text-amber-400 shrink-0" />

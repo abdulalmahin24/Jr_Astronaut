@@ -45,7 +45,7 @@ export interface TierProfile {
 
 export interface TierFeatures {
   // Display
-  showUnits: boolean;          // Show SI units (kW, L, mSv, kPa)
+  showUnits: boolean;          // Show SI units (kW, L, kPa) and simulated dose-budget percentage
   showEquations: boolean;      // Show stoichiometric equations
   showCitations: boolean;      // Show NASA document citations
   showSankeyDiagram: boolean;  // Show energy flux diagram

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ResourceState, DifficultyMode } from '../types/game';
 import { TIER_PROFILES } from '../data/difficultyTiers';
-import { Zap, Droplets, Wind, Apple, ShieldAlert, Award, Activity, SlidersHorizontal, Radio } from 'lucide-react';
+import { Zap, Droplets, Wind, Apple, ShieldAlert, Award, Activity, SlidersHorizontal } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 
 interface ResourceHUDProps {
@@ -539,7 +539,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                   }}
                 >
                   <ShieldAlert size={13} style={{ color: 'var(--color-error)' }} />
-                  DOSIMETRY
+                  MISSION DOSE BUDGET
                 </span>
                 <span
                   style={{
@@ -565,7 +565,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                   marginBottom: '6px',
                 }}
               >
-                {precisionMode ? `${(resources.radiation * 0.85).toFixed(1)} mSv` : `${resources.radiation} Rad`}
+                {resources.radiation}% <span style={{ fontSize: '9px', color: 'var(--color-muted)' }}>SIMULATED</span>
               </div>
               <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
                 <div

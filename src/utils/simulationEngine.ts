@@ -16,6 +16,7 @@ import type {
   MissionObjective,
   Destination,
 } from '../types/game';
+import { isMissionDoseBudgetExceeded, MISSION_DOSE_BUDGET_LIMIT_PERCENT } from './radiationScale';
 
 // ── DEFAULT OUTPOST CONFIGURATIONS ──────────────────────────────────────────
 
@@ -340,11 +341,11 @@ export function generateMissionObjectives(destination: Destination): MissionObje
     {
       id: 'obj-radiation',
       title: 'Radiation ALARA Protection',
-      description: 'Keep cumulative crew radiation dose strictly below 50 mSv safe benchmark ceiling.',
+      description: 'Keep the simulated mission dose budget below 50%.',
       completed: false,
       requiredValue: 50,
       currentValue: 12,
-      unit: 'mSv',
+      unit: '% budget',
     },
   ];
 }
@@ -453,9 +454,9 @@ export function computeDailySimulationTurn(
   if (shiftAction === 'GREENHOUSE_SURGE') foodDelta += 0.8;
 
   // Radiation:
-  let radDelta = 0.5; // Baseline GCR
+  let radDelta = 0.5; // Simulated mission-dose-budget percentage points per sol
   if (config.radiationShielding === 'SINTERED_REGOLITH_VAULT') {
-    radDelta = 0.1; // Sintered rock blocks 85%
+    radDelta = 0.1; // Simulated reduction for this game configuration
   } else if (config.habitatType === 'HEAVY_REGOLITH_DOME') {
     radDelta = 0.25;
   }
@@ -477,7 +478,7 @@ export function computeDailySimulationTurn(
   const newOxygen = Math.min(100, Math.max(0, currentRes.oxygen + oxygenDelta));
   const newWater = Math.min(100, Math.max(0, currentRes.water + waterDelta));
   const newFood = Math.max(0, currentRes.food + foodDelta);
-  const newRadiation = Math.min(150, Math.max(0, currentRes.radiation + radDelta));
+  const newRadiation = Math.min(MISSION_DOSE_BUDGET_LIMIT_PERCENT, Math.max(0, currentRes.radiation + radDelta));
 
   // Science passive gains:
   let scienceGain = 2;
@@ -560,10 +561,10 @@ export function computeDailySimulationTurn(
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
     failureReason = 'Starvation: Outpost nutritional reserves completely depleted.';
-  } else if (newRadiation >= 100) {
+  } else if (isMissionDoseBudgetExceeded(newRadiation)) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
-    failureReason = 'Acute Radiation Syndrome: Cumulative crew dosimeter exceeded safe biological ceiling (100 mSv).';
+    failureReason = 'Mission dose budget exceeded (100%). This is a game limit, not a medical threshold.';
   } else if (newHealth <= 0) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';

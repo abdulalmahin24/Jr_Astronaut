@@ -248,7 +248,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
 
                 <div style={{ padding: '12px', backgroundColor: 'var(--color-paper-2)', border: '1px solid var(--rule-subtle)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-error)', fontWeight: 700, marginBottom: '4px' }}>
-                    <Radio size={14} /> Radiation (&lt; 100 mSv)
+                    <Radio size={14} /> Mission Dose Budget (&lt; 100%, simulated)
                   </div>
                   <div style={{ color: 'var(--color-ink-faint)', lineHeight: 1.4 }}>Galactic cosmic rays and solar particle events accumulate without regolith shielding.</div>
                 </div>
@@ -306,7 +306,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
                   <strong style={{ color: 'var(--color-accent)' }}>Marginal Return:</strong> Base survived, but secondary scientific milestones or safety buffers were compromised.
                 </div>
                 <div style={{ padding: '10px 14px', background: 'var(--color-paper-2)', border: '1px solid var(--rule-subtle)' }}>
-                  <strong style={{ color: 'var(--color-error)' }}>Mission Abort / Loss of Crew:</strong> Depleted any vital life support resource (O2, Water, Battery, or Radiation &gt; 100 mSv).
+                  <strong style={{ color: 'var(--color-error)' }}>Mission Abort:</strong> A vital resource is depleted or the simulated mission dose budget reaches 100%. This is a game limit, not a medical threshold.
                 </div>
                 <div style={{ padding: '10px 14px', background: 'var(--color-paper-2)', border: '1px solid var(--rule-subtle)' }}>
                   <strong style={{ color: 'var(--color-ink)' }}>Causal Analysis:</strong> The root-cause decision tree reveals the chain of operational trade-offs leading to the final status.

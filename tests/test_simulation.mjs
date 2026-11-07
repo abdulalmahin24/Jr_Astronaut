@@ -118,7 +118,7 @@ function computeDailyTurn(prevState, shiftAction = 'STANDARD_OPERATIONS') {
   const newOxygen = Math.min(100, Math.max(0, currentRes.oxygen + oxygenDelta));
   const newWater = Math.min(100, Math.max(0, currentRes.water + waterDelta));
   const newFood = Math.max(0, currentRes.food + foodDelta);
-  const newRadiation = Math.min(150, Math.max(0, currentRes.radiation + radDelta));
+  const newRadiation = Math.min(100, Math.max(0, currentRes.radiation + radDelta));
   const newScience = currentRes.science + (shiftAction === 'SCIENCE_INTENSIVE' ? 10 : 2);
   const newHealth = currentRes.crewHealth;
 
@@ -137,7 +137,7 @@ function computeDailyTurn(prevState, shiftAction = 'STANDARD_OPERATIONS') {
   } else if (newRadiation >= 100) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
-    failureReason = 'Acute Radiation Syndrome';
+    failureReason = 'Mission dose budget exceeded (100%)';
   } else if (sol >= prevState.totalSols) {
     isGameOver = true;
     outcome = 'VICTORY';
