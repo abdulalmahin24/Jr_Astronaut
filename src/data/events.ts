@@ -253,8 +253,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
         id: 'opt-spin-up-kilopower',
         title: 'Ignite 10 kWe Kilopower Fission Core',
         description: 'Deploy the Stirling nuclear reactor to provide uninterrupted 24/7 electricity and radiant heat.',
-        tradeOffText: 'Abundant continuous power through the night; requires cooling radiator management.',
-        resourceDelta: { power: +45, oxygen: +10, water: +5, crewHealth: +10, science: +15 },
+        tradeOffText: 'Keeps power on all night, but the crew spends energy starting and checking the reactor.',
+        resourceDelta: { power: +45, oxygen: +10, water: +5, crewHealth: -5, science: +15 },
         consequenceNarrative: 'The sodium heat pipes hum to life. Warmth spreads through every module while the outside plummets to -130°C.',
         educationalInsight: 'NASA Kilopower uses Stirling engines with solid uranium cores to supply reliable power through years of darkness.'
       },
@@ -427,8 +427,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
         id: 'opt-stabilize-all-systems',
         title: 'Safety-First System Conservation & Station Handover',
         description: 'Charge all batteries, flush water filters, and leave the outpost fully nominal for the next crew.',
-        tradeOffText: 'Ensures 100% survival; guarantees spotless crew health score; moderate science gain.',
-        resourceDelta: { power: +20, water: +15, oxygen: +15, crewHealth: +20, science: +25 },
+        tradeOffText: 'Restores the base for the next crew, but the extended repair shift uses two meals.',
+        resourceDelta: { power: +20, water: +15, oxygen: +15, crewHealth: +20, science: +25, food: -2 },
         consequenceNarrative: 'Every meter reads green. Outpost Shackleton stands as a beacon of human resilience, ready for the next crew.',
         educationalInsight: 'Leaving a lunar base in a certified nominal state allows future astronaut missions to dock and survive safely.'
       },

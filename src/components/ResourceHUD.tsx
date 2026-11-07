@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import type { ResourceState, DifficultyMode } from '../types/game';
-import { TIER_PROFILES } from '../data/difficultyTiers';
 import { Zap, Droplets, Wind, Apple, ShieldAlert, Award, Activity, SlidersHorizontal } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { getLifeSupportLevel, getVisibleHudMeters } from '../utils/resourceHud';
 
 interface ResourceHUDProps {
   sol: number;
@@ -22,9 +22,12 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
   destination = 'MOON',
   onSelectDifficulty,
 }) => {
-  const currentTier = TIER_PROFILES[difficultyMode] || TIER_PROFILES.CADET;
   const isDefaultKidMode = difficultyMode === 'EXPLORER' || difficultyMode === 'CADET';
+  const isCadetMode = difficultyMode === 'CADET';
+  const visibleMeters = new Set(getVisibleHudMeters(difficultyMode));
+  const lifeSupportHealth = getLifeSupportLevel(resources.oxygen, resources.water);
   const [precisionMode, setPrecisionMode] = useState<boolean>(!isDefaultKidMode);
+  const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
 
   const getStatus = (val: number, isReverse = false) => {
     if (isReverse) {
@@ -38,8 +41,8 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
   };
 
   const primaryTiers: { id: DifficultyMode; label: string; age: string; code: string }[] = [
-    { id: 'EXPLORER', label: 'Cadet I', age: 'Ages 3–7', code: 'AS-01' },
-    { id: 'CADET', label: 'Cadet II', age: 'Ages 8–12', code: 'AS-02' },
+    { id: 'EXPLORER', label: 'Cadet I', age: 'Ages 3–6', code: 'AS-01' },
+    { id: 'CADET', label: 'Cadet II', age: 'Ages 7–12', code: 'AS-02' },
     { id: 'COMMANDER', label: 'Commander', age: 'Ages 13+', code: 'CDR' },
   ];
 
@@ -101,7 +104,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                SOL {sol.toString().padStart(2, '0')} // {totalSols} / ECLSS TELEMETRY
+                <abbr title="One day of this mission." style={{ textDecoration: 'none' }}>SOL</abbr> {sol.toString().padStart(2, '0')} // {totalSols} / ECLSS TELEMETRY
               </div>
               <div
                 style={{
@@ -118,7 +121,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         </div>
 
         {/* Center: Precision Units Toggle */}
-        <div
+        {difficultyMode !== 'CADET' && <div
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -176,7 +179,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
             <SlidersHorizontal size={11} />
             BVAD UNITS
           </button>
-        </div>
+        </div>}
 
         {/* Right: Flight Tier Segmented Selector */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -207,6 +210,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                 <button
                   key={t.id}
                   onClick={() => {
+                    if (t.id === 'CADET') setPrecisionMode(false);
                     if (onSelectDifficulty) onSelectDifficulty(t.id);
                     soundFx.playClick(800);
                   }}
@@ -232,6 +236,23 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         </div>
       </div>
 
+      <details
+        open={isGlossaryOpen}
+        onToggle={(event) => setIsGlossaryOpen(event.currentTarget.open)}
+        style={{ marginBottom: '12px', color: 'var(--color-ink-muted)', fontSize: '12px' }}
+      >
+        <summary style={{ cursor: 'pointer', fontWeight: 700, color: 'var(--color-accent)' }}>
+          MISSION WORDS
+        </summary>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', padding: '10px 4px 2px' }}>
+          <span><strong title="One day of this mission.">Sol:</strong> one mission day.</span>
+          <span><strong title="Radiation dose is how much radiation a person receives. This game bar is only a simulated budget, not a medical dose.">Radiation dose:</strong> radiation received; the bar is a game budget.</span>
+          <span><strong title="Air and water systems that help the crew stay alive.">Life support:</strong> air and water.</span>
+          <span><strong title="A place where things seem almost weightless because they are falling together.">Microgravity:</strong> almost weightless.</span>
+          <span><strong>SIMULATED:</strong> a game value, not a live measurement.</span>
+        </div>
+      </details>
+
       {/* ── ECLSS TELEMETRY GAUGES GRID ── */}
       <div
         style={{
@@ -241,7 +262,8 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         }}
       >
         {/* 1. POWER */}
-        {(() => {
+        {visibleMeters.has('power') &&
+        (() => {
           const status = getStatus(resources.power);
           return (
             <div
@@ -267,7 +289,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                   }}
                 >
                   <Zap size={13} style={{ color: 'var(--color-accent)' }} />
-                  PWR // KRUSTY
+                  {isCadetMode ? 'POWER' : 'PWR // KRUSTY'}
                 </span>
                 <span
                   style={{
@@ -294,6 +316,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                 }}
               >
                 {precisionMode ? `${(resources.power * 0.4).toFixed(1)} kW` : `${resources.power}%`}
+                {isCadetMode && <span style={{ fontSize: '9px', color: 'var(--color-ink-faint)', marginLeft: '5px' }}>SIMULATED</span>}
               </div>
               <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
                 <div
@@ -309,8 +332,10 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         })()}
 
         {/* 2. WATER */}
-        {(() => {
-          const status = getStatus(resources.water);
+        {(visibleMeters.has('water') || visibleMeters.has('lifeSupport')) &&
+        (() => {
+          const meterValue = isCadetMode ? lifeSupportHealth : resources.water;
+          const status = getStatus(meterValue);
           return (
             <div
               style={{
@@ -334,8 +359,18 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                     fontFamily: 'var(--font-mono, monospace)',
                   }}
                 >
-                  <Droplets size={13} style={{ color: 'var(--color-accent-2)' }} />
-                  H2O // LOOP
+                  {isCadetMode ? (
+                    <>
+                      <Wind size={13} style={{ color: 'var(--color-accent-2)' }} />
+                      <Droplets size={13} style={{ color: 'var(--color-accent-2)' }} />
+                      LIFE SUPPORT
+                    </>
+                  ) : (
+                    <>
+                      <Droplets size={13} style={{ color: 'var(--color-accent-2)' }} />
+                      H2O // LOOP
+                    </>
+                  )}
                 </span>
                 <span
                   style={{
@@ -353,20 +388,27 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
               </div>
               <div
                 style={{
-                  fontSize: '16px',
+                  fontSize: isCadetMode ? '12px' : '16px',
                   fontWeight: 700,
                   color: 'var(--color-ink)',
                   fontFamily: 'var(--font-mono, monospace)',
                   fontVariantNumeric: 'tabular-nums',
                   marginBottom: '6px',
+                  ...(isCadetMode ? { display: 'flex', flexWrap: 'wrap', gap: '4px 8px' } : {}),
                 }}
               >
-                {precisionMode ? `${Math.round(resources.water * 2.5)} L` : `${resources.water}%`}
+                {isCadetMode
+                  ? <>
+                      <span>Oxygen {resources.oxygen}%</span>
+                      <span>Water {resources.water}%</span>
+                    </>
+                  : precisionMode ? `${Math.round(resources.water * 2.5)} L` : `${resources.water}%`}
+                {isCadetMode && <span style={{ fontSize: '9px', color: 'var(--color-ink-faint)', marginLeft: '5px' }}>SIMULATED</span>}
               </div>
               <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
                 <div
                   style={{
-                    width: `${Math.min(100, Math.max(0, resources.water))}%`,
+                    width: `${Math.min(100, Math.max(0, meterValue))}%`,
                     height: '100%',
                     background: status.color,
                   }}
@@ -377,7 +419,8 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         })()}
 
         {/* 3. OXYGEN */}
-        {(() => {
+        {visibleMeters.has('oxygen') &&
+        (() => {
           const status = getStatus(resources.oxygen);
           return (
             <div
@@ -445,7 +488,8 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         })()}
 
         {/* 4. FOOD */}
-        {(() => {
+        {visibleMeters.has('food') &&
+        (() => {
           const status = getStatus(resources.food * 5);
           return (
             <div
@@ -513,7 +557,8 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         })()}
 
         {/* 5. DOSIMETRY */}
-        {(() => {
+        {visibleMeters.has('radiation') &&
+        (() => {
           const status = getStatus(resources.radiation, true);
           return (
             <div
@@ -539,7 +584,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                   }}
                 >
                   <ShieldAlert size={13} style={{ color: 'var(--color-error)' }} />
-                  MISSION DOSE BUDGET
+                  {isCadetMode ? 'RADIATION DOSE BUDGET' : 'MISSION DOSE BUDGET'}
                 </span>
                 <span
                   style={{
@@ -581,6 +626,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
         })()}
 
         {/* 6. RESEARCH SCORE */}
+        {visibleMeters.has('science') &&
         <div
           style={{
             background: 'var(--color-paper-2)',
@@ -641,10 +687,11 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
               }}
             />
           </div>
-        </div>
+        </div>}
 
         {/* 7. CREW VITALS */}
-        {(() => {
+        {visibleMeters.has('crewHealth') &&
+        (() => {
           const status = getStatus(resources.crewHealth);
           return (
             <div

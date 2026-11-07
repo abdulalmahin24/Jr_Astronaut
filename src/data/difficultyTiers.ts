@@ -14,8 +14,8 @@
 // ─── TIER DEFINITIONS ────────────────────────────────────────────────────────
 
 /**
- * EXPLORER   → Ages 3–7     (preschool/early childhood)
- * CADET      → Ages 8–12    (middle school)
+ * EXPLORER   → Ages 3–6     (preschool/early childhood)
+ * CADET      → Ages 7–12    (middle school)
  * ENGINEER   → Ages 13–17   (high school)
  * SCIENTIST  → Ages 18–35   (undergraduate/early career)
  * COMMANDER  → Ages 36–80+  (professionals, educators, lifelong learners)
@@ -68,7 +68,7 @@ export const TIER_PROFILES: Record<DifficultyTier, TierProfile> = {
   EXPLORER: {
     id: 'EXPLORER',
     label: '🚀 Explorer',
-    ageRange: 'Ages 3–7',
+    ageRange: 'Ages 3–6',
     tagline: 'Tap & learn — zero reading needed!',
     color: '#38bdf8',   // Bright sky-blue — warm, inviting
     features: {
@@ -93,7 +93,7 @@ export const TIER_PROFILES: Record<DifficultyTier, TierProfile> = {
   CADET: {
     id: 'CADET',
     label: '👨‍🚀 Cadet',
-    ageRange: 'Ages 8–12',
+    ageRange: 'Ages 7–12',
     tagline: 'Keep the outpost alive for 30 sols!',
     color: '#43ffa0',   // NASA green
     features: {
@@ -106,7 +106,7 @@ export const TIER_PROFILES: Record<DifficultyTier, TierProfile> = {
       comicBubbles: true,
       eventCount: 6,
       choicesPerEvent: 2,
-      resourceCount: 5,    // Power, Water, O2, Food, Radiation
+      resourceCount: 3,    // Power, combined air/water life support, radiation dose budget
       ticksPerSol: 1,
       failureGrace: true,
       chainAutopsy: false,

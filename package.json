@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node tests/test_simulation.mjs && node tests/test_donki.mjs",
+    "test": "node tests/test_simulation.mjs && node tests/test_donki.mjs && node tests/test_resource_hud.mjs",
     "fetch:donki": "node scripts/fetch-donki-snapshot.mjs",
     "preview": "vite preview"
   },

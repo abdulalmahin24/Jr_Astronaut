@@ -49,7 +49,7 @@ const DELTAS = {
   FLARE_MAGSHIELD:    { power: -42, radiation: +10, science: +25 },
 
   // Sol 16 — Lunar night onset
-  NIGHT_KILOPOWER:    { power: +45, oxygen: +10, water: +5, crewHealth: +10, science: +15 },
+  NIGHT_KILOPOWER:    { power: +45, oxygen: +10, water: +5, crewHealth: -5, science: +15 },
   NIGHT_BATTERY:      { power: -12, food: -5, crewHealth: -8 },
   NIGHT_GEOTHERMAL:   { power: -15, crewHealth: +5, oxygen: +5, science: +10 },
 
@@ -65,7 +65,7 @@ const DELTAS = {
 
   // Sol 28 — Final push
   FINAL_SWEEP:        { science: +60, power: -25, crewHealth: -10, oxygen: -5 },
-  FINAL_STABILIZE:    { power: +18, water: +14, oxygen: +14, crewHealth: +20, science: +25 },
+  FINAL_STABILIZE:    { power: +18, water: +14, oxygen: +14, crewHealth: +20, science: +25, food: -2 },
   FINAL_DOWNLINK:     { science: +40, crewHealth: +15, power: -10 },
 };
 
@@ -425,10 +425,10 @@ export function getEventDeck(tier: DifficultyTier, donkiData?: DonkiDataResult):
         }),
         tradeOffText: tierText(tier, {
           EXPLORER: 'Warm and bright for 14 nights! The plants keep growing!',
-          CADET: 'Power stays on all night! Plants grow, crew stays warm, science continues!',
-          ENGINEER: 'Power: +45 kWh buffer | O2: +10% | Water: +5 L (Sabatier bonus) | Crew: +10% | Science: +15 RP',
-          SCIENTIST: 'ΔPow: +45 kWh net buffer · ΔO2: +10% · ΔH2O: +5 L · ΔCrewH: +10% · ΔSci: +15 RP — Optimal power choice',
-          COMMANDER: 'ΔPow: +45 kWh buffer · ΔO2: +10% · ΔH2O: +5 L · ΔCrewH: +10% · ΔSci: +15 RP — Full ECLSS compliance maintained. ONLY viable 354h solution within mission mass constraints.',
+          CADET: 'Power stays on all night, but the crew spends energy starting and checking the reactor.',
+          ENGINEER: 'Power: +45 kWh buffer | O2: +10% | Water: +5 L | Crew: -5% startup work | Science: +15 RP',
+          SCIENTIST: 'ΔPow: +45 kWh · ΔO2: +10% · ΔH2O: +5 L · ΔCrewH: -5% startup work · ΔSci: +15 RP',
+          COMMANDER: 'ΔPow: +45 kWh · ΔO2: +10% · ΔH2O: +5 L · ΔCrewH: -5% startup work · ΔSci: +15 RP — Strong night-power margin with crew effort required.',
         }),
         resourceDelta: DELTAS.NIGHT_KILOPOWER,
         consequenceNarrative: tierText(tier, {
@@ -992,16 +992,16 @@ export function getEventDeck(tier: DifficultyTier, donkiData?: DonkiDataResult):
         description: tierText(tier, {
           EXPLORER: 'Fill all the water tanks, charge the batteries, and leave the outpost sparkling clean for the next astronauts!',
           CADET: 'Charge every battery, filter all water, and make sure every gauge reads green for the next crew docking.',
-          ENGINEER: 'Charge LiPo banks, flush catalytic filters, and leave habitat in 100% nominal state with +25 RP science.',
-          SCIENTIST: 'Comprehensive ECLSS baseline verification per NASA-STD-3001. All subsystems nominal. Boosts crew health by +20%.',
-          COMMANDER: 'Certifies Outpost Shackleton as a permanent human presence node. All consumables >90%. Maximum mission success rating.',
+          ENGINEER: 'Charge LiPo banks and flush filters; use two meals for the extra maintenance shift.',
+          SCIENTIST: 'Comprehensive ECLSS baseline verification per NASA-STD-3001. Uses two meals for the extended maintenance shift.',
+          COMMANDER: 'Certifies Outpost Shackleton for the next crew, using two meals during the extended maintenance shift.',
         }),
         tradeOffText: tierText(tier, {
-          EXPLORER: 'Everyone is super healthy and happy! 100% win!',
-          CADET: 'Guarantees 100% survival, spotless crew health, +25 RP.',
-          ENGINEER: 'Power: +18 kWh | Water: +14 L | O2: +14% | Crew: +20% | Science: +25 RP',
-          SCIENTIST: 'ΔPow: +18 kWh · ΔH2O: +14 L · ΔO2: +14% · ΔCrewH: +20% · ΔSci: +25 RP',
-          COMMANDER: 'ΔAll nominal · Complete mission success profile certified',
+          EXPLORER: 'The base is ready for the next crew, but the long repair shift uses two meals.',
+          CADET: 'The base is ready for the next crew, but the long repair shift uses two meals.',
+          ENGINEER: 'Power: +18 kWh | Water: +14 L | O2: +14% | Crew: +20% | Meals: -2',
+          SCIENTIST: 'ΔPow: +18 kWh · ΔH2O: +14 L · ΔO2: +14% · ΔCrewH: +20% · ΔMeals: -2',
+          COMMANDER: 'ΔSystems nominal · Two meals used for extended maintenance before handover.',
         }),
         resourceDelta: DELTAS.FINAL_STABILIZE,
         consequenceNarrative: tierText(tier, {

@@ -8,7 +8,7 @@
 [![Web Platform](https://img.shields.io/badge/Web_Expedition-React_19_TypeScript_Three.js-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![Python Simulator](https://img.shields.io/badge/Flight_Engine-Pygame_60FPS-blueviolet?style=for-the-badge&logo=python&logoColor=white)](https://www.pygame.org)
 [![Bundler](https://img.shields.io/badge/Bundler-Vite_8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
-[![Automated Tests](https://img.shields.io/badge/Tests-8%2F8_Simulation_%2B_Headless_Pygame-brightgreen?style=for-the-badge)](./docs/TESTING.md)
+[![Automated Tests](https://img.shields.io/badge/Tests-Web_%2B_Pygame-brightgreen?style=for-the-badge)](./docs/TESTING.md)
 [![NASA Data](https://img.shields.io/badge/NASA_Data-BVAD_%7C_LOLA_%7C_Kilopower_%7C_CRaTER-E03C31?style=for-the-badge&logo=nasa&logoColor=white)](./docs/SCIENCE_AND_DATA_SOURCES.md)
 [![Judge Preview](https://img.shields.io/badge/Judges_Mode-1--Click_Instant_Demo_Bypass-FFB703?style=for-the-badge&logo=nasa&logoColor=black)](#-for-competition-judges-1-click-instant-demo-mode)
 
@@ -79,11 +79,12 @@ Cadets are allocated a strict launch mass limit on the heavy-lift booster:
 - **Authoritative Deterministic Physics:** Based on the NASA BVAD human metabolic baseline ($0.84\text{ kg O}_2$, $2.50\text{ kg H}_2\text{O}$ per crew-day).
 - **Diurnal Day/Night Cycle:** Solar arrays generate 0 kW during the 354-hour lunar night (Sols 16–27). If batteries deplete to 0%, habitat heaters freeze, triggering critical failure.
 - **Shift Directives:** *Standard Operations*, *Power Conservation* (cuts base electrical load by 40%), *Science Intensive* (+10 science yield at high power cost), *ECLSS Overhaul*, *Greenhouse Surge*, and *Rover EVA*.
+- **Cadet HUD (ages 7–12):** Shows only Power, combined Life Support (oxygen and water), and the simulated Radiation Dose Budget. A touch-friendly glossary explains mission words; advanced tiers retain the full telemetry set.
 
 ### 📰 5. Mission Events & Branching Decisions
 - Realistic, unscripted operational events: *Coronal Mass Ejections (CME)*, *Regolith Dust Abrasions*, *Water Recovery Membrane Leaks*, *Hydroponic Root Blight*, and *Cryogenic Ice Discoveries*.
 - Comic storyboard panels illustrate the situation with multi-character dialogue (Cadet Maya, Commander Dadu, Houston CapCom).
-- Each response option has explicit mathematical consequences on life-support reserves.
+- Every response explains its trade-off and spends at least one resource in both lunar and Mars Cadet campaign decks.
 
 ### 🚙 6. Playable Surface Rover Exploration (EVA Minigame)
 - Top-down 2D canvas physics simulation with keyboard (`WASD`/Arrows) and mobile on-screen controls.
@@ -92,7 +93,7 @@ Cadets are allocated a strict launch mass limit on the heavy-lift booster:
 
 ### 🔬 7. Science Learning Hub & NASA Datasets
 - 6 comprehensive domains documenting real NASA baseline datasets (BVAD, LOLA, Kilopower, CRaTER, REMS, NSSDC).
-- Explicit `[REAL NASA DATA]` vs `[GAME SIMULATION VALUE]` labeling for complete scientific transparency.
+- Dataset panels cite NASA sources and distinguish game values from observed or archived data.
 
 ### 📊 8. Mission Autopsy & Debrief
 - Evaluates mission outcome (`VICTORY`, `PARTIAL_SUCCESS`, or `CRITICAL_FAILURE`).
@@ -197,7 +198,7 @@ Follow this script to demonstrate Jr_AstroCamp to competition judges in under 5 
 | **1:30 - 2:30** | **Outpost Cargo Budgeting** | Click **"Start Mission"** -> Cargo Allocator | *"Unlike casual games with infinite resources, here we face a real 45,000 kg rocket cargo budget. If I choose high-end nuclear reactors and heavy domes, my budget overflows and locks the launch. Every system requires real trade-offs."* |
 | **2:30 - 3:30** | **Mission Control & Lunar Night** | Confirm launch -> Sol 1 Mission Control | *"Now at Sol 1. Our simulation engine models authentic NASA BVAD human metabolic consumption. During the 354-hour lunar night, solar generation drops to zero. Cadets must manage battery reserves and shift actions to survive."* |
 | **3:30 - 4:15** | **Rover EVA Minigame** | Click **"ROVER EVA"** button | *"Cadets can deploy the surface rover into permanently shadowed craters. Using radar guidance and battery management, we drive over hazards, drill cryogenic ice cores, and return science points to base."* |
-| **4:15 - 5:00** | **NASA Science Data & Debrief** | Click **"NASA Data"** -> View Debrief | *"Every single simulation value is labeled either [REAL NASA DATA] or [GAME SIMULATION VALUE], citing official documents like BVAD and LOLA. The Mission Autopsy provides an Explainable AI root-cause analysis showing why decisions succeeded or failed."* |
+| **4:15 - 5:00** | **NASA Science Data & Debrief** | Click **"NASA Data"** -> View Debrief | *"NASA source panels cite official documents like BVAD and LOLA. DONKI records are marked LIVE or ARCHIVED, while game-only scenarios are identified as simulations. The Mission Autopsy explains why decisions succeeded or failed."* |
 
 ---
 
@@ -223,7 +224,7 @@ All scientific baselines in Jr_AstroCamp cite verified, publicly accessible NASA
 ## 🧪 8. Automated Testing & Verification
 
 Jr_AstroCamp includes comprehensive automated test suites:
-- **`npm test`**: Runs the simulation suite plus DONKI mapping/source-selection and simulated radiation-budget tests.
+- **`npm test`**: Runs simulation, DONKI mapping/source-selection, simulated radiation-budget, Cadet/Advanced HUD, and Cadet choice-cost tests.
 - **`npm run build`**: Runs `tsc -b` and `vite build` to verify the production bundle and TypeScript types.
 - **`python tests/test_game.py`**: Headless automated test suite verifying 76 flight missions, procedural sound synthesis, 6 simulation scenes, and save progression (100% pass).
 

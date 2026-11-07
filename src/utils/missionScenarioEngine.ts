@@ -405,8 +405,8 @@ function getMarsOutpostDeck(tier: DifficultyTier): MissionEvent[] {
           id: 'mars-opt-fuel-conserve',
           title: isKid ? 'Safe Propellant Buffer & Conserve' : 'Maintain Nominal Propellant Buffer & Balance Life Support',
           description: 'Keep propellant synthesis at steady maintenance levels while prioritizing crew health.',
-          tradeOffText: 'Maintains balanced margins across all subsystems.',
-          resourceDelta: { power: +10, water: +10, crewHealth: +15, science: +20 },
+          tradeOffText: 'Keeps water and crew safe, but spends power to run the fuel plant.',
+          resourceDelta: { power: -5, water: +10, crewHealth: +15, science: +20 },
           consequenceNarrative: 'All stations report green indicators. Life support consumables and propellant reserves remain optimal.',
           educationalInsight: 'Dual-purpose consumables like liquid oxygen can serve as both crew breathing gas and rocket oxidizer.'
         }
@@ -446,8 +446,8 @@ function getMarsOutpostDeck(tier: DifficultyTier): MissionEvent[] {
           id: 'mars-opt-final-downlink',
           title: isKid ? 'Transmit Historic Final Log to Earth' : 'Transmit Final Expedition Archive & Handover Telemetry',
           description: 'Broadcast the comprehensive geological and life support data catalog to NASA Earth.',
-          tradeOffText: 'Maximum science output and crew prestige; certifies the mission with top honors.',
-          resourceDelta: { science: +80, crewHealth: +20, power: +15, water: +15, oxygen: +15 },
+          tradeOffText: 'Maximum science output and crew prestige; the long broadcast uses stored power.',
+          resourceDelta: { science: +80, crewHealth: +20, power: -8, water: +15, oxygen: +15 },
           consequenceNarrative: 'Houston CapCom confirms receipt of the complete expedition archive. AstroCamp Jezero is officially certified as a permanent human research outpost on Mars!',
           educationalInsight: 'The transition from robotic exploration to permanent human outposts marks the dawn of true interplanetary civilization.'
         }

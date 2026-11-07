@@ -8,7 +8,7 @@
 ## 1. Testing Summary & Quality Standards
 
 Jr_AstroCamp maintains a dual-verification strategy covering both the interactive web expedition platform (React 19 / TypeScript / Vite / Three.js) and the desktop 60 FPS flight simulator (Python 3 / Pygame-ce):
-1. **Automated Simulation and Data Tests (`npm test`):** Validates deterministic simulation math, cargo mass validation, BVAD consumption formulas, Kilopower night generation, shift actions, boundary clamping, game-over triggers, DONKI mapping/source selection, and the simulated radiation budget limit.
+1. **Automated Web Tests (`npm test`):** Validates deterministic simulation math, cargo mass validation, BVAD consumption formulas, Kilopower night generation, shift actions, boundary clamping, game-over triggers, DONKI mapping/source selection, the simulated radiation budget limit, Cadet/Explorer/Advanced HUD meter selection, and resource costs for every Cadet lunar and Mars choice.
 2. **Automated Pygame Engine Headless Tests (`python tests/test_game.py`):** Validates 76 cataloged missions, procedural audio synthesis, 6 flight disciplines, and save file persistence.
 3. **TypeScript & Static Linting Verification (`npm run build`):** Enforces strict types (`tsc -b`) and fast modern linting (`oxlint`).
 4. **End-to-End Browser & Usability Verification:** A mobile Playwright smoke test is still pending; the current automated suites do not claim browser-flow coverage.
@@ -32,6 +32,16 @@ Jr_AstroCamp maintains a dual-verification strategy covering both the interactiv
   9. `[PASS]` NASA DONKI mapper derives flare strength and approximate warning time from linked records.
   10. `[PASS]` Live/archive/unavailable source selection and the 100% simulated mission-dose-budget boundary.
   11. `[PASS]` A linked DONKI record generates an event carrying its record ID and honest source label; unavailable data stays a game scenario.
+  12. `[PASS]` Cadet HUD has exactly three meters (Power, Life Support, Radiation Dose Budget); Explorer and Advanced tier meter sets remain distinct.
+  13. `[PASS]` Every option in the lunar and Mars Cadet event decks has a written trade-off and at least one negative resource delta.
+
+### Cadet HUD manual smoke check
+
+1. Start a mission and select **CADET (ages 7–12)**.
+2. Confirm the HUD shows only Power, Life Support (oxygen + water), and Radiation Dose Budget meters.
+3. Open **MISSION WORDS** on desktop and a touch-sized viewport; confirm Sol, radiation dose, life support, microgravity, and SIMULATED have plain-language explanations.
+4. Change to **ENGINEER** or **COMMANDER** and confirm the full advanced telemetry set and precision-unit toggle remain available.
+5. In both lunar and Mars Cadet campaigns, inspect each choice and confirm its trade-off text names a cost reflected in the resource changes.
 
 ### Refreshing archived NASA DONKI data
 
@@ -66,6 +76,7 @@ npm test
 # Or directly with Node.js
 node tests/test_simulation.mjs
 node tests/test_donki.mjs
+node tests/test_resource_hud.mjs
 ```
 
 ### Production Build:
