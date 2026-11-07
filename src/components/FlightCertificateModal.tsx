@@ -26,6 +26,7 @@ interface FlightCertificateModalProps {
   cadetName: string;
   completedMissions: string[];
   currentMissionName?: string;
+  earnedBadges?: string[];
 }
 
 export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
@@ -34,6 +35,7 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
   cadetName,
   completedMissions,
   currentMissionName,
+  earnedBadges = [],
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -232,6 +234,13 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
     ctx.font = 'bold 18px "Inter", sans-serif';
     ctx.fillStyle = '#e2e8f0';
     ctx.fillText(cert.missionName, W / 2, statsY + 140);
+    ctx.font = '600 12px "Inter", sans-serif';
+    ctx.fillStyle = '#facc15';
+    ctx.fillText(
+      `Special badges: ${earnedBadges.length > 0 ? earnedBadges.join(', ') : 'None yet'}`,
+      W / 2,
+      statsY + 164,
+    );
 
     // Stamp area
     const stampY = statsY + 180;
@@ -297,7 +306,7 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
 
     setCertificateReady(true);
     setIsGenerating(false);
-  }, [customName, completedMissions, currentMissionName]);
+  }, [customName, completedMissions, currentMissionName, earnedBadges]);
 
   const downloadCertificate = useCallback(() => {
     const canvas = canvasRef.current;

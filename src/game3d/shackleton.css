@@ -32,6 +32,18 @@
   gap: 10px;
 }
 
+.shackleton-lesson-link {
+  align-self: center;
+  border: 0 !important;
+  padding: 8px 0;
+  background: transparent !important;
+  color: #7dd3fc !important;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .shackleton-header h1 {
   margin: 2px 0 0;
   font-size: clamp(18px, 2.4vw, 26px);

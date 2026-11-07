@@ -2,18 +2,23 @@ import React from 'react';
 import type { AppRoute } from '../router/useAppRouter';
 import { MissionCampaignMap } from '../components/MissionCampaignMap';
 import { MISSION_GAME_DATA } from '../game/missionGameData';
-import { Trophy, Rocket, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Trophy, Rocket } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import type { ShackletonProgress } from '../utils/shackletonProgress';
 
 export interface MissionCampaignPageProps {
   completedMissions: string[];
   onLaunchMission: (missionId: string) => void;
+  onLaunchShackleton: () => void;
+  shackletonProgress: ShackletonProgress;
   onNavigate: (route: AppRoute, params?: Record<string, string>) => void;
 }
 
 export const MissionCampaignPage: React.FC<MissionCampaignPageProps> = ({
   completedMissions,
   onLaunchMission,
+  onLaunchShackleton,
+  shackletonProgress,
   onNavigate,
 }) => {
   const completionPct = Math.round((completedMissions.length / MISSION_GAME_DATA.length) * 100);
@@ -96,6 +101,56 @@ export const MissionCampaignPage: React.FC<MissionCampaignPageProps> = ({
             </button>
           </div>
         </div>
+
+        <section
+          aria-label="Shackleton lunar ice mission"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '14px',
+            padding: '14px 18px',
+            border: 'var(--rule-hair) solid var(--color-rule)',
+            borderRadius: 'var(--radius-card)',
+            background: 'var(--color-paper-2)',
+          }}
+        >
+          <div>
+            <div style={{ color: 'var(--color-accent-2)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em' }}>
+              ARTEMIS LUNAR ICE MISSION · GAME SIMULATION
+            </div>
+            <div style={{ color: 'var(--color-ink)', fontSize: '15px', fontWeight: 800, marginTop: '3px' }}>
+              Shackleton Ice Run
+            </div>
+            <div style={{ color: 'var(--color-ink-muted)', fontSize: '12px', marginTop: '3px' }}>
+              {shackletonProgress.iceFinderBadgeEarned ? 'Ice Finder badge earned' : 'Practice rover trade-offs, then review the linked lunar-ice lesson.'}
+              {' · '}Outpost stock: {shackletonProgress.waterStockUnits} water units, {shackletonProgress.fuelStockUnits} fuel units
+              {' · GAME SIMULATION VALUES'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onLaunchShackleton();
+              soundFx.playClick(850);
+            }}
+            style={{
+              minHeight: '42px',
+              padding: '9px 14px',
+              borderRadius: 'var(--radius-card)',
+              border: '1px solid var(--color-accent)',
+              background: 'var(--color-accent)',
+              color: 'var(--color-accent-ink)',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <Rocket size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            Launch Shackleton Ice Run
+          </button>
+        </section>
 
         {/* Campaign Map Component */}
         <div style={{

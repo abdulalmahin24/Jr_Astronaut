@@ -91,11 +91,18 @@ Cadets are allocated a strict launch mass limit on the heavy-lift booster:
 - Dynamic wheel tracks, crater terrain hazards, high-relief boulders, battery consumption, and a real-time radar waypoint compass pointing toward volatile ice hotspots.
 - Drill core samples to collect Science Research Points and return safely to base before battery exhaustion.
 
-### 🔬 7. Science Learning Hub & NASA Datasets
+### 🌑 7. Shackleton Ice Run (3D Rover Vertical Slice)
+- A lazy-loaded Three.js and Rapier WASM rover run is available from the Mission Campaign and Space Games Hub.
+- Players balance slope risk, battery, rover heat, charging stops, and a compressed solar-storm clock; failure debriefs explain the cause chain and suggest another strategy.
+- Successfully returned samples add clearly labeled **game-simulation** water/fuel stock units and the separate **Shackleton Ice Finder** badge. They do not change the 76-mission campaign count.
+- Attempts, returned stock, and badge progress persist locally. Completed runs appear in the teacher activity dossier and the badge appears on the flight certificate.
+- The game links to the Artemis lunar-ice notebook lesson. The terrain and sensor readings remain simulated; they are not LOLA DEM samples or NASA measurements.
+
+### 🔬 8. Science Learning Hub & NASA Datasets
 - 6 comprehensive domains documenting real NASA baseline datasets (BVAD, LOLA, Kilopower, CRaTER, REMS, NSSDC).
 - Dataset panels cite NASA sources and distinguish game values from observed or archived data.
 
-### 📊 8. Mission Autopsy & Debrief
+### 📊 9. Mission Autopsy & Debrief
 - Evaluates mission outcome (`VICTORY`, `PARTIAL_SUCCESS`, or `CRITICAL_FAILURE`).
 - **Explainable AI Root-Cause Tree:** Details the exact cascading chain of events that led to mission success or failure.
 - Actionable NASA engineering recommendations for the cadet's next attempt.
@@ -114,10 +121,12 @@ flowchart TD
 
     subgraph WebSim ["Web Expedition Platform (React 19 + TypeScript + Vite)"]
         Landing["LandingPage.tsx ('Train. Build. Survive. Explore.')"]
+        MissionCampaign["MissionCampaignPage.tsx (76 Core Missions + Shackleton Entry)"]
         Academy["AstronautAcademyModal.tsx (8 ASCAN Modules)"]
         OutpostBuild["OutpostConstructionModal.tsx (Mass Budget)"]
         SimEngine["simulationEngine.ts (Deterministic BVAD Loop)"]
-        RoverSim["RoverExplorationModal.tsx (2D Canvas EVA)"]
+        RoverSim["RoverExplorationModal.tsx (2D Canvas EVA Fallback)"]
+        IceRun["ShackletonIceRun.tsx (Lazy Three.js + Rapier)"]
         Debrief["MissionAutopsy.tsx (Explainable AI Root Cause)"]
         ScienceHub["NasaDataModal.tsx (Verified NASA Sources)"]
     end
@@ -133,6 +142,9 @@ flowchart TD
     Catalog --> WebSim
     Landing --> Academy
     Landing --> OutpostBuild --> SimEngine
+    MissionCampaign --> IceRun
+    IceRun --> Storage
+    IceRun --> Debrief
     SimEngine --> RoverSim
     SimEngine --> Debrief
     SimEngine --> Storage
@@ -224,7 +236,8 @@ All scientific baselines in Jr_AstroCamp cite verified, publicly accessible NASA
 ## 🧪 8. Automated Testing & Verification
 
 Jr_AstroCamp includes comprehensive automated test suites:
-- **`npm test`**: Runs simulation, DONKI mapping/source-selection, simulated radiation-budget, Cadet/Advanced HUD, and Cadet choice-cost tests.
+- **`npm test`**: Runs simulation, DONKI mapping/source-selection, simulated radiation-budget, Cadet/Advanced HUD, Cadet choice-cost, rover physics, and separate Shackleton progress/reward tests.
+- **`npm run test:e2e -- --project=mobile-chromium`**: Playwright smoke test for the campaign → Shackleton run → mission autopsy → notebook flow at a mobile viewport. Install its browser once with `npx playwright install chromium`.
 - **`npm run build`**: Runs `tsc -b` and `vite build` to verify the production bundle and TypeScript types.
 - **`python tests/test_game.py`**: Headless automated test suite verifying 76 flight missions, procedural sound synthesis, 6 simulation scenes, and save progression (100% pass).
 

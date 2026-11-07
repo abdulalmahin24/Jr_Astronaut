@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node tests/test_simulation.mjs && node tests/test_donki.mjs && node tests/test_resource_hud.mjs && node tests/test_shackleton.mjs",
+    "test": "node tests/test_simulation.mjs && node tests/test_donki.mjs && node tests/test_resource_hud.mjs && node tests/test_shackleton.mjs && node tests/test_shackleton_progress.mjs",
+    "test:e2e": "playwright test",
     "fetch:donki": "node scripts/fetch-donki-snapshot.mjs",
     "preview": "vite preview"
   },
@@ -23,6 +24,7 @@
     "three": "^0.186.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",

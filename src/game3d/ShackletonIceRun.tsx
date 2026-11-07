@@ -12,23 +12,38 @@ import {
   KILOPOWER_CHARGERS,
   SHACKLETON_TERRAIN_ATTRIBUTION,
 } from './shackletonTerrain';
+import type { ShackletonReward } from '../utils/shackletonProgress';
 import './shackleton.css';
 
 type WeatherSource = 'LIVE' | 'ARCHIVED' | 'GAME SIMULATION';
 type HeldInput = 'forward' | 'reverse' | 'left' | 'right';
 
-export interface ShackletonRunReward {
-  iceSamples: number;
-  waterUnits: number;
-  fuelUnits: number;
+export interface ShackletonRunReward extends ShackletonReward {
   summary: string;
 }
 
-interface ShackletonRunResult {
+export interface ShackletonRunResult {
   success: boolean;
   causeChain: string[];
   iceSamples: number;
   reason: string;
+}
+
+export interface ShackletonRunRecordedResult {
+  success: boolean;
+  iceSamples: number;
+  reason: string;
+}
+
+interface ShackletonIceRunProps {
+  onClose: () => void;
+  onFinish?: (reward: ShackletonRunReward) => void;
+  onRunRecorded?: (result: ShackletonRunRecordedResult) => void;
+  onReviewLesson?: () => void;
+  onUse2DFallback?: () => void;
+  stormWarningHours?: number;
+  stormSource?: WeatherSource;
+  stormRecordId?: string;
 }
 
 interface Telemetry {
@@ -40,15 +55,6 @@ interface Telemetry {
   collectedSamples: number;
   nearbyPrompt: string;
   message: string;
-}
-
-interface ShackletonIceRunProps {
-  onClose: () => void;
-  onFinish?: (reward: ShackletonRunReward) => void;
-  onUse2DFallback?: () => void;
-  stormWarningHours?: number;
-  stormSource?: WeatherSource;
-  stormRecordId?: string;
 }
 
 interface SceneRuntime {
@@ -212,6 +218,8 @@ function getHeldInputs(keys: Set<string>, touch: Set<HeldInput>, gamepad: Gamepa
 export const ShackletonIceRun: React.FC<ShackletonIceRunProps> = ({
   onClose,
   onFinish,
+  onRunRecorded,
+  onReviewLesson,
   onUse2DFallback,
   stormWarningHours,
   stormSource = 'GAME SIMULATION',
@@ -281,7 +289,9 @@ export const ShackletonIceRun: React.FC<ShackletonIceRunProps> = ({
             `${collected.size} of ${ICE_WAYPOINTS.length} readings collected before the run ended.`,
             'Next attempt: use the slope display, manage the heater, and choose a charging stop.',
           ];
-      setResult({ success, causeChain, iceSamples: collected.size, reason });
+      const runResult = { success, causeChain, iceSamples: collected.size, reason };
+      setResult(runResult);
+      onRunRecorded?.({ success, iceSamples: collected.size, reason });
     };
 
     const handleAction = () => {
@@ -426,7 +436,7 @@ export const ShackletonIceRun: React.FC<ShackletonIceRunProps> = ({
             y: 0,
             z: forward.z * throttle * 70 * driveScale,
           }, true);
-          roverBody.addTorque({ x: 0, y: input.steering * 13, z: 0 }, true);
+          roverBody.setAngvel({ x: 0, y: input.steering * 0.8, z: 0 }, true);
 
           if (slopeDegrees > 19 && Math.abs(throttle) > 0.1) {
             const dx = getShackletonHeight(bodyPosition.x + 0.5, bodyPosition.z) - getShackletonHeight(bodyPosition.x - 0.5, bodyPosition.z);
@@ -562,7 +572,7 @@ export const ShackletonIceRun: React.FC<ShackletonIceRunProps> = ({
       renderer?.dispose();
       renderer?.forceContextLoss();
     };
-  }, [attempt, stormWarningHours]);
+  }, [attempt, onRunRecorded, stormWarningHours]);
 
   useEffect(() => {
     startedRef.current = isStarted;
@@ -705,6 +715,15 @@ export const ShackletonIceRun: React.FC<ShackletonIceRunProps> = ({
                   </button>
                   <button type="button" onClick={onClose}>Return to outpost</button>
                 </div>
+              )}
+              {onReviewLesson && (
+                <button
+                  type="button"
+                  className="shackleton-lesson-link"
+                  onClick={onReviewLesson}
+                >
+                  Review the Artemis lunar-ice lesson
+                </button>
               )}
             </div>
           )}

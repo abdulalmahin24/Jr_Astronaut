@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import type { GameState, ChoiceOption, SolHistoryEntry, DifficultyMode } from './types/game';
 import type { DifficultyTier } from './data/difficultyTiers';
 import { getMissionScenarioDeck } from './utils/missionScenarioEngine';
@@ -12,6 +12,18 @@ import { authService } from './utils/authService';
 import type { User } from './types/auth';
 import { spaceMusicEngine } from './utils/spaceMusicEngine';
 import { studentActivityService } from './utils/studentActivityService';
+import {
+  bankShackletonReward,
+  loadShackletonProgress,
+  recordShackletonAttempt as updateShackletonAttempt,
+  saveShackletonProgress,
+} from './utils/shackletonProgress';
+import type {
+  ShackletonAttemptResult,
+  ShackletonProgress,
+  ShackletonReward,
+  ShackletonProgressReadResult,
+} from './utils/shackletonProgress';
 import {
   computeDailySimulationTurn,
   saveGameStateToStorage,
@@ -58,6 +70,7 @@ const LiveMissionActivityModal = lazy(() => import('./components/LiveMissionActi
 const MissionGameModal = lazy(() => import('./components/MissionGameModal').then(m => ({ default: m.MissionGameModal })));
 const MultiplayerLobbyModal = lazy(() => import('./components/MultiplayerLobbyModal').then(m => ({ default: m.MultiplayerLobbyModal })));
 const AudioTeachingFlashcard = lazy(() => import('./components/AudioTeachingFlashcard').then(m => ({ default: m.AudioTeachingFlashcard })));
+const SpaceGamesHubModal = lazy(() => import('./components/SpaceGamesHubModal').then(m => ({ default: m.SpaceGamesHubModal })));
 
 export const ARTEMIS_LUNAR_BASE_MISSION: NasaMission =
   NASA_MISSIONS.find((m) => m.id === 'NASA-M049') || NASA_MISSIONS[48];
@@ -129,6 +142,8 @@ export const App: React.FC = () => {
     if (saved?.destination === 'MARS') return MARS_JEZERO_BASE_MISSION;
     return ARTEMIS_LUNAR_BASE_MISSION;
   });
+  const [shackletonProgressState, setShackletonProgressState] = useState<ShackletonProgressReadResult>(loadShackletonProgress);
+  const shackletonProgressStateRef = useRef(shackletonProgressState);
   const [lastConsequence, setLastConsequence] = useState<{
     narrative: string;
     insight: string;
@@ -218,11 +233,74 @@ export const App: React.FC = () => {
   const [selectedBriefingMission, setSelectedBriefingMission] = useState<NasaMission | null>(null);
   const [isConstructionModalOpen, setIsConstructionModalOpen] = useState(false);
   const [isFlashcardOpen, setIsFlashcardOpen] = useState(false);
+  const [isSpaceGamesHubOpen, setIsSpaceGamesHubOpen] = useState(false);
+  const [shackletonStorageError, setShackletonStorageError] = useState<string | null>(
+    () => shackletonProgressState.error
+  );
 
   // Active Mini-Game / Multiplayer Lobby State
   const [activeMissionGameId, setActiveMissionGameId] = useState<string | null>(null);
   const [isMultiplayerLobbyOpen, setIsMultiplayerLobbyOpen] = useState(false);
   const [isCoopActive, setIsCoopActive] = useState(false);
+
+  const persistShackletonProgress = useCallback((progress: ShackletonProgress) => {
+    let error: string | null = null;
+    try {
+      saveShackletonProgress(progress);
+    } catch (storageError) {
+      const detail = storageError instanceof Error ? storageError.message : 'Unknown browser storage error.';
+      error = `Shackleton progress could not be saved: ${detail}`;
+      console.error(error, storageError);
+    }
+
+    const nextState = { progress, error };
+    shackletonProgressStateRef.current = nextState;
+    setShackletonProgressState(nextState);
+    setShackletonStorageError(error);
+  }, []);
+
+  const handleRecordShackletonAttempt = useCallback((result: ShackletonAttemptResult) => {
+    const next = updateShackletonAttempt(shackletonProgressStateRef.current.progress, result);
+    persistShackletonProgress(next);
+    studentActivityService.logActivity({
+      studentUsername: currentUser?.username || cadetProfile.callsign,
+      studentFullName: currentUser?.username || cadetProfile.characterName,
+      studentAvatar: cadetProfile.avatar,
+      characterName: cadetProfile.characterName,
+      actionType: 'MISSION_ATTEMPTED',
+      missionTitle: 'Shackleton Ice Run',
+      destination: 'MOON',
+      scoreXp: 0,
+      coinsEarned: 0,
+      outcomeStatus: result.success ? 'SUCCESS' : 'LEARNING',
+      notes: `${result.success ? 'Returned to the landing pad.' : result.reason} ${result.iceSamples} simulated ice readings collected.`,
+    });
+  }, [cadetProfile, currentUser, persistShackletonProgress]);
+
+  const handleCompleteShackleton = useCallback((reward: ShackletonReward) => {
+    const next = bankShackletonReward(shackletonProgressStateRef.current.progress, reward);
+    persistShackletonProgress(next);
+    handleAddSpaceXp(150 + reward.iceSamples * 25);
+    studentActivityService.logActivity({
+      studentUsername: currentUser?.username || cadetProfile.callsign,
+      studentFullName: currentUser?.username || cadetProfile.characterName,
+      studentAvatar: cadetProfile.avatar,
+      characterName: cadetProfile.characterName,
+      actionType: 'MISSION_COMPLETED',
+      missionTitle: `Shackleton Ice Run (${reward.iceSamples} samples returned)`,
+      destination: 'MOON',
+      scoreXp: 150 + reward.iceSamples * 25,
+      coinsEarned: reward.waterUnits + reward.fuelUnits,
+      outcomeStatus: 'SUCCESS',
+      notes: 'Ice readings and water/fuel stock rewards are GAME SIMULATION VALUES. Debrief links to the Artemis lunar-ice lesson.',
+    });
+  }, [cadetProfile, currentUser, handleAddSpaceXp, persistShackletonProgress]);
+
+  const handleReviewShackletonLesson = useCallback(() => {
+    setCurrentMission(ARTEMIS_LUNAR_BASE_MISSION);
+    setIsSpaceGamesHubOpen(false);
+    navigate('learning', { tab: 'NOTEBOOK' });
+  }, [navigate]);
   const [coopRole, setCoopRole] = useState<import('./utils/multiplayerMissionService').CrewRole>('CDR');
 
   // Auto-save Game State
@@ -600,6 +678,8 @@ export const App: React.FC = () => {
           <MissionCampaignPage
             completedMissions={completedMissions}
             onLaunchMission={handleLaunchMissionGame}
+            onLaunchShackleton={() => setIsSpaceGamesHubOpen(true)}
+            shackletonProgress={shackletonProgressState.progress}
             onNavigate={navigate}
           />
         );
@@ -714,6 +794,7 @@ export const App: React.FC = () => {
           cadetName={currentUser?.username || 'Junior Astronaut'}
           completedMissions={completedMissions}
           currentMissionName={currentMission.name}
+          earnedBadges={shackletonProgressState.progress.iceFinderBadgeEarned ? ['Shackleton Ice Finder'] : []}
         />
 
         <JudgePreviewBadge isActive={isJudgeMode} onActivate={handleActivateJudgeMode} />
@@ -757,6 +838,19 @@ export const App: React.FC = () => {
           onClose={() => setIsLiveActivityModalOpen(false)}
           currentUsername={currentUser?.username}
         />
+
+        {isSpaceGamesHubOpen && (
+          <SpaceGamesHubModal
+            isOpen
+            onClose={() => setIsSpaceGamesHubOpen(false)}
+            shackletonProgress={shackletonProgressState.progress}
+            donkiData={donkiData}
+            onCompleteShackleton={handleCompleteShackleton}
+            onRecordShackletonAttempt={handleRecordShackletonAttempt}
+            onReviewShackletonLesson={handleReviewShackletonLesson}
+            onCompleteRoverMission={handleCompleteRoverEVA}
+          />
+        )}
 
         <OutpostConstructionModal
           isOpen={isConstructionModalOpen}
@@ -847,6 +941,27 @@ export const App: React.FC = () => {
           />
         )}
       </Suspense>
+
+      {shackletonStorageError && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed',
+            right: 16,
+            bottom: 16,
+            zIndex: 100000,
+            maxWidth: 'min(420px, calc(100vw - 32px))',
+            padding: '12px 16px',
+            border: '1px solid #f59e0b',
+            borderRadius: 8,
+            background: '#1c1917',
+            color: '#fde68a',
+            fontSize: 13,
+          }}
+        >
+          {shackletonStorageError}
+        </div>
+      )}
 
       {/* Global Aerospace Footer */}
       <footer className="main-footer" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', padding: '12px 20px', background: '#03050c' }}>

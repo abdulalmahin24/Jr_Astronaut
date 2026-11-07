@@ -8,10 +8,10 @@
 ## 1. Testing Summary & Quality Standards
 
 Jr_AstroCamp maintains a dual-verification strategy covering both the interactive web expedition platform (React 19 / TypeScript / Vite / Three.js) and the desktop 60 FPS flight simulator (Python 3 / Pygame-ce):
-1. **Automated Web Tests (`npm test`):** Validates deterministic simulation math, cargo mass validation, BVAD consumption formulas, Kilopower night generation, shift actions, boundary clamping, game-over triggers, DONKI mapping/source selection, the simulated radiation budget limit, Cadet/Explorer/Advanced HUD meter selection, resource costs for every Cadet lunar and Mars choice, simulated terrain risk, storm timer scaling, rover energy trade-offs, and Rapier WASM initialization.
+1. **Automated Web Tests (`npm test`):** Validates deterministic simulation math, cargo mass validation, BVAD consumption formulas, Kilopower night generation, shift actions, boundary clamping, game-over triggers, DONKI mapping/source selection, the simulated radiation budget limit, Cadet/Explorer/Advanced HUD meter selection, resource costs for every Cadet lunar and Mars choice, simulated terrain risk, storm timer scaling, rover energy trade-offs, Rapier WASM initialization, and Shackleton attempt/reward persistence.
 2. **Automated Pygame Engine Headless Tests (`python tests/test_game.py`):** Validates 76 cataloged missions, procedural audio synthesis, 6 flight disciplines, and save file persistence.
 3. **TypeScript & Static Linting Verification (`npm run build`):** Enforces strict types (`tsc -b`) and fast modern linting (`oxlint`).
-4. **End-to-End Browser & Usability Verification:** A mobile Playwright smoke test is still pending; the current automated suites do not claim browser-flow coverage.
+4. **End-to-End Browser & Usability Verification (`npm run test:e2e`):** A mobile Chromium Playwright smoke test covers campaign launch, rover start, failure debrief, and the linked notebook route.
 
 ---
 
@@ -35,6 +35,8 @@ Jr_AstroCamp maintains a dual-verification strategy covering both the interactiv
   12. `[PASS]` Cadet HUD has exactly three meters (Power, Life Support, Radiation Dose Budget); Explorer and Advanced tier meter sets remain distinct.
   13. `[PASS]` Every option in the lunar and Mars Cadet event decks has a written trade-off and at least one negative resource delta.
   14. `[PASS]` Shackleton practice terrain has rollover-risk slopes, game-only values are labelled, and Rapier WASM applies lunar gravity.
+  15. `[PASS]` Shackleton attempts, returned sample stock, and Ice Finder badge are validated and serialized separately from core campaign missions.
+  16. `[PASS]` Mobile Playwright campaign → rover → autopsy → notebook smoke test.
 
 ### Cadet HUD manual smoke check
 
@@ -43,6 +45,27 @@ Jr_AstroCamp maintains a dual-verification strategy covering both the interactiv
 3. Open **MISSION WORDS** on desktop and a touch-sized viewport; confirm Sol, radiation dose, life support, microgravity, and SIMULATED have plain-language explanations.
 4. Change to **ENGINEER** or **COMMANDER** and confirm the full advanced telemetry set and precision-unit toggle remain available.
 5. In both lunar and Mars Cadet campaigns, inspect each choice and confirm its trade-off text names a cost reflected in the resource changes.
+
+### Shackleton campaign integration manual smoke check
+
+1. Open `#/campaign` and confirm the Shackleton Ice Run card shows the separate game-simulation water/fuel stocks and badge status.
+2. Launch the game, confirm the lazy-loaded rover start screen opens, and inspect its source labels. NASA DONKI is marked LIVE or ARCHIVED when available; the route and sensor values remain labeled as game simulations.
+3. Complete a run and bank the samples. Confirm stocks and the Ice Finder badge update without changing the 76-mission total.
+4. Open the flight certificate and confirm it lists the badge separately from core mission counts.
+5. In the teacher activity dossier, confirm successful completion is logged; failed attempts are recorded as learning attempts with zero XP/coins.
+6. Use the debrief lesson link and confirm the Artemis lunar-ice notebook opens. When WebGL is unavailable, verify the existing 2D rover fallback can open.
+
+### Mobile Playwright smoke test
+
+The automated browser test uses the Pixel 7 viewport and an offline NASA API response:
+
+```bash
+npx playwright install chromium
+npm run test:e2e -- --project=mobile-chromium
+```
+
+It opens the campaign, launches the hub entry and rover, finishes a failure-as-learning run, and follows the debrief link to the Student Notebook.
+- **Latest result:** Pass (1/1) in Chromium at the Pixel 7 viewport.
 
 ### Refreshing archived NASA DONKI data
 
@@ -64,7 +87,8 @@ Run `npm run fetch:donki` to fetch the latest 30 days of CME, FLR, SEP, and GST 
 
 ### Test Suite 3: Production Web Bundle Build (`npm run build`)
 - **Command:** `npm run build` (`tsc -b && vite build`)
-- **Latest result:** Pass (exit code `0`), with zero TypeScript errors; Vite transformed 1,996 modules.
+- **Latest result:** Pass (exit code `0`), with zero TypeScript errors; Vite transformed 2,001 modules.
+- **Bundle note:** The Shackleton 3D route is lazy-loaded; its chunk is 4,352 KB (1,677 KB gzip) and triggers Vite's chunk-size advisory. It is not downloaded with the initial route, but should be further optimized for lower-bandwidth mobile devices.
 
 ---
 
@@ -79,6 +103,11 @@ node tests/test_simulation.mjs
 node tests/test_donki.mjs
 node tests/test_resource_hud.mjs
 node tests/test_shackleton.mjs
+node tests/test_shackleton_progress.mjs
+
+# Install Chromium once, then run the mobile browser smoke test
+npx playwright install chromium
+npm run test:e2e -- --project=mobile-chromium
 ```
 
 ### Production Build:

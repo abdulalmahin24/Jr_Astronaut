@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   GraduationCap,
@@ -44,7 +44,6 @@ export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
   currentUser,
   isFullPage = false,
 }) => {
-  if (!isOpen && !isFullPage) return null;
   const [activeTab, setActiveTab] = useState<'GRADEBOOK' | 'ANALYTICS' | 'DIRECTIVES' | 'REPORT_CARD' | 'REALTIME_LOGS'>('GRADEBOOK');
   const [students, setStudents] = useState<StudentScoreRecord[]>(() => studentScoreService.getStudents());
   const [realtimeLogs, setRealtimeLogs] = useState<StudentActivityLog[]>(() => studentActivityService.getLogs());
@@ -62,6 +61,11 @@ export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
   // Edit Note State
   const [editingNoteStudentId, setEditingNoteStudentId] = useState<string | null>(null);
   const [tempNoteText, setTempNoteText] = useState('');
+
+  useEffect(() => {
+    if (!isOpen && !isFullPage) return;
+    return studentActivityService.subscribe(setRealtimeLogs);
+  }, [isOpen, isFullPage]);
 
   if (!isOpen) return null;
 
@@ -907,9 +911,26 @@ export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
                             Astronaut: {log.characterName}
                           </span>
                         </div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#e2e8f0', marginTop: '2px' }}>
-                          {log.missionTitle}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: '2px' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#e2e8f0' }}>
+                            {log.missionTitle}
+                          </span>
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 800,
+                            color: log.outcomeStatus === 'LEARNING' ? '#fbbf24' : '#86efac',
+                            border: `1px solid ${log.outcomeStatus === 'LEARNING' ? '#92400e' : '#166534'}`,
+                            borderRadius: 4,
+                            padding: '1px 5px',
+                          }}>
+                            {log.outcomeStatus === 'LEARNING' ? 'LEARNING ATTEMPT' : log.outcomeStatus}
+                          </span>
                         </div>
+                        {log.notes && (
+                          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 2 }}>
+                            {log.notes}
+                          </div>
+                        )}
                       </div>
                     </div>
 

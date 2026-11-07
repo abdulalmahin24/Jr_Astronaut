@@ -102,6 +102,15 @@ export const LiveMissionActivityModal: React.FC<LiveMissionActivityModalProps> =
     }
   };
 
+  const categoryTabs: { id: ActionCategory | 'ALL'; label: string }[] = [
+    { id: 'ALL', label: 'All Events' },
+    { id: 'MISSION_COMPLETED', label: '🚀 Missions' },
+    { id: 'MISSION_ATTEMPTED', label: '🧭 Practice attempts' },
+    { id: 'SOL_SURVIVED', label: '🌕 Sol Survival' },
+    { id: 'EXAM_PASSED', label: '📝 Exams' },
+    { id: 'CHARACTER_UNLOCKED', label: '🧑‍🚀 Astronauts' },
+  ];
+
   return (
     <div className="flight-modal-backdrop" onClick={onClose} style={{ zIndex: 12000 }}>
       <div
@@ -273,7 +282,7 @@ export const LiveMissionActivityModal: React.FC<LiveMissionActivityModalProps> =
                 cursor: 'pointer',
               }}
             >
-              <option value="ALL">All Students ({logs.length} completions)</option>
+              <option value="ALL">All Students ({logs.length} events)</option>
               {uniqueStudents.map((usr) => (
                 <option key={usr} value={usr}>
                   Cadet: @{usr}
@@ -284,19 +293,13 @@ export const LiveMissionActivityModal: React.FC<LiveMissionActivityModalProps> =
 
           {/* Category Tabs */}
           <div style={{ display: 'flex', gap: '6px' }}>
-            {[
-              { id: 'ALL', label: 'All Events' },
-              { id: 'MISSION_COMPLETED', label: '🚀 Missions' },
-              { id: 'SOL_SURVIVED', label: '🌕 Sol Survival' },
-              { id: 'EXAM_PASSED', label: '📝 Exams' },
-              { id: 'CHARACTER_UNLOCKED', label: '🧑‍🚀 Astronauts' },
-            ].map((tab) => {
+            {categoryTabs.map((tab) => {
               const active = selectedCategory === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => {
-                    setSelectedCategory(tab.id as any);
+                    setSelectedCategory(tab.id);
                     soundFx.playClick(800);
                   }}
                   style={{
@@ -425,8 +428,20 @@ export const LiveMissionActivityModal: React.FC<LiveMissionActivityModalProps> =
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#e2e8f0', marginTop: '4px' }}>
-                      {log.missionTitle}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: '4px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#e2e8f0' }}>
+                        {log.missionTitle}
+                      </span>
+                      <span style={{
+                        fontSize: '9px',
+                        fontWeight: 800,
+                        color: log.outcomeStatus === 'LEARNING' ? '#fbbf24' : '#86efac',
+                        border: `1px solid ${log.outcomeStatus === 'LEARNING' ? '#92400e' : '#166534'}`,
+                        borderRadius: 4,
+                        padding: '1px 5px',
+                      }}>
+                        {log.outcomeStatus === 'LEARNING' ? 'LEARNING ATTEMPT' : log.outcomeStatus}
+                      </span>
                     </div>
 
                     {log.notes && (
