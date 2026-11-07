@@ -15,7 +15,6 @@ import {
   Sparkles,
   Compass,
   Activity,
-  Send,
   ExternalLink,
 } from 'lucide-react';
 import {
@@ -24,7 +23,9 @@ import {
   type CrewRole,
   type MultiplayerRoomState,
 } from '../utils/multiplayerMissionService';
+import { QUICK_CHAT_PHRASES } from '../utils/crewCoopProtocol';
 import { soundFx } from '../utils/audioEffects';
+import { NetworkCrewPanel } from './NetworkCrewPanel';
 
 interface MultiplayerLobbyModalProps {
   isOpen: boolean;
@@ -117,7 +118,9 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
   const [room, setRoom] = useState<MultiplayerRoomState | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [inputRoomCode, setInputRoomCode] = useState('');
-  const [chatInput, setChatInput] = useState('');
+  const [networkMode, setNetworkMode] = useState(() =>
+    typeof window !== 'undefined' && Boolean(new URLSearchParams(window.location.search).get('crewRoom'))
+  );
   const [selectedRole, setSelectedRole] = useState<CrewRole>('CDR');
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(5);
@@ -157,7 +160,7 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
 
   // Initial auto-join or create room if open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !networkMode) {
       const existing = multiplayerMissionService.getCurrentRoom();
       if (!existing) {
         if (initialRoomCode) {
@@ -167,7 +170,7 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
         }
       }
     }
-  }, [isOpen, initialRoomCode]);
+  }, [isOpen, initialRoomCode, networkMode]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -217,14 +220,6 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
     multiplayerMissionService.selectRole(role);
     setSelectedRole(role);
     soundFx.playClick(950);
-  };
-
-  const handleSendChat = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    multiplayerMissionService.sendChat(chatInput);
-    setChatInput('');
-    soundFx.playRadioChirp();
   };
 
   const handleQuickRadioCallout = (callout: string) => {
@@ -311,6 +306,26 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {/* Share Link */}
             <button
+              type="button"
+              onClick={() => setNetworkMode((active) => !active)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 700,
+                borderRadius: 0,
+                background: networkMode ? 'var(--color-accent-green)' : 'var(--color-paper-3)',
+                border: 'var(--rule-hair)',
+                color: networkMode ? 'var(--color-paper)' : 'var(--color-accent-green)',
+                cursor: 'pointer',
+              }}
+            >
+              {networkMode ? 'SAME-DEVICE DEMO' : 'PLAY WITH FRIENDS'}
+            </button>
+            <button
               onClick={handleCopyLink}
               style={{
                 display: 'flex',
@@ -326,10 +341,10 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
                 color: 'var(--color-ink)',
                 cursor: 'pointer',
               }}
-              title="Copy link to invite a copilot"
+              title="Copy a link to reopen this same-device demo room"
             >
               {copiedLink ? <Check size={14} style={{ color: 'var(--color-accent-green)' }} /> : <Copy size={14} />}
-              <span>{copiedLink ? 'COPIED LINK' : 'SHARE LINK'}</span>
+              <span>{copiedLink ? 'COPIED LINK' : 'DEMO LINK'}</span>
             </button>
 
             {/* Test 2nd Window */}
@@ -418,7 +433,13 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
         )}
 
         {/* Main Body */}
-        <div
+        {networkMode ? (
+          <div style={{ padding: 20, overflowY: 'auto' }}>
+            <NetworkCrewPanel
+              initialRoomCode={new URLSearchParams(window.location.search).get('crewRoom') ?? undefined}
+            />
+          </div>
+        ) : <div
           style={{
             padding: '20px',
             overflowY: 'auto',
@@ -546,7 +567,7 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
                   }}
                 >
                   <div>
-                    <strong>🎮 2-PLAYER LOCAL CO-OP READY:</strong> Left Pane = <strong>Commander (WASD + Space)</strong> · Right Pane = <strong>Systems Engineer (Arrow Keys + Keypad / Enter)</strong>
+                    <strong>🎮 SAME-DEVICE DEMO:</strong> Open another tab in this browser to test local synchronization. This mode does not connect across devices.
                   </div>
                   <span style={{ fontSize: '9.5px', color: 'var(--color-accent-green)', fontWeight: 700 }}>ZERO NETWORK LATENCY</span>
                 </div>
@@ -569,7 +590,7 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
                   gap: '6px',
                 }}
               >
-                <span>🌐 SYNC: <strong>P2P BROADCAST MESH</strong></span>
+                <span>🌐 SYNC: <strong>LOCAL BROWSER DEMO</strong></span>
                 <span>EPOCH: <strong>#{room?.epoch || 1}</strong></span>
                 <span>DESYNC: <strong style={{ color: 'var(--color-accent-green)' }}>0.00% [LOCKED]</strong></span>
                 <span>TICK: <strong>60 HZ</strong></span>
@@ -869,11 +890,11 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
 
               {/* Quick Callout Chips */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-                {['Go for Throttle Up', 'Guidance Nominal', 'Checking RCS Pressure', 'Target In Sight', 'Ready for Staging'].map((txt) => (
+                {Object.values(QUICK_CHAT_PHRASES).map((phrase) => (
                   <button
-                    key={txt}
+                    key={phrase.en}
                     type="button"
-                    onClick={() => handleQuickRadioCallout(txt)}
+                    onClick={() => handleQuickRadioCallout(phrase.en)}
                     style={{
                       fontSize: '9.5px',
                       fontFamily: 'var(--font-mono)',
@@ -885,51 +906,15 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
                       cursor: 'pointer',
                     }}
                   >
-                    {txt}
+                    {phrase.en} · {phrase.bn}
                   </button>
                 ))}
-              </div>
+                </div>
 
-              {/* Chat Input */}
-              <form onSubmit={handleSendChat} style={{ display: 'flex', gap: '6px' }}>
-                <input
-                  type="text"
-                  placeholder="TRANSMIT RADIO CALLOUT..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  style={{
-                    flex: 1,
-                    background: 'var(--color-paper-2)',
-                    border: 'var(--rule-hair)',
-                    borderRadius: 0,
-                    padding: '6px 10px',
-                    fontSize: '11px',
-                    fontFamily: 'var(--font-mono)',
-                    color: 'var(--color-ink)',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    padding: '6px 12px',
-                    background: 'var(--color-accent-green)',
-                    border: 'none',
-                    borderRadius: 0,
-                    color: 'var(--color-paper)',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Send size={13} />
-                </button>
-              </form>
+                <p style={{ fontSize: '10px', color: 'var(--color-muted)' }}>Preset messages only. This demo stores no chat history.</p>
             </div>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

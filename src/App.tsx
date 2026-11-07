@@ -362,11 +362,11 @@ export const App: React.FC = () => {
     setIsPlanetaryMapOpen(false);
   }, [route]);
 
-  // Auto-open Multiplayer Lobby if URL has ?room= or ?coop=true
+  // Auto-open the crew lobby for same-device demo or private network invites.
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('room') || params.get('coop') === 'true' || window.location.hash.includes('coop')) {
+      if (params.get('room') || params.get('crewRoom') || params.get('coop') === 'true' || window.location.hash.includes('coop')) {
         setIsMultiplayerLobbyOpen(true);
       }
     }

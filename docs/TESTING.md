@@ -8,10 +8,10 @@
 ## 1. Testing Summary & Quality Standards
 
 Jr_AstroCamp maintains a dual-verification strategy covering both the interactive web expedition platform (React 19 / TypeScript / Vite / Three.js) and the desktop 60 FPS flight simulator (Python 3 / Pygame-ce):
-1. **Automated Web Tests (`npm test`):** Validates deterministic simulation math, cargo mass validation, BVAD consumption formulas, Kilopower night generation, shift actions, boundary clamping, game-over triggers, DONKI mapping/source selection, the simulated radiation budget limit, Cadet/Explorer/Advanced HUD meter selection, resource costs for every Cadet lunar and Mars choice, simulated terrain risk, storm timer scaling, rover energy trade-offs, Rapier WASM initialization, and Shackleton attempt/reward persistence.
+1. **Automated Web Tests (`npm test`):** Validates deterministic simulation math, cargo mass validation, BVAD consumption formulas, Kilopower night generation, shift actions, boundary clamping, game-over triggers, DONKI mapping/source selection, the simulated radiation budget limit, Cadet/Explorer/Advanced HUD meter selection, resource costs for every Cadet lunar and Mars choice, simulated terrain risk, storm timer scaling, rover energy trade-offs, Rapier WASM initialization, Shackleton attempt/reward persistence, co-op simulation replay, isolated role dashboards, and a local Colyseus room with multiple clients.
 2. **Automated Pygame Engine Headless Tests (`python tests/test_game.py`):** Validates 76 cataloged missions, procedural audio synthesis, 6 flight disciplines, and save file persistence.
 3. **TypeScript & Static Linting Verification (`npm run build`):** Enforces strict types (`tsc -b`) and fast modern linting (`oxlint`).
-4. **End-to-End Browser & Usability Verification (`npm run test:e2e`):** A mobile Chromium Playwright smoke test covers campaign launch, rover start, failure debrief, and the linked notebook route.
+4. **End-to-End Browser & Usability Verification (`npm run test:e2e`):** Mobile Chromium Playwright smoke tests cover campaign launch, rover start, failure debrief, the linked notebook route, and starting a network crew mission.
 
 ---
 
@@ -36,7 +36,9 @@ Jr_AstroCamp maintains a dual-verification strategy covering both the interactiv
   13. `[PASS]` Every option in the lunar and Mars Cadet event decks has a written trade-off and at least one negative resource delta.
   14. `[PASS]` Shackleton practice terrain has rollover-risk slopes, game-only values are labelled, and Rapier WASM applies lunar gravity.
   15. `[PASS]` Shackleton attempts, returned sample stock, and Ice Finder badge are validated and serialized separately from core campaign missions.
-  16. `[PASS]` Mobile Playwright campaign → rover → autopsy → notebook smoke test.
+  16. `[PASS]` Seeded co-op mission replay and role-specific dashboards reveal only each station's telemetry.
+  17. `[PASS]` Colyseus room accepts four clients, advances a server-authoritative turn, relays preset chat and voice signals, replaces a departed player with a bot, and reconnects a dropped client.
+  18. `[PASS]` Mobile Playwright campaign → rover → autopsy → notebook and private network mission-start smoke tests.
 
 ### Cadet HUD manual smoke check
 
@@ -65,7 +67,8 @@ npm run test:e2e -- --project=mobile-chromium
 ```
 
 It opens the campaign, launches the hub entry and rover, finishes a failure-as-learning run, and follows the debrief link to the Student Notebook.
-- **Latest result:** Pass (1/1) in Chromium at the Pixel 7 viewport.
+It also opens the multiplayer lobby, creates a private network room, starts the shared mission, and advances a team-voted turn.
+- **Latest result:** Pass (2/2) in Chromium at the Pixel 7 viewport.
 
 ### Refreshing archived NASA DONKI data
 
@@ -87,8 +90,25 @@ Run `npm run fetch:donki` to fetch the latest 30 days of CME, FLR, SEP, and GST 
 
 ### Test Suite 3: Production Web Bundle Build (`npm run build`)
 - **Command:** `npm run build` (`tsc -b && vite build`)
-- **Latest result:** Pass (exit code `0`), with zero TypeScript errors; Vite transformed 2,001 modules.
+- **Latest result:** Pass (exit code `0`), with zero TypeScript errors; Vite transformed 2,051 modules.
 - **Bundle note:** The Shackleton 3D route is lazy-loaded; its chunk is 4,352 KB (1,677 KB gzip) and triggers Vite's chunk-size advisory. It is not downloaded with the initial route, but should be further optimized for lower-bandwidth mobile devices.
+
+### Network Crew Co-op (local integration test)
+
+`npm test` starts a temporary local Colyseus server and connects four independent SDK clients. It verifies private room creation/joining, bot-filled seats, server-authoritative deterministic turns, role-specific telemetry, team voting, rejection of free-text chat, English/Bangla preset messages, voice-signal relay, bot replacement after a player leaves, and reconnection after a dropped socket.
+
+This is not the physical-device acceptance test. Four real devices, including two on mobile data, still need to complete a mission against a deployed TLS server with a configured TURN service. Do not describe network co-op as verified real-time multiplayer until that succeeds.
+
+Server and Vite commands:
+
+```bash
+npm run coop:server:check
+COOP_PORT=2567 COOP_HOST=0.0.0.0 npm run coop:server
+# Configure VITE_MULTIPLAYER_SERVER_URL in the Vite environment, then:
+npm run dev
+```
+
+`COOP_TURN_URL` and `COOP_TURN_SHARED_SECRET` are server-only. The server derives short-lived TURN credentials; do not put the shared secret in a `VITE_` variable. Chat is preset-only, and messages/voice are not written to persistent storage.
 
 ---
 
@@ -104,6 +124,8 @@ node tests/test_donki.mjs
 node tests/test_resource_hud.mjs
 node tests/test_shackleton.mjs
 node tests/test_shackleton_progress.mjs
+npx tsx tests/test_multiplayer_coop.ts
+npx tsx tests/test_multiplayer_network.ts
 
 # Install Chromium once, then run the mobile browser smoke test
 npx playwright install chromium

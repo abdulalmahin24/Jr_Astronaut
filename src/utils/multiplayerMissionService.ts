@@ -1,8 +1,11 @@
 // ============================================================
 // NASA Jr_AstroCamp — Real-Time Multiplayer Co-Op Mission Service
 // Multi-station shared spacecraft control across tabs/browsers
-// Uses BroadcastChannel + LocalStorage Event Bus for zero-latency co-op
+// Uses a pluggable transport with a same-device BroadcastChannel demo.
 // ============================================================
+
+import { nicknameForId, QUICK_CHAT_PHRASES } from './crewCoopProtocol';
+import { BroadcastChannelTransport } from './multiplayerTransport';
 
 export type CrewRole = 'CDR' | 'FDO' | 'EECOM' | 'CAPCOM';
 
@@ -177,11 +180,11 @@ const DEFAULT_CONTROLS: SharedMissionControls = {
 
 const ROOM_STORAGE_PREFIX = 'astro_camp_room_';
 const ACTIVE_ROOM_KEY = 'astro_camp_active_room_id';
-const CHANNEL_NAME = 'astro_camp_coop_broadcast';
 
 class MultiplayerMissionService {
-  private channel: BroadcastChannel | null = null;
+  private readonly transport = new BroadcastChannelTransport();
   private currentRoomId: string | null = null;
+  private currentRoom: MultiplayerRoomState | null = null;
   private localPlayerId: string = '';
   private localPlayerName: string = 'Cadet-01';
   private localPlayerAvatar: string = '🧑‍🚀';
@@ -191,6 +194,7 @@ class MultiplayerMissionService {
 
   constructor() {
     this.localPlayerId = this.getOrCreateLocalPlayerId();
+    this.localPlayerName = nicknameForId(this.localPlayerId);
     this.initBroadcastChannel();
     this.initStorageListener();
     this.checkAndResumeAiLoop();
@@ -214,8 +218,10 @@ class MultiplayerMissionService {
   }
 
   public setLocalPlayerProfile(name: string, avatar: string) {
-    this.localPlayerName = name;
-    this.localPlayerAvatar = avatar;
+    this.localPlayerName = nicknameForId(this.localPlayerId);
+    this.localPlayerAvatar = '🧑‍🚀';
+    void name;
+    void avatar;
   }
 
   public getLocalPlayerId(): string {
@@ -223,20 +229,15 @@ class MultiplayerMissionService {
   }
 
   private initBroadcastChannel() {
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    try {
-      this.channel = new BroadcastChannel(CHANNEL_NAME);
-      this.channel.onmessage = (event) => {
-        const { type, payload } = event.data || {};
-        if (type === 'ROOM_UPDATE') {
-          if (this.currentRoomId && payload && payload.roomId === this.currentRoomId) {
-            this.notifyListeners(payload);
-          }
+    this.transport.subscribe(({ type, payload }) => {
+      if (type === 'ROOM_UPDATE' && this.currentRoomId && payload && typeof payload === 'object') {
+        const state = payload as MultiplayerRoomState;
+        if (state.roomId === this.currentRoomId) {
+          this.currentRoom = state;
+          this.notifyListeners(state);
         }
-      };
-    } catch (e) {
-      console.warn('BroadcastChannel not supported in this environment', e);
-    }
+      }
+    });
   }
 
   private initStorageListener() {
@@ -245,7 +246,9 @@ class MultiplayerMissionService {
       if (this.currentRoomId && e.key === ROOM_STORAGE_PREFIX + this.currentRoomId) {
         if (e.newValue) {
           try {
-            const state = JSON.parse(e.newValue);
+            const state = JSON.parse(e.newValue) as MultiplayerRoomState;
+            state.chat = [];
+            this.currentRoom = state;
             this.notifyListeners(state);
           } catch {}
         }
@@ -274,12 +277,12 @@ class MultiplayerMissionService {
   private saveRoom(state: MultiplayerRoomState) {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(ROOM_STORAGE_PREFIX + state.roomId, JSON.stringify(state));
       localStorage.setItem(ACTIVE_ROOM_KEY, state.roomId);
       this.currentRoomId = state.roomId;
-      if (this.channel) {
-        this.channel.postMessage({ type: 'ROOM_UPDATE', payload: state });
-      }
+      this.currentRoom = state;
+      const persistedState = { ...state, chat: [] };
+      localStorage.setItem(ROOM_STORAGE_PREFIX + state.roomId, JSON.stringify(persistedState));
+      this.transport.send({ type: 'ROOM_UPDATE', payload: state });
       this.notifyListeners(state);
     } catch (e) {
       console.error('Failed to save multiplayer room state:', e);
@@ -290,10 +293,15 @@ class MultiplayerMissionService {
     if (typeof window === 'undefined') return null;
     let roomId = this.currentRoomId || localStorage.getItem(ACTIVE_ROOM_KEY);
     if (!roomId) return null;
+    if (this.currentRoom?.roomId === roomId) return this.currentRoom;
     const raw = localStorage.getItem(ROOM_STORAGE_PREFIX + roomId);
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as MultiplayerRoomState;
+      const state = JSON.parse(raw) as MultiplayerRoomState;
+      state.chat = [];
+      localStorage.setItem(ROOM_STORAGE_PREFIX + roomId, JSON.stringify(state));
+      this.currentRoom = state;
+      return state;
     } catch {
       return null;
     }
@@ -508,7 +516,9 @@ class MultiplayerMissionService {
 
   public sendChat(text: string) {
     const room = this.getCurrentRoom();
-    if (!room || !text.trim()) return;
+    if (!room) return;
+    const phrase = Object.values(QUICK_CHAT_PHRASES).find((item) => item.en === text.trim() || item.bn === text.trim());
+    if (!phrase) return;
     const player = room.players.find((p) => p.id === this.localPlayerId) || {
       name: this.localPlayerName,
       avatar: this.localPlayerAvatar,
@@ -520,7 +530,7 @@ class MultiplayerMissionService {
       sender: player.name,
       avatar: player.avatar,
       role: player.role,
-      text: text.trim(),
+      text: phrase.en,
       timestamp: Date.now(),
     };
 
@@ -623,6 +633,7 @@ class MultiplayerMissionService {
       this.saveRoom(room);
     }
     this.currentRoomId = null;
+    this.currentRoom = null;
     this.notifyListeners(null);
   }
 
