@@ -57,6 +57,8 @@ import { ALL_76_NASA_MISSIONS, type PlayableNasaMission } from '../data/allNasaM
 import { getCadetProgression } from '../utils/simulationEngine';
 import { getRankProgress } from '../data/astronautRanks';
 import type { User } from '../types/auth';
+import type { DifficultyMode } from '../types/game';
+import { DestinationSelectionModal } from './DestinationSelectionModal';
 
 type LearningHubTab = 'NOTEBOOK' | 'AUDIO' | 'VIDEO' | 'COMIC' | 'BRIEFINGS' | 'CATALOG';
 
@@ -64,6 +66,7 @@ export interface LandingPageProps {
   onEnter: () => void;
   onStartMission?: () => void;
   onContinueMission?: () => void;
+  onBuildOutpost?: (dest: 'MOON' | 'MARS', difficulty?: DifficultyMode) => void;
   hasSavedGame?: boolean;
   savedGameSol?: number;
   savedGameDest?: string;
@@ -95,6 +98,7 @@ export interface LandingPageProps {
   onOpenExpedition?: () => void;
   onOpenCampaign?: () => void;
   onOpenSpaceGamesHub?: () => void;
+  mode?: 'background' | 'explore';
 }
 
 // ── CELESTIAL DATA TYPES ──────────────────────────────────────────────────
@@ -264,6 +268,38 @@ export const PLANETS: PlanetData[] = [
       { name: 'Oxygen (O₂)', pct: 20.95, color: '#06b6d4' },
       { name: 'Argon (Ar)', pct: 0.93, color: '#8b5cf6' },
       { name: 'Carbon Dioxide & Vapor', pct: 0.04, color: '#10b981' },
+    ],
+  },
+  {
+    id: 'moon',
+    name: 'Moon',
+    color: 0xc4cbd4,
+    emissive: 0x475569,
+    radius: 1.2,
+    orbitRadius: 42,
+    distanceAU: '1.000 AU (384,400 km from Earth)',
+    actualAU: 1.000,
+    diameterKm: '3,474 km',
+    gravityMs2: '1.62 m/s² (0.166g)',
+    surfaceTemp: '-130°C to 120°C (Polar traps <40 K)',
+    atmosphere: 'Hard vacuum (<10⁻¹² Pa)',
+    moons: 0,
+    funFact: 'Target of the NASA Artemis Program! Shackleton Crater at the lunar South Pole features peaks of eternal light and cold traps containing water ice.',
+    zone: 'Earth-Moon System (Artemis Base Camp Target)',
+    orbitalPeriod: '27.3 Earth Days',
+    dayLength: '29.5 Earth Days (708 Hours diurnal cycle)',
+    discoveredBy: 'Humanity — Known since antiquity',
+    emoji: '🌙',
+    massKg: '7.34 × 10²² kg (0.0123 Earths)',
+    axialTilt: '1.54°',
+    orbitalVelocityKms: '1.02 km/s',
+    interiorLayers: [
+      { name: 'Regolith & Anorthosite Crust', depth: '50 km', desc: 'Thick highland anorthosite crust pulverized by billions of years of meteorite impacts.' },
+      { name: 'Silicate Mantle', depth: '1,000 km', desc: 'Dense olivine-pyroxene mantle.' },
+      { name: 'Metallic Iron Core', depth: '330 km', desc: 'Small partially molten iron-nickel core.' },
+    ],
+    atmosphereGases: [
+      { name: 'Helium / Neon / Argon (Exosphere)', pct: 100, color: '#94a3b8' },
     ],
   },
   {
@@ -627,37 +663,57 @@ function createSaturnRingGeometry(innerRadius: number, outerRadius: number): THR
   return geo;
 }
 
-function createTextSprite(text: string, color: string, subtext?: string, isCompact: boolean = false): THREE.Sprite {
+function createTextSprite(
+  text: string,
+  _color?: string,
+  isCompact: boolean = false
+): THREE.Sprite {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
-  canvas.width = 256;
-  canvas.height = 64;
-  ctx.clearRect(0, 0, 256, 64);
+  const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2.5);
 
-  // Hallmark Rim Workbench: 0px card radius, hairline border, deep space dark background
-  ctx.fillStyle = 'rgba(4, 7, 14, 0.88)';
-  ctx.fillRect(8, 6, 240, 52);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(8, 6, 240, 52);
+  const baseW = 512;
+  const baseH = 128;
+  canvas.width = Math.round(baseW * dpr);
+  canvas.height = Math.round(baseH * dpr);
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, baseW, baseH);
 
-  // Modern NASA typography
-  ctx.font = 'bold 18px "Space Grotesk", -apple-system, sans-serif';
+  // Bold 30-32px white text with thick dark outline (crisp readable NASA typography)
+  ctx.font = 'bold 32px "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = color;
-  ctx.fillText(text, 128, subtext ? 28 : 37);
+  ctx.textBaseline = 'middle';
 
-  if (subtext) {
-    ctx.font = '600 12px "JetBrains Mono", monospace';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(subtext, 128, 48);
-  }
+  // Thick dark outline for readability against space, stars, and planetary discs
+  ctx.strokeStyle = '#020617';
+  ctx.lineWidth = 8;
+  ctx.lineJoin = 'round';
+  ctx.miterLimit = 2;
+  ctx.strokeText(text, baseW / 2, baseH / 2);
+
+  // Crisp pure white fill
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, baseW / 2, baseH / 2);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
-  const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true });
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+
+  const spriteMat = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
   const sprite = new THREE.Sprite(spriteMat);
-  sprite.scale.set(isCompact ? 4.0 : 6.5, isCompact ? 1.0 : 1.62, 1);
+
+  // Base world scale ensuring text appears at least 14px-20px tall on screen
+  const baseScaleY = isCompact ? 4.2 : 5.4;
+  const baseScaleX = baseScaleY * (baseW / baseH);
+  sprite.scale.set(baseScaleX, baseScaleY, 1);
+  sprite.userData = { baseScaleX, baseScaleY };
   return sprite;
 }
 
@@ -751,6 +807,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onEnter,
   onStartMission,
   onContinueMission,
+  onBuildOutpost,
   hasSavedGame = false,
   savedGameSol = 1,
   savedGameDest = 'Moon',
@@ -782,6 +839,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenExpedition,
   onOpenCampaign,
   onOpenSpaceGamesHub,
+  mode = 'explore',
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -814,10 +872,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // Search & Navigation
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isDestModalOpen, setIsDestModalOpen] = useState<boolean>(false);
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<'all' | 'inner' | 'outer' | 'fleet' | 'tours'>('all');
   const [isSimulatorsDropdownOpen, setIsSimulatorsDropdownOpen] = useState<boolean>(false);
   const [isStoriesModalOpen, setIsStoriesModalOpen] = useState<boolean>(false);
+  const [isHeroDismissed, setIsHeroDismissed] = useState<boolean>(false);
 
   // Hover Tooltip
   const [hoverEntity, setHoverEntity] = useState<{ name: string; subtitle: string; x: number; y: number } | null>(null);
@@ -836,13 +896,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const planetMeshesRef = useRef<Map<string, { mesh: THREE.Mesh; label: THREE.Sprite; clouds?: THREE.Mesh; moons?: { mesh: THREE.Mesh; angle: number; speed: number; orbitRadius: number }[]; orbitRadius: number; angle: number }>>(new Map());
+  const planetMeshesRef = useRef<Map<string, { mesh: THREE.Mesh; label: THREE.Sprite; clouds?: THREE.Mesh; moons?: { mesh: THREE.Mesh; label?: THREE.Sprite; angle: number; speed: number; orbitRadius: number }[]; orbitRadius: number; angle: number }>>(new Map());
   const stationMeshesRef = useRef<Map<string, { group: THREE.Group; label: THREE.Sprite; parentId: string; orbitRadius: number; angle: number; orbitSpeed: number }>>(new Map());
   const probeMeshesRef = useRef<Map<string, { group: THREE.Group; label: THREE.Sprite; distanceAU: number }>>(new Map());
   const orbitLinesRef = useRef<THREE.Line[]>([]);
   const asteroidPointsRef = useRef<THREE.Points | null>(null);
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
+  const sunLabelRef = useRef<THREE.Sprite | null>(null);
 
   // Refs for animation loop
   const isPlayingRef = useRef(isPlaying);
@@ -851,6 +912,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   simSpeedRef.current = simSpeed;
   const simDateRef = useRef(simDate);
   simDateRef.current = simDate;
+  const lastUiUpdateRef = useRef<number>(Date.now());
   const cameraTargetRef = useRef(cameraTarget);
   cameraTargetRef.current = cameraTarget;
   const isTargetLockedRef = useRef(isTargetLocked);
@@ -1052,6 +1114,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     const coronaMesh = new THREE.Mesh(coronaGeo, coronaMat);
     scene.add(coronaMesh);
 
+    // Sun Name Label (Visible by default)
+    const sunLabel = createTextSprite('SUN', '#f59e0b', false);
+    sunLabel.position.set(0, 11.4, 0);
+    sunLabel.visible = showLabels;
+    scene.add(sunLabel);
+    sunLabelRef.current = sunLabel;
+
     // 6. Build Planets & Orbits
     const initialJD = getJulianDate(new Date());
     const orbitLines: THREE.Line[] = [];
@@ -1131,22 +1200,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         pMesh.add(ringMesh);
       }
 
-      // Billboard Text Label
-      const label = createTextSprite(planet.name.toUpperCase(), `#${planet.color.toString(16).padStart(6, '0')}`, planet.distanceAU);
+      // Billboard Text Label (Clean bold white text with dark outline)
+      const label = createTextSprite(planet.name.toUpperCase(), `#${planet.color.toString(16).padStart(6, '0')}`, false);
       label.position.copy(pMesh.position);
       label.position.y += planet.radius + 3.8;
       label.visible = showLabels;
       scene.add(label);
 
       // Moons (Earth Moon & Galilean Moons)
-      const moonsList: { mesh: THREE.Mesh; angle: number; speed: number; orbitRadius: number }[] = [];
+      const moonsList: { mesh: THREE.Mesh; label?: THREE.Sprite; angle: number; speed: number; orbitRadius: number }[] = [];
       if (planet.id === 'earth') {
         const mGeo = new THREE.SphereGeometry(0.82, 24, 24);
         const mMat = new THREE.MeshStandardMaterial({ map: textures.moon, roughness: 0.8 });
         const moonMesh = new THREE.Mesh(mGeo, mMat);
         moonMesh.name = 'moon';
         scene.add(moonMesh);
-        moonsList.push({ mesh: moonMesh, angle: 0, speed: 2.2, orbitRadius: 6.2 });
+
+        // Dedicated Moon label
+        const moonLabel = createTextSprite('MOON', '#cbd5e1', true);
+        moonLabel.visible = showLabels;
+        scene.add(moonLabel);
+
+        moonsList.push({ mesh: moonMesh, label: moonLabel, angle: 0, speed: 2.2, orbitRadius: 6.2 });
       }
 
       planetMeshesRef.current.set(planet.id, {
@@ -1174,7 +1249,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       stationGroup.name = station.id;
       scene.add(stationGroup);
 
-      const label = createTextSprite(station.name, station.color, `${station.altitudeKm} km`, true);
+      const label = createTextSprite(station.name, station.color, true);
       label.visible = false;
       scene.add(label);
 
@@ -1194,7 +1269,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       probeGroup.name = probe.id;
       scene.add(probeGroup);
 
-      const label = createTextSprite(probe.name, probe.color, `${probe.distanceFromSunAU} AU`, true);
+      const label = createTextSprite(probe.name, probe.color, true);
       label.visible = false;
       scene.add(label);
 
@@ -1302,7 +1377,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       raycasterRef.current.setFromCamera(clickMouse, camera);
 
       const checkList: THREE.Object3D[] = [];
-      planetMeshesRef.current.forEach((val) => checkList.push(val.mesh));
+      planetMeshesRef.current.forEach((val) => {
+        checkList.push(val.mesh);
+        if (val.moons) {
+          val.moons.forEach((m) => checkList.push(m.mesh));
+        }
+      });
       stationMeshesRef.current.forEach((val) => checkList.push(val.group));
       probeMeshesRef.current.forEach((val) => checkList.push(val.group));
 
@@ -1341,13 +1421,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       const speedCur = simSpeedRef.current;
 
       if (isPlayingCur) {
-        const daysAdvance = delta * speedCur;
-        simDateRef.current = new Date(simDateRef.current.getTime() + daysAdvance * 86400000);
+        // At 1x speed, advance time in real-time seconds (delta * 1000 ms) so today's date remains accurate
+        // Only scale to days/hours when user clicks 10x, 100x, or 1k speed buttons
+        const msAdvance = speedCur === 1
+          ? delta * 1000
+          : speedCur === 10
+          ? delta * 3600000 // 1 hour per sec
+          : speedCur === 100
+          ? delta * 86400000 // 1 day per sec
+          : delta * 864000000; // 10 days per sec
+
+        simDateRef.current = new Date(simDateRef.current.getTime() + msAdvance);
         const newJD = getJulianDate(simDateRef.current);
-        setSimDate(new Date(simDateRef.current));
         setCurrentJD(newJD);
 
+        const nowMs = Date.now();
+        if (nowMs - lastUiUpdateRef.current >= 350) {
+          lastUiUpdateRef.current = nowMs;
+          setSimDate(new Date(simDateRef.current));
+        }
+
         const targetIdCur = cameraTargetRef.current;
+        const isZoomedIn = camDistanceRef.current <= 85;
+        const innerPlanets = ['mercury', 'venus', 'earth', 'moon', 'mars'];
+        const dist = camDistanceRef.current;
+        const scaleFactor = Math.max(0.85, Math.min(2.5, dist / 80));
+
+        // Update Sun Name Label (Hidden in background mode)
+        if (sunLabelRef.current) {
+          const sunBaseX = sunLabelRef.current.userData.baseScaleX || 21.6;
+          const sunBaseY = sunLabelRef.current.userData.baseScaleY || 5.4;
+          sunLabelRef.current.scale.set(sunBaseX * scaleFactor, sunBaseY * scaleFactor, 1);
+          sunLabelRef.current.visible = mode === 'background' ? false : Boolean(showLabels && targetIdCur !== 'sun');
+        }
 
         // Update Heliocentric Planet Positions
         planetMeshesRef.current.forEach((val, id) => {
@@ -1367,14 +1473,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               m.mesh.position.y = val.mesh.position.y;
               m.mesh.position.z = val.mesh.position.z + Math.sin(m.angle) * m.orbitRadius;
               m.mesh.rotation.y += 0.02;
+
+              if (m.label) {
+                const mScale = Math.max(0.75, Math.min(2.2, dist / 85));
+                m.label.scale.set(
+                  (m.label.userData.baseScaleX || 16.8) * mScale,
+                  (m.label.userData.baseScaleY || 4.2) * mScale,
+                  1
+                );
+                // Staggered below Moon to prevent stacking collision with Earth label above
+                m.label.position.set(m.mesh.position.x, m.mesh.position.y - 3.0, m.mesh.position.z);
+                const isMoonSelectedOrHovered = targetIdCur === 'moon' || Boolean(hoverEntity && hoverEntity.name.toLowerCase().includes('moon'));
+                m.label.visible = mode === 'background' ? false : Boolean(showLabels && (isZoomedIn || isMoonSelectedOrHovered));
+              }
             });
           }
 
-          // Sync label with adaptive close-up fading
+          // Scale sprite so text appears at least 14px-22px tall on screen
+          const pBaseX = val.label.userData.baseScaleX || 21.6;
+          const pBaseY = val.label.userData.baseScaleY || 5.4;
+          val.label.scale.set(pBaseX * scaleFactor, pBaseY * scaleFactor, 1);
+
+          // Sync label with staggered collision avoidance offsets
           val.label.position.copy(val.mesh.position);
-          val.label.position.y += (val.mesh.geometry as THREE.SphereGeometry).parameters.radius + 3.8;
+          let yOffset = 3.6;
+          if (id === 'mercury') yOffset = 2.4;
+          else if (id === 'venus') yOffset = 4.2;
+          else if (id === 'earth') yOffset = 3.4;
+          else if (id === 'mars') yOffset = 3.8;
+          else if (id === 'jupiter') yOffset = 5.5;
+          else if (id === 'saturn') yOffset = 4.8;
+          else if (id === 'uranus') yOffset = 4.0;
+          else if (id === 'neptune') yOffset = 3.8;
+
+          val.label.position.y += (val.mesh.geometry as THREE.SphereGeometry).parameters.radius + yOffset;
           const isInspectingThisPlanet = targetIdCur === id && camDistanceRef.current < 28;
-          val.label.visible = showLabels && !isInspectingThisPlanet;
+          const isSelectedOrHovered = targetIdCur === id || Boolean(hoverEntity && hoverEntity.name.toLowerCase() === id);
+
+          // In background mode, hide all 3D planet labels to avoid ghost text behind game menus
+          if (mode === 'background') {
+            val.label.visible = false;
+          } else if (innerPlanets.includes(id)) {
+            val.label.visible = Boolean(showLabels && !isInspectingThisPlanet && (isZoomedIn || isSelectedOrHovered));
+          } else {
+            val.label.visible = Boolean(showLabels && !isInspectingThisPlanet);
+          }
         });
 
         // Space Stations Orbit Earth / Moon with Adaptive Label Visibility
@@ -1473,7 +1616,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   }, [showOrbits]);
 
   useEffect(() => {
-    planetMeshesRef.current.forEach((p) => { p.label.visible = showLabels; });
+    planetMeshesRef.current.forEach((p) => {
+      p.label.visible = showLabels;
+      if (p.moons) {
+        p.moons.forEach((m) => {
+          if (m.label) m.label.visible = showLabels;
+        });
+      }
+    });
+    if (sunLabelRef.current) sunLabelRef.current.visible = showLabels;
     stationMeshesRef.current.forEach((s) => { s.label.visible = showLabels && showSpacecraft; });
     probeMeshesRef.current.forEach((m) => { m.label.visible = showLabels && showSpacecraft; });
   }, [showLabels, showSpacecraft]);
@@ -1547,7 +1698,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const currentYearFloat = simDate.getUTCFullYear() + (simDate.getUTCMonth() * 30.5 + simDate.getUTCDate()) / 365.25;
 
   return (
-    <div className="nasa-eyes-root">
+    <div className={`nasa-eyes-root ${mode === 'background' ? 'nasa-eyes-background-mode' : ''}`}>
       {/* 1. Fullscreen 3D WebGL Canvas Layer */}
       <div
         ref={mountRef}
@@ -1557,7 +1708,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       />
 
       {/* 2. Interactive Hover Reticle */}
-      {hoverEntity && (
+      {mode !== 'background' && hoverEntity && (
         <div className="ne-hover-reticle" style={{ left: hoverEntity.x, top: hoverEntity.y }}>
           <div className="ne-reticle-box">
             <div className="ne-reticle-title">{hoverEntity.name}</div>
@@ -1568,143 +1719,314 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       )}
 
       {/* 3. HUD Overlay Layer */}
-      <div className="nasa-eyes-hud">
-        {/* ═══ FLOATING CELESTIAL CONTROLS TOOLBAR (Directly over 3D Canvas) ═══ */}
-        <div className="ne-floating-celestial-toolbar nasa-eyes-interactive" role="toolbar" aria-label="Orrery Navigation Controls">
-          {/* Category Filter Chips */}
-          <nav className="ne-category-bar" aria-label="Celestial Filters">
-            <button
-              className={`ne-category-tab ${activeCategory === 'all' ? 'active' : ''}`}
-              onClick={() => { setActiveCategory('all'); handleResetCamera(); }}
-              title="View Complete Solar System"
-            >
-              <Sun size={13} />
-              <span>Solar System</span>
-            </button>
-            <button
-              className={`ne-category-tab ${activeCategory === 'inner' ? 'active' : ''}`}
-              onClick={() => { setActiveCategory('inner'); flyToTarget('earth'); }}
-              title="Focus on Terrestrial Inner Worlds"
-            >
-              <Globe size={13} />
-              <span>Inner Worlds</span>
-            </button>
-            <button
-              className={`ne-category-tab ${activeCategory === 'outer' ? 'active' : ''}`}
-              onClick={() => { setActiveCategory('outer'); flyToTarget('jupiter'); }}
-              title="Focus on Outer Gas & Ice Giants"
-            >
-              <Sparkles size={13} />
-              <span>Gas Giants</span>
-            </button>
-            <button
-              className={`ne-category-tab ${activeCategory === 'fleet' ? 'active' : ''}`}
-              onClick={() => { setActiveCategory('fleet'); flyToTarget('iss'); }}
-              title="Track Active Spacecraft Fleet & Probes"
-            >
-              <Satellite size={13} />
-              <span>Fleet</span>
-            </button>
-            <button
-              className={`ne-category-tab ${isStoriesModalOpen ? 'active' : ''}`}
-              onClick={() => { setIsStoriesModalOpen(!isStoriesModalOpen); soundFx.playClick(800); }}
-              title="Curated NASA Guided Expeditions"
-            >
-              <Rocket size={13} />
-              <span>Tours</span>
-            </button>
-          </nav>
-
-          {/* Central Search Bar */}
-          <div className="ne-search-wrapper">
-            <div className="ne-search-input-box">
-              <Search size={14} style={{ color: '#38bdf8' }} />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search celestial bodies, probes, missions... (/)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setTimeout(() => setIsSearchFocused(false), 250)}
-              />
-              <span className="ne-search-key-badge">/</span>
+      {mode !== 'background' && (
+        <div className="nasa-eyes-hud">
+        {/* ═══ UNIFIED TOP HUD (Left: Telemetry, Center: Orrery Toolbar, Right: Flagship Action) ═══ */}
+        <div className="nasa-eyes-top-hud">
+          {/* Top-Left Telemetry Status Card (Non-blocking aerospace telemetry) */}
+          <div className="ne-telemetry-hud-card nasa-eyes-interactive">
+            <div className="ne-telemetry-hud-header">
+              <span className="ne-live-pulse-dot" />
+              <span className="ne-telemetry-label">JPL EPHEMERIS DE440</span>
+              <span className="ne-telemetry-status">{isLiveSynced ? 'LIVE' : 'SIM'}</span>
             </div>
-
-            {/* Autocomplete Dropdown */}
-            {isSearchFocused && searchResults.length > 0 && (
-              <div className="ne-search-dropdown">
-                {searchResults.map((res) => (
-                  <div
-                    key={res.id}
-                    className="ne-search-result-item"
-                    onClick={() => {
-                      flyToTarget(res.id);
-                      setSearchQuery('');
-                      setIsSearchFocused(false);
-                    }}
-                  >
-                    <div className="ne-search-item-left">
-                      <span>{res.icon}</span>
-                      <strong style={{ fontSize: '12px' }}>{res.name}</strong>
-                    </div>
-                    <span className="ne-search-item-badge">{res.type}</span>
-                  </div>
-                ))}
+            <div className="ne-telemetry-body">
+              <div style={{ color: '#94a3b8', fontSize: '9px', letterSpacing: '0.04em' }}>CURRENT TARGET</div>
+              <div style={{ color: '#38bdf8', fontSize: '13px', fontWeight: 900 }}>
+                {selectedEntity?.data.name.toUpperCase() || 'EARTH'}
               </div>
+              <div style={{ color: '#cbd5e1', fontSize: '10px' }}>
+                DIST: {selectedEntity && 'distanceAU' in selectedEntity.data ? selectedEntity.data.distanceAU : '1.000 AU (149.6M km)'}
+              </div>
+            </div>
+            <button
+              className="ne-telemetry-drawer-btn"
+              onClick={() => { setIsDrawerOpen(!isDrawerOpen); soundFx.playClick(850); }}
+              title="Inspect Celestial Telemetry & Physics Dossier"
+            >
+              <Info size={12} />
+              <span>{isDrawerOpen ? 'Close Telemetry Dossier' : 'Inspect Dossier'}</span>
+            </button>
+
+            {/* Quick Outpost Build Action if Target is Moon or Mars */}
+            {selectedEntity && (selectedEntity.data.name.toLowerCase().includes('moon') || selectedEntity.data.name.toLowerCase().includes('mars')) && (
+              <button
+                onClick={() => {
+                  const isM = selectedEntity.data.name.toLowerCase().includes('mars');
+                  const dest = isM ? 'MARS' : 'MOON';
+                  if (onBuildOutpost) onBuildOutpost(dest);
+                  else if (onStartMission) onStartMission();
+                  soundFx.playReactorStart();
+                }}
+                style={{
+                  marginTop: '6px',
+                  background: selectedEntity.data.name.toLowerCase().includes('mars')
+                    ? 'linear-gradient(135deg, #ea580c, #c2410c)'
+                    : 'linear-gradient(135deg, #0284c7, #0369a1)',
+                  border: '1px solid rgba(255, 255, 255, 0.35)',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '11px',
+                  padding: '7px 10px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                }}
+                title={`Launch Outpost Simulator directly on ${selectedEntity.data.name}`}
+              >
+                <Rocket size={13} />
+                <span>Build Outpost Here ({selectedEntity.data.name.toLowerCase().includes('mars') ? 'Mars' : 'Moon'})</span>
+              </button>
             )}
           </div>
 
-          {/* Camera Reset & Fullscreen Controls */}
-          <div className="ne-toolbar-quick-tools">
+          {/* ═══ FLOATING CELESTIAL CONTROLS TOOLBAR (Directly over 3D Canvas) ═══ */}
+          <div className="ne-floating-celestial-toolbar nasa-eyes-interactive" role="toolbar" aria-label="Orrery Navigation Controls">
+            {/* Category Filter Chips */}
+            <nav className="ne-category-bar" aria-label="Celestial Filters">
+              <button
+                className={`ne-category-tab ${activeCategory === 'all' ? 'active' : ''}`}
+                onClick={() => { setActiveCategory('all'); handleResetCamera(); }}
+                title="View Complete Solar System"
+              >
+                <Sun size={13} />
+                <span>Solar System</span>
+              </button>
+              <button
+                className={`ne-category-tab ${activeCategory === 'inner' ? 'active' : ''}`}
+                onClick={() => { setActiveCategory('inner'); flyToTarget('earth'); }}
+                title="Focus on Terrestrial Inner Worlds"
+              >
+                <Globe size={13} />
+                <span>Inner Worlds</span>
+              </button>
+              <button
+                className={`ne-category-tab ${selectedEntity?.data.id === 'moon' ? 'active' : ''}`}
+                onClick={() => flyToTarget('moon')}
+                title="Focus on the Moon (Target for Artemis Base Camp)"
+              >
+                <span>🌙 Moon</span>
+              </button>
+              <button
+                className={`ne-category-tab ${selectedEntity?.data.id === 'mars' ? 'active' : ''}`}
+                onClick={() => flyToTarget('mars')}
+                title="Focus on Mars (Target for Jezero Crater Outpost)"
+              >
+                <span>🔴 Mars</span>
+              </button>
+              <button
+                className={`ne-category-tab ${activeCategory === 'outer' ? 'active' : ''}`}
+                onClick={() => { setActiveCategory('outer'); flyToTarget('jupiter'); }}
+                title="Focus on Outer Gas & Ice Giants"
+              >
+                <Sparkles size={13} />
+                <span>Gas Giants</span>
+              </button>
+              <button
+                className={`ne-category-tab ${activeCategory === 'fleet' ? 'active' : ''}`}
+                onClick={() => { setActiveCategory('fleet'); flyToTarget('iss'); }}
+                title="Track Active Spacecraft Fleet & Probes"
+              >
+                <Satellite size={13} />
+                <span>Fleet</span>
+              </button>
+              <button
+                className={`ne-category-tab ${isStoriesModalOpen ? 'active' : ''}`}
+                onClick={() => { setIsStoriesModalOpen(!isStoriesModalOpen); soundFx.playClick(800); }}
+                title="Curated NASA Guided Expeditions"
+              >
+                <Rocket size={13} />
+                <span>Tours</span>
+              </button>
+            </nav>
+
+            {/* Central Search Bar */}
+            <div className="ne-search-wrapper">
+              <div className="ne-search-input-box">
+                <Search size={14} style={{ color: '#38bdf8' }} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search celestial bodies, probes, missions... (/)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 250)}
+                />
+                <span className="ne-search-key-badge">/</span>
+              </div>
+
+              {/* Autocomplete Dropdown */}
+              {isSearchFocused && searchResults.length > 0 && (
+                <div className="ne-search-dropdown">
+                  {searchResults.map((res) => (
+                    <div
+                      key={res.id}
+                      className="ne-search-result-item"
+                      onClick={() => {
+                        flyToTarget(res.id);
+                        setSearchQuery('');
+                        setIsSearchFocused(false);
+                      }}
+                    >
+                      <div className="ne-search-item-left">
+                        <span>{res.icon}</span>
+                        <strong style={{ fontSize: '12px' }}>{res.name}</strong>
+                      </div>
+                      <span className="ne-search-item-badge">{res.type}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Camera Reset & Fullscreen Controls */}
+            <div className="ne-toolbar-quick-tools">
+              <button
+                className="ne-btn-icon"
+                onClick={handleResetCamera}
+                title="Reset Camera to Solar System Overview"
+              >
+                <RotateCcw size={14} />
+              </button>
+              <button
+                className="ne-btn-icon"
+                onClick={() => {
+                  if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                  } else {
+                    document.exitFullscreen().catch(() => {});
+                  }
+                }}
+                title="Toggle Fullscreen Canvas"
+              >
+                <Maximize2 size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Right: Flagship Quick Trigger Button */}
+          <div className="ne-flagship-cta-bar nasa-eyes-interactive">
             <button
-              className="ne-btn-icon"
-              onClick={handleResetCamera}
-              title="Reset Camera to Solar System Overview"
-            >
-              <RotateCcw size={14} />
-            </button>
-            <button
-              className="ne-btn-icon"
               onClick={() => {
-                if (!document.fullscreenElement) {
-                  document.documentElement.requestFullscreen().catch(() => {});
-                } else {
-                  document.exitFullscreen().catch(() => {});
-                }
+                setIsDestModalOpen(true);
+                soundFx.playReactorStart();
               }}
-              title="Toggle Fullscreen Canvas"
+              style={{
+                background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                color: '#ffffff',
+                border: '1.5px solid rgba(255, 255, 255, 0.65)',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '12.5px',
+                fontWeight: 900,
+                letterSpacing: '0.04em',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 0 16px rgba(249, 115, 22, 0.6), 0 4px 12px rgba(0,0,0,0.5)',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                whiteSpace: 'nowrap',
+              }}
+              title="Start Outpost Mission (No login required - 100% Guest Mode)"
             >
-              <Maximize2 size={14} />
+              <Rocket size={15} />
+              <span>START MISSION</span>
             </button>
           </div>
         </div>
 
-        {/* Top-Left Telemetry Status Card (Non-blocking aerospace telemetry) */}
-        <div className="ne-telemetry-hud-card nasa-eyes-interactive">
-          <div className="ne-telemetry-hud-header">
-            <span className="ne-live-pulse-dot" />
-            <span className="ne-telemetry-label">JPL EPHEMERIS DE440</span>
-            <span className="ne-telemetry-status">{isLiveSynced ? 'LIVE' : 'SIM'}</span>
-          </div>
-          <div className="ne-telemetry-body">
-            <div style={{ color: '#94a3b8', fontSize: '9px', letterSpacing: '0.04em' }}>CURRENT TARGET</div>
-            <div style={{ color: '#38bdf8', fontSize: '13px', fontWeight: 900 }}>
-              {selectedEntity?.data.name.toUpperCase() || 'EARTH'}
+        {/* ═══ FLAGSHIP HOME HERO OVERLAY (Visible on first load, dismissible) ═══ */}
+        {!isHeroDismissed && (
+          <div className="ne-home-hero-overlay nasa-eyes-interactive">
+            <div className="ne-home-hero-card">
+              <button
+                className="ne-home-hero-close"
+                onClick={() => {
+                  setIsHeroDismissed(true);
+                  soundFx.playClick(700);
+                }}
+                title="Dismiss hero banner and explore 3D Solar System"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="ne-home-hero-badge">
+                <Sparkles size={13} style={{ color: '#fbbf24' }} />
+                <span>NASA SPACE APPS 2026 • FLAGSHIP TRAINER</span>
+              </div>
+
+              <h1 className="ne-home-hero-title">
+                Junior Astronaut Mission Trainer
+              </h1>
+
+              <p className="ne-home-hero-tagline">
+                Keep your crew alive on the Moon or Mars!
+              </p>
+
+              <p className="ne-home-hero-desc">
+                Command Artemis Base Camp or Jezero Crater Outpost. Balance Power, Oxygen, Water, Food, Radiation Shielding, and Crew Morale against solar flares, dust storms, and lunar nights.
+              </p>
+
+              <div className="ne-home-hero-actions">
+                <button
+                  className="ne-home-hero-primary-btn"
+                  onClick={() => {
+                    setIsDestModalOpen(true);
+                    soundFx.playReactorStart();
+                  }}
+                  title="Start your Lunar or Martian outpost mission (Guest Mode enabled - zero login required)"
+                >
+                  <Rocket size={18} />
+                  <span>START MISSION: BUILD YOUR OUTPOST</span>
+                </button>
+
+                <button
+                  className="ne-home-hero-secondary-btn"
+                  onClick={() => {
+                    setIsHeroDismissed(true);
+                    soundFx.playClick(800);
+                  }}
+                >
+                  Explore Solar System First
+                </button>
+              </div>
+
+              <div className="ne-home-hero-footer">
+                <span>⚡ 100% Free Guest Mode</span>
+                <span>•</span>
+                <span>🔬 NASA Bioastronautics Data</span>
+                <span>•</span>
+                <span>🏆 Ages 10–16</span>
+              </div>
             </div>
-            <div style={{ color: '#cbd5e1', fontSize: '10px' }}>
-              DIST: {selectedEntity && 'distanceAU' in selectedEntity.data ? selectedEntity.data.distanceAU : '1.000 AU (149.6M km)'}
-            </div>
           </div>
-          <button
-            className="ne-telemetry-drawer-btn"
-            onClick={() => { setIsDrawerOpen(!isDrawerOpen); soundFx.playClick(850); }}
-            title="Inspect Celestial Telemetry & Physics Dossier"
-          >
-            <Info size={12} />
-            <span>{isDrawerOpen ? 'Close Telemetry Dossier' : 'Inspect Dossier'}</span>
-          </button>
-        </div>
+        )}
+
+        {/* ═══ FLOATING OUTPOST PILL WHEN MOON OR MARS IS TARGETED ═══ */}
+        {selectedEntity && (selectedEntity.data.name.toLowerCase().includes('moon') || selectedEntity.data.name.toLowerCase().includes('mars')) && (
+          <div className="ne-selected-body-outpost-pill nasa-eyes-interactive">
+            <button
+              onClick={() => {
+                const isM = selectedEntity.data.name.toLowerCase().includes('mars');
+                const dest = isM ? 'MARS' : 'MOON';
+                if (onBuildOutpost) onBuildOutpost(dest);
+                else if (onStartMission) onStartMission();
+                soundFx.playReactorStart();
+              }}
+              className="ne-selected-body-outpost-btn"
+              title={`Establish outpost on ${selectedEntity.data.name}`}
+            >
+              <Rocket size={15} />
+              <span>{selectedEntity.data.name.toUpperCase()} DETECTED — BUILD OUTPOST HERE</span>
+            </button>
+          </div>
+        )}
 
         {/* ═══ FEATURED STORIES & TOURS MODAL (NASA Eyes Scrollytelling) ═══ */}
         {isStoriesModalOpen && (
@@ -1934,6 +2256,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <Zap size={13} />
                       <span>Jr_AstroCamp Integrated Experiences</span>
                     </div>
+
+                    {(selectedEntity.data.id === 'moon' || selectedEntity.data.id === 'mars') && (
+                      <button
+                        className="ne-action-link-btn"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(249,115,22,0.25), rgba(234,88,12,0.15))',
+                          border: '1.5px solid rgba(249,115,22,0.6)',
+                          color: '#fed7aa',
+                          fontWeight: 700,
+                          padding: '10px 14px',
+                          marginBottom: '6px',
+                        }}
+                        onClick={() => {
+                          if (onBuildOutpost) {
+                            onBuildOutpost(selectedEntity.data.id === 'moon' ? 'MOON' : 'MARS');
+                          } else if (onStartMission) {
+                            onStartMission();
+                          }
+                        }}
+                      >
+                        <span>🏗️ Start Mission: Build Outpost on {selectedEntity.data.name} [FLAGSHIP]</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    )}
 
                     {selectedEntity.data.id === 'mars' && (
                       <>
@@ -2282,11 +2628,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Right Display Layer Toggles */}
-          <div className="ne-toggles-cluster">
+          <div className="ne-toggles-cluster" title="Solar System View Options">
+            <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 800, padding: '0 6px', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+              View options:
+            </span>
             <button
               className={`ne-toggle-btn ${showOrbits ? 'active' : ''}`}
               onClick={() => { setShowOrbits(!showOrbits); soundFx.playClick(750); }}
-              title="Toggle Orbital Trajectory Lines"
+              title="Show or hide planetary orbital paths around the Sun"
             >
               <span className="ne-toggle-led" />
               <span>Orbits</span>
@@ -2295,7 +2644,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               className={`ne-toggle-btn ${showLabels ? 'active' : ''}`}
               onClick={() => { setShowLabels(!showLabels); soundFx.playClick(750); }}
-              title="Toggle Celestial Billboard Labels"
+              title="Show or hide high-contrast readable planet names and distance tags"
             >
               <span className="ne-toggle-led" />
               <span>Labels</span>
@@ -2304,7 +2653,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               className={`ne-toggle-btn ${showSpacecraft ? 'active' : ''}`}
               onClick={() => { setShowSpacecraft(!showSpacecraft); soundFx.playClick(750); }}
-              title="Toggle Human Spacecraft Fleet"
+              title="Show or hide human spacecraft fleet (ISS, Tiangong, Voyager, Parker Solar Probe)"
             >
               <span className="ne-toggle-led" />
               <span>Fleet</span>
@@ -2313,7 +2662,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               className={`ne-toggle-btn ${showAsteroids ? 'active' : ''}`}
               onClick={() => { setShowAsteroids(!showAsteroids); soundFx.playClick(750); }}
-              title="Toggle Main Asteroid Belt"
+              title="Show or hide Main Asteroid Belt rocks between Mars and Jupiter"
             >
               <span className="ne-toggle-led" />
               <span>Asteroids</span>
@@ -2322,7 +2671,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               className={`ne-toggle-btn ${lightingMode === 'flood' ? 'active' : ''}`}
               onClick={() => { setLightingMode(lightingMode === 'sun' ? 'flood' : 'sun'); soundFx.playClick(800); }}
-              title="Switch between Solar Shadow Lighting and Studio Floodlight"
+              title="Switch between realistic Solar Shadow Lighting and full Studio Floodlight"
             >
               <Sun size={12} />
               <span>{lightingMode === 'sun' ? 'Sunlight' : 'Flood'}</span>
@@ -2330,6 +2679,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </footer>
       </div>
+      )}
+
+      {/* Flagship Clean Moon vs Mars Destination Selection Modal */}
+      {mode !== 'background' && (
+        <DestinationSelectionModal
+          isOpen={isDestModalOpen}
+          onClose={() => setIsDestModalOpen(false)}
+          onSelectDestination={(dest, diff) => {
+            if (onBuildOutpost) {
+              onBuildOutpost(dest, diff);
+            } else if (onStartMission) {
+              onStartMission();
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

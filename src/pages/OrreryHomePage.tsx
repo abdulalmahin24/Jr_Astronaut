@@ -13,17 +13,20 @@ export const OrreryHomePage: React.FC<OrreryHomePageProps> = ({
   ...rest
 }) => {
   return (
-    <div className="page-orrery-home" style={{ width: '100%', height: 'calc(100vh - 52px)', position: 'relative' }}>
+    <div className="page-orrery-home" style={{ width: '100%', height: 'calc(100vh - var(--header-height, 56px))', position: 'relative' }}>
       <LandingPage
         {...rest}
-        onEnter={() => onNavigate('simulators')}
+        onEnter={() => onNavigate('mission')}
         onStartMission={() => {
           if (onStartMission) onStartMission();
-          onNavigate('simulators');
+          onNavigate('mission');
         }}
         onContinueMission={() => {
           if (onContinueMission) onContinueMission();
-          onNavigate('simulators');
+          onNavigate('mission');
+        }}
+        onBuildOutpost={(dest, diff) => {
+          onNavigate('mission', { dest, ...(diff ? { diff } : {}) });
         }}
         onOpenAcademy={() => onNavigate('academy')}
         onOpenSpaceGamesHub={() => onNavigate('simulators')}

@@ -16,6 +16,7 @@ import type {
   MissionObjective,
   Destination,
 } from '../types/game';
+import { SCIENCE_EVENTS, ENDING_SCENARIOS, METABOLIC_BALANCE, DIFFICULTY_PROFILES, CREW_SPECIALTY_BONUSES } from '../data/outpostBalanceConfig';
 
 // ── DEFAULT OUTPOST CONFIGURATIONS ──────────────────────────────────────────
 
@@ -376,35 +377,57 @@ export function computeDailySimulationTurn(
   isGameOver: boolean;
   outcome: 'IN_PROGRESS' | 'VICTORY' | 'PARTIAL_SUCCESS' | 'CRITICAL_FAILURE';
   failureReason: string;
+  activeWarning?: {
+    title: string;
+    message: string;
+    hazardType: string;
+    countdownSols: number;
+    nasaDocReference?: string;
+  } | null;
+  endingScenarioId?: string;
+  buildPointsEarned: number;
 } {
   const config = prevState.outpostConfig || DEFAULT_LUNAR_OUTPOST;
   const isMoon = prevState.destination === 'MOON';
   const sol = prevState.currentSol;
 
-  // 1. Day / Night Calculation
-  // On the Moon, Sols 16-27 correspond to the deep 354-hour lunar night (-130°C to -180°C)
-  const isLunarNight = isMoon && sol >= 16 && sol <= 27;
+  // Difficulty Profile Scaling (Cadet: 0.75x consumption, 0.7x storm severity, 6 BP/day; Officer: 1.0x, 1.0x, 4 BP/day; Commander: 1.25x, 1.4x, 3 BP/day)
+  const diffTierKey: 'CADET' | 'OFFICER' | 'COMMANDER' =
+    prevState.difficultyMode === 'CADET' || (prevState.difficultyMode as any) === 'EXPLORER'
+      ? 'CADET'
+      : prevState.difficultyMode === 'COMMANDER' || (prevState.difficultyMode as any) === 'SCIENTIST'
+        ? 'COMMANDER'
+        : 'OFFICER';
+  const diffProfile = DIFFICULTY_PROFILES[diffTierKey] || DIFFICULTY_PROFILES.OFFICER;
+  const consumptionMult = diffProfile.consumptionMultiplier;
+  const stormMult = diffProfile.stormSeverityMultiplier;
+
+  // 1. Day / Night & Environmental Conditions
+  // On the Moon, Sols 15-28 correspond to the deep 354-hour lunar night (-130°C to -180°C, 0 kW solar)
+  const isLunarNight = isMoon && sol >= 15 && sol <= 28;
+  // On Mars, global dust storms during Sols 14-22 block up to 75% of solar irradiance
+  const isMarsDustStorm = !isMoon && ((sol >= 14 && sol <= 22) || (prevState.activeEvent ? prevState.activeEvent.title.toLowerCase().includes('dust') : false));
 
   // 2. Power Generation
   let powerGenKw = 0;
   if (config.powerGeneration === 'VERTICAL_SOLAR_TOWERS') {
     // Polar towers catch grazing light even in shallow shadow
-    powerGenKw += isLunarNight ? 8 : 50;
+    powerGenKw += isLunarNight ? 8 : (isMarsDustStorm ? Math.round(12 / stormMult) : 50);
   } else {
     // Foldable PV arrays
-    powerGenKw += isLunarNight ? 0 : 35;
+    powerGenKw += isLunarNight ? 0 : (isMarsDustStorm ? Math.max(3, Math.round(9 / stormMult)) : 35);
   }
 
-  // Kilopower reactor generates 25 kW 24/7 continuous
+  // Kilopower reactor generates 25 kW 24/7 continuous (immune to night & dust storms)
   if (config.energyStorage === 'KILOPOWER_REACTOR') {
     powerGenKw += 25;
   }
 
   // 3. Power Consumption
   let powerLoadKw = 0;
-  // Habitat heating & life support
-  powerLoadKw += config.habitatType === 'HEAVY_REGOLITH_DOME' ? 10 : 6;
-  if (isLunarNight) powerLoadKw += 8; // Extra thermal electric heating in cryogenic freeze
+  // Habitat heating & life support (modulated by difficulty mode)
+  powerLoadKw += Math.round((config.habitatType === 'HEAVY_REGOLITH_DOME' ? 10 : 6) * (0.8 + 0.2 * consumptionMult));
+  if (isLunarNight) powerLoadKw += Math.round(8 * (0.8 + 0.2 * stormMult)); // Extra thermal electric heating in cryogenic freeze
 
   // ECLSS & Water
   powerLoadKw += config.lifeSupport === 'CLOSED_LOOP_SABATIER' ? 8 : 4;
@@ -433,43 +456,69 @@ export function computeDailySimulationTurn(
   // Net power directly changes battery storage % (approx 1 kW deficit = -1.2% battery per 24hr sol)
   const powerDeltaPct = Math.round(netPowerKw * 1.1);
 
-  // 4. Life Support (Oxygen, Water, Food)
-  // Oxygen:
-  let oxygenDelta = config.lifeSupport === 'CLOSED_LOOP_SABATIER' ? -0.8 : -2.5;
-  if (config.greenhouse === 'FULL_CROP_BIOME') oxygenDelta += 0.8; // Plants give off O2
-  if (shiftAction === 'ECLSS_MAINTENANCE') oxygenDelta += 3; // Flush and re-pressurize
+  // Interdependent state checks
+  const isPowerBlackout = prevState.resources.power <= 0 || (prevState.resources.power <= 10 && netPowerKw < -10);
+  const isWaterDrought = prevState.resources.water < 20;
 
-  // Water:
-  let waterDelta = config.waterRecycling === 'THERMO_ELECTRIC_MEMBRANE' ? -0.5 : -3.0;
-  if (shiftAction === 'ECLSS_MAINTENANCE') waterDelta += 4; // Desalinate & scrub filters
-
-  // Food:
-  let foodDelta = -1.0; // 1 ration consumed by crew per sol
-  if (config.greenhouse === 'FULL_CROP_BIOME') {
-    foodDelta += 1.5; // Net food surplus from hydroponic tubers & wheat
-  } else if (config.greenhouse === 'COMPACT_SALAD_POD') {
-    foodDelta += 0.5; // Fresh greens supplement
+  // 4. Life Support (Oxygen, Water, Food) with Chain Reactions
+  // Oxygen: Sabatier needs electrical power to run catalytic electrolyzers
+  let oxygenDelta = -2.5 * consumptionMult; // Baseline human metabolic consumption (BVAD)
+  if (isPowerBlackout) {
+    oxygenDelta = -5.0 * consumptionMult; // Blackout halts all O2 generation and CO2 scrubbing pumps
+  } else if (config.lifeSupport === 'CLOSED_LOOP_SABATIER') {
+    oxygenDelta = -0.8 * consumptionMult; // Sabatier recovers 50%+ O2
   }
-  if (shiftAction === 'GREENHOUSE_SURGE') foodDelta += 0.8;
 
-  // Radiation:
-  let radDelta = 0.5; // Baseline GCR
-  if (config.radiationShielding === 'SINTERED_REGOLITH_VAULT') {
-    radDelta = 0.1; // Sintered rock blocks 85%
+  // Water: Distillation loops need thermal/electrical power
+  let waterDelta = -3.5 * consumptionMult; // Baseline human consumption
+  if (isPowerBlackout) {
+    waterDelta = -4.5 * consumptionMult; // Blackout shuts down water recovery pumps
+  } else if (config.waterRecycling === 'THERMO_ELECTRIC_MEMBRANE') {
+    waterDelta = -0.5 * consumptionMult; // High-efficiency recycling recovers 90%+
+  }
+  if (shiftAction === 'ECLSS_MAINTENANCE' && !isPowerBlackout) {
+    waterDelta += 4;
+    oxygenDelta += 3;
+  }
+
+  // Food & Greenhouse: Space Farmer bonus enhances crop yield and biomass O2
+  let foodDelta = -1.0 * consumptionMult; // 1 ration consumed by crew per sol
+  if (isPowerBlackout || isWaterDrought) {
+    // Crops wither without power grow-lights or irrigation water
+    foodDelta = -2.0 * consumptionMult;
+  } else {
+    if (config.greenhouse === 'FULL_CROP_BIOME') {
+      foodDelta += 1.5 * CREW_SPECIALTY_BONUSES.FARMER.cropHarvestMultiplier; // Net food surplus from hydroponic tubers & wheat
+      oxygenDelta += 0.8 * CREW_SPECIALTY_BONUSES.FARMER.cropHarvestMultiplier; // Plants give off O2
+    } else if (config.greenhouse === 'COMPACT_SALAD_POD') {
+      foodDelta += 0.5 * CREW_SPECIALTY_BONUSES.FARMER.cropHarvestMultiplier; // Fresh greens supplement
+      oxygenDelta += 0.3 * CREW_SPECIALTY_BONUSES.FARMER.cropHarvestMultiplier;
+    }
+    if (shiftAction === 'GREENHOUSE_SURGE') foodDelta += 0.8 * CREW_SPECIALTY_BONUSES.FARMER.cropHarvestMultiplier;
+  }
+
+  // Radiation & Shielding: Low shielding allows cosmic rays and SPE to penetrate
+  const currentShielding = prevState.resources.shielding ?? 70;
+  let radDelta = 0.5 * stormMult; // Baseline GCR scaled by storm severity
+  if (currentShielding < 30) {
+    radDelta += 1.8 * stormMult; // Severe radiation penetration due to degraded shielding!
+  } else if (config.radiationShielding === 'SINTERED_REGOLITH_VAULT') {
+    radDelta = 0.1 * stormMult; // Sintered rock blocks 85%
   } else if (config.habitatType === 'HEAVY_REGOLITH_DOME') {
-    radDelta = 0.25;
+    radDelta = 0.25 * stormMult;
   }
   if (shiftAction === 'POWER_CONSERVATION') {
-    // Crew stays inside reinforced vault
     radDelta = Math.max(0.05, radDelta * 0.6);
   }
 
-  // Equipment Wear & Maintenance:
-  let equipDelta = -1.5; // Standard 1.5% daily wear
-  if (config.maintenanceEquipment === 'AUTOMATED_3D_FABRICATOR') {
-    equipDelta = +1.0; // Auto 3D print spares & fix wear
+  // Equipment Wear & Maintenance (Engineer bonus: 25% slower equipment wear, 50% faster repair):
+  let equipDelta = -1.5 * CREW_SPECIALTY_BONUSES.ENGINEER.equipmentWearMultiplier;
+  if (config.maintenanceEquipment === 'AUTOMATED_3D_FABRICATOR' && !isPowerBlackout) {
+    equipDelta += 1.0;
   }
-  if (shiftAction === 'ECLSS_MAINTENANCE') equipDelta += 5.0;
+  if (shiftAction === 'ECLSS_MAINTENANCE') {
+    equipDelta += 5.0 * CREW_SPECIALTY_BONUSES.ENGINEER.repairSpeedMultiplier;
+  }
 
   // 5. Apply Updates to Resources
   const currentRes = prevState.resources;
@@ -478,23 +527,60 @@ export function computeDailySimulationTurn(
   const newWater = Math.min(100, Math.max(0, currentRes.water + waterDelta));
   const newFood = Math.max(0, currentRes.food + foodDelta);
   const newRadiation = Math.min(150, Math.max(0, currentRes.radiation + radDelta));
+  const newShielding = Math.min(100, Math.max(0, currentShielding - 0.5));
 
-  // Science passive gains:
+  // Science passive gains: Reduced if morale is low (fatigued crew)
+  const currentMorale = currentRes.crewMorale ?? 90;
   let scienceGain = 2;
   if (config.communications === 'DEEP_SPACE_LASER_DSOC') scienceGain += 3;
   if (config.surfaceRover === 'PRESSURIZED_SCIENCE_ROVER') scienceGain += 2;
   if (shiftAction === 'SCIENCE_INTENSIVE') scienceGain += 8;
+  if (currentMorale < 40) {
+    scienceGain = Math.max(0, Math.floor(scienceGain * 0.4)); // Fatigued crew produces 60% less science
+  }
   const newScience = currentRes.science + scienceGain;
 
-  // Crew Health:
+  // Crew Health (Doctor bonus: 35% hypoxia/stress mitigation shield and +50% recovery):
   let healthDelta = 0;
-  if (newOxygen < 30 || newWater < 25 || newFood <= 2) healthDelta -= 10;
-  if (newRadiation > 45) healthDelta -= 5;
-  if (newPower < 20) healthDelta -= 6; // Freezing quarters
-  if (newPower >= 50 && newOxygen >= 70 && newWater >= 50 && newFood >= 10 && newRadiation < 35) {
-    healthDelta += 2; // Well-fed, warm, thriving
+  let stressDamage = 0;
+  if (newOxygen < 25) stressDamage -= 12; // Severe hypoxia
+  if (newWater < 20) stressDamage -= 10; // Severe dehydration
+  if (newFood <= 1) stressDamage -= 8; // Malnutrition
+  if (newRadiation > 45) stressDamage -= 6; // Radiation sickness
+  if (newPower <= 0) stressDamage -= 16; // Catastrophic freezing quarters (-130°C)
+  else if (newPower < 20) stressDamage -= 6;
+
+  // Doctor Health Shield mitigates environmental damage
+  if (stressDamage < 0) {
+    healthDelta += Math.round(stressDamage * (1 - CREW_SPECIALTY_BONUSES.DOCTOR.hypoxiaDamageReduction));
+  }
+
+  if (newPower >= 50 && newOxygen >= 70 && newWater >= 50 && newFood >= 8 && newRadiation < 35) {
+    // Doctor enhanced recovery
+    healthDelta += Math.round(2 * CREW_SPECIALTY_BONUSES.DOCTOR.healthRecoveryBonus);
   }
   const newHealth = Math.min(100, Math.max(0, currentRes.crewHealth + healthDelta));
+
+  // Crew Morale (Commander bonus: +15% baseline buffer and 15% crisis resilience):
+  let moraleDelta = 0;
+  if (newFood <= 2) moraleDelta -= 10;
+  if (newWater < 25) moraleDelta -= 12;
+  if (newPower <= 0) moraleDelta -= 20; // Panic in cold darkness
+  else if (newPower < 20) moraleDelta -= 10;
+  if (newOxygen < 30) moraleDelta -= 12;
+  if (newRadiation > 50) moraleDelta -= 10;
+  if (newHealth < 40) moraleDelta -= 10;
+  if (newShielding < 25) moraleDelta -= 6; // Fear of micrometeorites
+
+  // Commander Morale Shield softens dips during crises
+  if (moraleDelta < 0) {
+    moraleDelta = Math.round(moraleDelta * CREW_SPECIALTY_BONUSES.COMMANDER.moraleLossMultiplier);
+  }
+
+  if (newPower >= 50 && newOxygen >= 70 && newWater >= 50 && newFood >= 8 && !isPowerBlackout) {
+    moraleDelta += 3; // High spirits from nominal living conditions
+  }
+  const newMorale = Math.min(100, Math.max(0, currentMorale + moraleDelta));
 
   const updatedResources: ResourceState = {
     power: newPower,
@@ -504,6 +590,8 @@ export function computeDailySimulationTurn(
     radiation: Math.round(newRadiation * 10) / 10,
     science: newScience,
     crewHealth: newHealth,
+    crewMorale: newMorale,
+    shielding: Math.round(newShielding * 10) / 10,
   };
 
   // 6. Evaluate Objectives
@@ -539,44 +627,93 @@ export function computeDailySimulationTurn(
     return { ...obj, currentValue: curr, completed };
   });
 
-  // 7. Check Failure & Victory
+  // 7. Check Failure & Victory Endings
   let isGameOver = false;
   let outcome: 'IN_PROGRESS' | 'VICTORY' | 'PARTIAL_SUCCESS' | 'CRITICAL_FAILURE' = 'IN_PROGRESS';
   let failureReason = '';
+  let endingScenarioId = '';
 
   if (newOxygen <= 0) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
     failureReason = 'Hypoxia: Atmospheric oxygen exhausted. ECLSS pressure loops collapsed.';
+    endingScenarioId = 'DEPRESSURIZATION_HYPOXIA';
   } else if (newPower <= 0) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
     failureReason = 'Catastrophic Freeze: Base battery hit 0% during the lunar night. Thermal loops froze.';
+    endingScenarioId = 'LIFE_SUPPORT_FREEZE';
   } else if (newWater <= 0) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
     failureReason = 'Dehydration: Water recovery loops failed to supply minimum metabolic fluid requirement.';
+    endingScenarioId = 'DESICCATION_DEHYDRATION';
   } else if (newFood <= 0) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
     failureReason = 'Starvation: Outpost nutritional reserves completely depleted.';
+    endingScenarioId = 'STARVATION';
+  } else if (newShielding <= 0) {
+    isGameOver = true;
+    outcome = 'CRITICAL_FAILURE';
+    failureReason = 'Catastrophic Hull Breach: Regolith shielding collapsed; unmitigated debris impact punctured the pressure hull.';
+    endingScenarioId = 'DEPRESSURIZATION';
   } else if (newRadiation >= 100) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
     failureReason = 'Acute Radiation Syndrome: Cumulative crew dosimeter exceeded safe biological ceiling (100 mSv).';
+    endingScenarioId = 'RADIATION_CASUALTY';
   } else if (newHealth <= 0) {
     isGameOver = true;
     outcome = 'CRITICAL_FAILURE';
     failureReason = 'Medical Incapacitation: Crew vitals collapsed under compounded mission stresses.';
+    endingScenarioId = 'CREW_MORALE_COLLAPSE';
+  } else if (newMorale <= 0) {
+    isGameOver = true;
+    outcome = 'CRITICAL_FAILURE';
+    failureReason = 'Psychological Collapse: Crew morale reached 0% under prolonged stress and deprivation.';
+    endingScenarioId = 'CREW_MORALE_COLLAPSE';
   } else if (sol >= prevState.totalSols) {
     isGameOver = true;
     const completedCount = updatedObjectives.filter((o) => o.completed).length;
-    if (completedCount >= updatedObjectives.length - 1 && newHealth >= 50) {
+    if (completedCount >= updatedObjectives.length - 1 && newHealth >= 45 && newMorale >= 35) {
       outcome = 'VICTORY';
+      if (newScience >= 160 && newHealth >= 65) {
+        endingScenarioId = 'SCIENTIFIC_TRIUMPH';
+      } else if (newHealth >= 75 && newMorale >= 70) {
+        endingScenarioId = 'GOLDEN_TRIUMPH';
+      } else {
+        endingScenarioId = 'SURVIVAL_VICTORY';
+      }
     } else {
       outcome = 'PARTIAL_SUCCESS';
+      endingScenarioId = 'SURVIVAL_VICTORY';
     }
   }
+
+  // 8. Check 1-Day Advance Warning Telemetry
+  const nextSol = sol + 1;
+  const upcomingEvent = SCIENCE_EVENTS.find(
+    (e) => (e.destination === 'BOTH' || e.destination === prevState.destination) && e.solTrigger === nextSol
+  );
+  const activeWarning = upcomingEvent
+    ? {
+        title: upcomingEvent.warningTitle,
+        message: upcomingEvent.warningMessage,
+        hazardType: upcomingEvent.hazardType,
+        countdownSols: 1,
+        nasaDocReference: upcomingEvent.nasaDocReference,
+      }
+    : null;
+
+  // Daily Engineering Build Points (cadets earn points to expand/repair base each sol)
+  // Scaled by difficulty profile (Cadet: 6, Officer: 4, Commander: 3)
+  // Low crew morale (< 40%) reduces daily work output by 50%
+  let rawBuildPoints = diffProfile.dailyBuildPoints;
+  if (newMorale < 40) {
+    rawBuildPoints = Math.max(1, Math.floor(rawBuildPoints * 0.5));
+  }
+  const buildPointsEarned = rawBuildPoints;
 
   const telemetry: TurnTelemetry = {
     sol,
@@ -602,6 +739,9 @@ export function computeDailySimulationTurn(
     isGameOver,
     outcome,
     failureReason,
+    activeWarning,
+    endingScenarioId,
+    buildPointsEarned,
   };
 }
 

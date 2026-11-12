@@ -9,6 +9,8 @@ export interface ResourceState {
   radiation: number;  // Cumulative mSv exposure (0 = safe, 100+ = danger)
   science: number;    // Accumulated Research Points (Goal: 300)
   crewHealth: number; // 0 - 100 (%)
+  crewMorale?: number;// 0 - 100 (%) Interdependent crew psychological state
+  shielding?: number; // 0 - 100 (%) Regolith & Whipple shield integrity
 }
 
 export type ModuleStatus = 'NOMINAL' | 'WARNING' | 'CRITICAL' | 'OFFLINE';
@@ -46,8 +48,10 @@ export interface ChoiceOption {
     oxygen?: number;
     food?: number;
     radiation?: number;
+    shielding?: number;
     science?: number;
     crewHealth?: number;
+    crewMorale?: number;
   };
   consequenceNarrative: string;
   educationalInsight: string;
@@ -156,5 +160,15 @@ export interface GameState {
   netPowerKw?: number;
   solarOutputKw?: number;
   isLunarNight?: boolean;
+  buildPoints?: number;
+  builtModules?: string[];
+  activeWarning?: {
+    title: string;
+    message: string;
+    hazardType: string;
+    countdownSols: number;
+    nasaDocReference?: string;
+  } | null;
+  endingScenarioId?: string;
 }
 

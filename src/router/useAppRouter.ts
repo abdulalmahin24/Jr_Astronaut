@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 export type AppRoute = 
   | 'home'
+  | 'explore'
   | 'mission'
   | 'academy'
   | 'simulators'
@@ -20,8 +21,10 @@ const ROUTE_HASH_MAP: Record<string, AppRoute> = {
   '#/': 'home',
   '#home': 'home',
   '#/home': 'home',
-  '#mission': 'home',
-  '#/mission': 'home',
+  '#explore': 'explore',
+  '#/explore': 'explore',
+  '#mission': 'mission',
+  '#/mission': 'mission',
   '#academy': 'academy',
   '#/academy': 'academy',
   '#simulators': 'simulators',

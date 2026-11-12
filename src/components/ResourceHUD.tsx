@@ -22,7 +22,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
   destination = 'MOON',
   onSelectDifficulty,
 }) => {
-  const currentTier = TIER_PROFILES[difficultyMode] || TIER_PROFILES.CADET;
+  const currentTier = (TIER_PROFILES as Record<string, any>)[difficultyMode] || TIER_PROFILES.CADET;
   const isDefaultKidMode = difficultyMode === 'EXPLORER' || difficultyMode === 'CADET';
   const [precisionMode, setPrecisionMode] = useState<boolean>(!isDefaultKidMode);
 
@@ -655,6 +655,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                 padding: '10px 12px',
                 borderLeft: `3px solid ${status.color}`,
               }}
+              title="Crew Health: Decreases if Oxygen, Water, Food run low, or during radiation storms!"
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <span
@@ -670,7 +671,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                   }}
                 >
                   <Activity size={13} style={{ color: 'var(--color-accent-green)' }} />
-                  CREW VITALS
+                  CREW HEALTH
                 </span>
                 <span
                   style={{
@@ -704,6 +705,146 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
                     width: `${Math.min(100, Math.max(0, resources.crewHealth))}%`,
                     height: '100%',
                     background: status.color,
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 8. CREW MORALE */}
+        {(() => {
+          const morale = resources.crewMorale ?? 85;
+          const status = getStatus(morale);
+          return (
+            <div
+              style={{
+                background: 'var(--color-paper-2)',
+                border: '1px solid var(--rule-subtle)',
+                borderRadius: 0,
+                padding: '10px 12px',
+                borderLeft: `3px solid #a855f7`,
+              }}
+              title="Crew Morale: High spirits boost repair speed! Drops during lockdowns, hunger, or cold."
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: '#c084fc',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <span style={{ fontSize: '13px' }}>🧠</span>
+                  CREW MORALE
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: status.color,
+                    background: status.bg,
+                    padding: '1px 5px',
+                    borderRadius: 0,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  {morale >= 70 ? 'HIGH' : morale >= 40 ? 'STEADY' : 'BURNOUT'}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginBottom: '6px',
+                }}
+              >
+                {morale}%
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, morale))}%`,
+                    height: '100%',
+                    background: '#a855f7',
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 9. SHIELDING INTEGRITY */}
+        {(() => {
+          const shielding = resources.shielding ?? 70;
+          const status = getStatus(shielding);
+          return (
+            <div
+              style={{
+                background: 'var(--color-paper-2)',
+                border: '1px solid var(--rule-subtle)',
+                borderRadius: 0,
+                padding: '10px 12px',
+                borderLeft: `3px solid #3b82f6`,
+              }}
+              title="Regolith Shielding: Protects against solar flares and micrometeorite hull breaches!"
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: '#60a5fa',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  <span style={{ fontSize: '13px' }}>🛡️</span>
+                  REGOLITH SHIELD
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: status.color,
+                    background: status.bg,
+                    padding: '1px 5px',
+                    borderRadius: 0,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                >
+                  {shielding >= 60 ? 'ARMORED' : shielding >= 30 ? 'DAMAGED' : 'BREACH'}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginBottom: '6px',
+                }}
+              >
+                {shielding}%
+              </div>
+              <div style={{ width: '100%', height: '3px', background: 'var(--color-paper-3)', borderRadius: 0, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.max(0, shielding))}%`,
+                    height: '100%',
+                    background: '#3b82f6',
                   }}
                 />
               </div>

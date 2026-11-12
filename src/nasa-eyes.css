@@ -4,19 +4,25 @@
 
 /* Base container */
 .nasa-eyes-root {
-  position: fixed;
-  top: 52px;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: calc(100vh - 52px);
+  height: 100%;
   overflow: clip;
   background-color: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);
   user-select: none;
   z-index: 1;
+}
+
+.nasa-eyes-background-mode {
+  pointer-events: none !important;
+}
+
+.nasa-eyes-background-mode .nasa-eyes-canvas-container {
+  pointer-events: none !important;
+  cursor: default !important;
 }
 
 /* 3D WebGL Canvas Layer */
@@ -55,21 +61,83 @@
   pointer-events: auto;
 }
 
+/* ── UNIFIED TOP HUD FLEX CONTAINER (Prevents any horizontal collision between card, toolbar & CTA) ── */
+.nasa-eyes-top-hud {
+  position: absolute;
+  top: 16px; /* Guaranteed 16px gap below GlobalNavBar */
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 45;
+}
+
+.nasa-eyes-top-hud > * {
+  pointer-events: auto;
+}
+
 /* ── FLOATING CELESTIAL CONTROLS TOOLBAR (Sits cleanly on top of 3D Canvas) ── */
 .ne-floating-celestial-toolbar {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  background: var(--color-paper-2);
+  background: rgba(9, 16, 36, 0.94);
   border: var(--rule-hair) solid var(--color-rule);
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-card);
-  z-index: 30;
-  max-width: calc(100% - 32px);
+  padding: 6px 12px;
+  border-radius: 9999px;
+  z-index: 46;
+  max-width: 680px;
+  min-width: 0;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ne-floating-celestial-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 1200px) and (min-width: 769px) {
+  .nasa-eyes-top-hud {
+    gap: 12px;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+  }
+  .ne-floating-celestial-toolbar {
+    max-width: 580px;
+  }
+}
+
+@media (max-width: 768px) {
+  .nasa-eyes-top-hud {
+    flex-direction: column;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    gap: 10px;
+  }
+  .ne-floating-celestial-toolbar {
+    position: fixed;
+    top: auto;
+    bottom: 84px;
+    left: 10px;
+    right: 10px;
+    margin: 0;
+    max-width: calc(100vw - 20px);
+    overflow-x: auto;
+    padding: 6px 10px;
+    z-index: 48;
+    border-radius: 12px;
+  }
 }
 
 .ne-toolbar-quick-tools {
@@ -82,18 +150,42 @@
 
 /* ── FLOATING TELEMETRY HUD CARD (Top-Left Dock) ── */
 .ne-telemetry-hud-card {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  background: var(--color-paper-2);
+  position: static;
+  background: rgba(9, 16, 36, 0.94);
   border: var(--rule-hair) solid var(--color-rule);
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-card);
-  z-index: 30;
+  padding: 10px 14px;
+  border-radius: 8px;
+  z-index: 47;
   display: flex;
   flex-direction: column;
   gap: var(--space-2xs);
-  min-width: 192px;
+  width: 250px;
+  min-width: 210px;
+  max-width: 250px;
+  flex-shrink: 0;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+}
+
+@media (max-width: 1200px) and (min-width: 769px) {
+  .ne-telemetry-hud-card {
+    width: 230px;
+    max-width: 230px;
+    max-height: calc(100vh - 190px);
+  }
+}
+
+@media (max-width: 768px) {
+  .ne-telemetry-hud-card {
+    width: calc(100vw - 20px);
+    min-width: auto;
+    max-width: calc(100vw - 20px);
+    max-height: 160px;
+    z-index: 45;
+  }
 }
 
 .ne-telemetry-hud-header {
@@ -703,18 +795,42 @@
   font-family: var(--font-body);
 }
 
-/* ── BOTTOM PLAYBACK & TIMELINE DOCK (Exact NASA Eyes Control Bar) ── */
+/* ── BOTTOM PLAYBACK & TIMELINE DOCK (Pinned to screen bottom) ── */
 .nasa-eyes-bottombar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-xs) var(--space-md);
-  background: var(--color-paper-2);
-  border-top: var(--rule-hair) solid var(--color-rule);
+  padding: 8px 16px;
+  background: rgba(9, 16, 36, 0.95);
+  border-top: 1px solid rgba(56, 189, 248, 0.25);
   gap: var(--space-md);
   flex-wrap: nowrap;
-  position: relative;
-  z-index: 30;
+  z-index: 45;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+}
+
+@media (max-width: 900px) {
+  .nasa-eyes-bottombar {
+    padding: 6px 10px;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nasa-eyes-bottombar::-webkit-scrollbar {
+    display: none;
+  }
+  .ne-time-cluster {
+    gap: 4px;
+  }
+  .ne-scrubber-container {
+    min-width: 140px;
+  }
 }
 
 /* Left Time & Ephemeris cluster */
@@ -975,4 +1091,228 @@
   font-size: 12px;
   color: var(--color-muted);
   line-height: 1.45;
+}
+
+/* ── FLAGSHIP HOME HERO OVERLAY (Prominent, High-Converting, Dismissible) ── */
+.ne-home-hero-overlay {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 48;
+  max-width: 640px;
+  width: calc(100% - 32px);
+  pointer-events: auto;
+  animation: neHeroFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes neHeroFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.ne-home-hero-card {
+  position: relative;
+  background: rgba(9, 16, 36, 0.95);
+  border: 1.5px solid rgba(249, 115, 22, 0.5);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 36px rgba(249, 115, 22, 0.22);
+  backdrop-filter: blur(20px);
+  text-align: center;
+}
+
+.ne-home-hero-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ne-home-hero-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.ne-home-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  margin-bottom: 12px;
+}
+
+.ne-home-hero-title {
+  margin: 0 0 6px 0;
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.ne-home-hero-tagline {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fb923c;
+  letter-spacing: 0.01em;
+}
+
+.ne-home-hero-desc {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.ne-home-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ne-home-hero-primary-btn {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.65);
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 0 24px rgba(249, 115, 22, 0.65), 0 4px 16px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ne-home-hero-primary-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 36px rgba(249, 115, 22, 0.85), 0 6px 22px rgba(0, 0, 0, 0.6);
+}
+
+.ne-home-hero-secondary-btn {
+  background: rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ne-home-hero-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.ne-home-hero-footer {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .ne-home-hero-overlay {
+    top: 70px;
+    max-width: calc(100vw - 20px);
+  }
+  .ne-home-hero-card {
+    padding: 18px 16px;
+  }
+  .ne-home-hero-title {
+    font-size: 20px;
+  }
+  .ne-home-hero-tagline {
+    font-size: 14px;
+  }
+  .ne-home-hero-primary-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 13px;
+  }
+  .ne-home-hero-secondary-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── SELECTED CELESTIAL BODY OUTPOST PILL (Moon / Mars) ── */
+.ne-selected-body-outpost-pill {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 46;
+  pointer-events: auto;
+  animation: nePillPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes nePillPop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.ne-selected-body-outpost-btn {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 9999px;
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 0 24px rgba(249, 115, 22, 0.65), 0 4px 16px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.ne-selected-body-outpost-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 32px rgba(249, 115, 22, 0.85), 0 6px 20px rgba(0, 0, 0, 0.6);
 }

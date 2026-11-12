@@ -4,23 +4,21 @@ import type { User } from '../types/auth';
 import { spaceMusicEngine } from '../utils/spaceMusicEngine';
 import { soundFx } from '../utils/audioEffects';
 import {
-  Compass,
   Rocket,
   GraduationCap,
   Gamepad2,
   BookOpen,
-  Users,
   Volume2,
   VolumeX,
-  Sliders,
+  ChevronDown,
   Award,
-  Eye,
+  Sliders,
+  HelpCircle,
+  School,
+  User as UserIcon,
   Menu,
   X,
-  ShieldCheck,
-  Zap,
-  Activity,
-  Layers,
+  Globe,
 } from 'lucide-react';
 
 export interface GlobalNavBarProps {
@@ -31,9 +29,9 @@ export interface GlobalNavBarProps {
   onOpenSettings: () => void;
   onOpenHowToPlay: () => void;
   onOpenCertificate: () => void;
-  isJudgeMode: boolean;
-  onOpenJudgePreview: () => void;
-  completedMissionsCount: number;
+  isJudgeMode?: boolean;
+  onOpenJudgePreview?: () => void;
+  completedMissionsCount?: number;
   onOpenTelemetry?: () => void;
   onOpenPlanetaryMap?: () => void;
   onOpenNasaData?: () => void;
@@ -50,32 +48,15 @@ export const GlobalNavBar: React.FC<GlobalNavBarProps> = ({
   onOpenSettings,
   onOpenHowToPlay,
   onOpenCertificate,
-  isJudgeMode,
-  onOpenJudgePreview,
-  completedMissionsCount,
-  onOpenTelemetry,
-  onOpenPlanetaryMap,
-  onOpenNasaData,
-  onOpenAIDisclosure,
-  onOpenAbout,
-  onOpenMultiplayerLobby,
 }) => {
   const [isAudioMuted, setIsAudioMuted] = useState(() => spaceMusicEngine.getIsMuted());
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
 
-  const navLinks: { route: AppRoute; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { route: 'home', label: 'Home', icon: <Compass size={14} /> },
-    { route: 'academy', label: 'Cadet Academy', icon: <GraduationCap size={14} /> },
-    { route: 'simulators', label: 'Simulators', icon: <Gamepad2 size={14} /> },
-    { route: 'campaign', label: '76 Missions', icon: <Zap size={14} />, badge: `${completedMissionsCount}/76` },
-    { route: 'learning', label: 'Comics & Hub', icon: <BookOpen size={14} /> },
-    { route: 'teacher', label: 'Educators', icon: <Users size={14} /> },
-  ];
-
-  const handleNavClick = (route: AppRoute) => {
+  const handleNavClick = (route: AppRoute, params?: Record<string, string>) => {
     soundFx.playClick(750);
-    onNavigate(route);
+    onNavigate(route, params);
+    setIsMoreOpen(false);
     setIsMobileMenuOpen(false);
   };
 
@@ -86,516 +67,612 @@ export const GlobalNavBar: React.FC<GlobalNavBarProps> = ({
   };
 
   return (
-    <header className="global-aerospace-nav" style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 999,
-      background: 'var(--color-paper-alpha)',
-      borderBottom: 'var(--rule-hair) solid var(--color-rule)',
-      height: '52px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 16px',
-      userSelect: 'none',
-    }}>
-      {/* Brand Cluster */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <header
+      className="global-aerospace-nav"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        background: 'rgba(3, 7, 18, 0.92)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid #1e293b',
+        height: 'var(--header-height, 56px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 20px',
+        userSelect: 'none',
+        fontFamily: "'Fredoka', 'Baloo 2', system-ui, sans-serif",
+      }}
+    >
+      {/* ── 1. LOGO CLUSTER ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
         <button
           onClick={() => handleNavClick('home')}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
             background: 'none',
             border: 'none',
             padding: 0,
             cursor: 'pointer',
             color: 'inherit',
           }}
-          title="Return to Solar System Orrery Home"
+          title="Jr_AstroCamp — Return to Home"
         >
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: 'var(--radius-card)',
-            background: 'var(--color-paper-2)',
-            border: 'var(--rule-hair) solid var(--color-rule)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <svg width="20" height="20" viewBox="0 0 100 100" fill="none">
-              <circle cx="50" cy="50" r="48" fill="#0B3D91" />
-              <path d="M18 64 Q50 20 82 64 Q50 48 18 64Z" fill="#E03C31" />
-              <ellipse cx="50" cy="50" rx="38" ry="12" stroke="#ffffff" strokeWidth="3" fill="none" transform="rotate(-25 50 50)" />
-              <circle cx="34" cy="36" r="3.5" fill="#ffffff" />
-              <circle cx="68" cy="42" r="3" fill="#ffffff" />
-              <circle cx="54" cy="62" r="2.5" fill="#ffffff" />
-            </svg>
+          <div
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #0b3d91, #1e3a8a)',
+              border: '1px solid #38bdf8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
+            }}
+          >
+            <Rocket size={18} className="text-amber-400" />
           </div>
           <div style={{ textAlign: 'left' }}>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700,
-              fontSize: '13px',
-              letterSpacing: 'normal',
-              color: 'var(--color-ink)',
-              lineHeight: 1.1,
-            }}>
-              Jr_AstroCamp
+            <div
+              style={{
+                fontSize: '15px',
+                fontWeight: 800,
+                color: '#ffffff',
+                lineHeight: 1.1,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              Jr. AstroCamp
             </div>
-            <div style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '10px',
-              color: 'var(--color-accent-2)',
-              letterSpacing: 'normal',
-              fontWeight: 500,
-            }}>
+            <div
+              style={{
+                fontSize: '10px',
+                color: '#38bdf8',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
               NASA Space Apps 2026
             </div>
           </div>
         </button>
-      </div>
 
-      {/* Center Navigation Links (Desktop) */}
-      <nav className="global-nav-links" style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-      }}>
-        {navLinks.map((link) => {
-          const isActive = currentRoute === link.route;
-          return (
+        {/* ── 2. PRIMARY NAV LINKS (Desktop) ── */}
+        <nav
+          className="global-nav-links"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          {/* PLAY / FLAGSHIP OUTPOST */}
+          <button
+            onClick={() => handleNavClick('mission')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '13px',
+              fontWeight: 800,
+              color: currentRoute === 'mission' ? '#ffffff' : '#f97316',
+              background: currentRoute === 'mission' ? '#ea580c' : 'rgba(249, 115, 22, 0.14)',
+              border: '1.5px solid rgba(249, 115, 22, 0.5)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Rocket size={14} />
+            <span>Play</span>
+          </button>
+
+          {/* LEARN */}
+          <button
+            onClick={() => handleNavClick('learning')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: currentRoute === 'learning' ? '#ffffff' : '#cbd5e1',
+              background: currentRoute === 'learning' ? '#0284c7' : 'transparent',
+              border: currentRoute === 'learning' ? '1.5px solid #38bdf8' : '1px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <BookOpen size={14} />
+            <span>Learn</span>
+          </button>
+
+          {/* EXPLORE SPACE (DEDICATED 3D ORRERY) */}
+          <button
+            onClick={() => handleNavClick('explore')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: currentRoute === 'explore' ? '#ffffff' : '#cbd5e1',
+              background: currentRoute === 'explore' ? '#0284c7' : 'transparent',
+              border: currentRoute === 'explore' ? '1.5px solid #38bdf8' : '1px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Globe size={14} />
+            <span>Explore Space</span>
+          </button>
+
+          {/* MORE DROPDOWN */}
+          <div style={{ position: 'relative' }}>
             <button
-              key={link.route}
-              onClick={() => handleNavClick(link.route)}
+              onClick={() => setIsMoreOpen(!isMoreOpen)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
                 padding: '6px 12px',
-                borderRadius: 'var(--radius-card)',
-                fontSize: '11.5px',
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--color-accent-ink)' : 'var(--color-muted)',
-                background: isActive ? 'var(--color-accent)' : 'transparent',
-                border: isActive ? '1px solid var(--color-accent)' : '1px solid transparent',
+                borderRadius: '9999px',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: isMoreOpen ? '#38bdf8' : '#cbd5e1',
+                background: isMoreOpen ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                border: isMoreOpen ? '1px solid #38bdf8' : '1px solid transparent',
                 cursor: 'pointer',
-                transition: 'opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease',
-                position: 'relative',
               }}
-              className="global-nav-link-btn"
             >
-              <span style={{ color: isActive ? 'var(--color-accent-ink)' : 'var(--color-accent-2)' }}>{link.icon}</span>
-              <span>{link.label}</span>
-              {link.badge && (
-                <span style={{
-                  fontSize: '9.5px',
-                  fontWeight: 700,
-                  padding: '2px 6px',
-                  borderRadius: 'var(--radius-pill)',
-                  background: isActive ? 'var(--color-accent-ink)' : 'var(--color-paper-card)',
-                  color: isActive ? 'var(--color-accent)' : 'var(--color-ink)',
-                  border: '1px solid var(--color-rule)',
-                }}>
-                  {link.badge}
-                </span>
-              )}
+              <span>More</span>
+              <ChevronDown size={14} />
             </button>
-          );
-        })}
-      </nav>
 
-      {/* Right Utility Cluster */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {/* Co-Op Multiplayer Bridge */}
-        {onOpenMultiplayerLobby && (
-          <button
-            onClick={() => { onOpenMultiplayerLobby(); soundFx.playClick(1000); }}
-            style={{
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-card)',
-              background: 'rgba(34, 197, 94, 0.12)',
-              border: '1px solid var(--color-accent-green)',
-              color: 'var(--color-accent-green)',
-              fontSize: '11px',
-              fontWeight: 800,
-              fontFamily: 'var(--font-mono)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-            title="NASA Co-Op Multiplayer Bridge & 2-Player Split-Screen Ready Room"
-          >
-            <Users size={13} />
-            <span>CO-OP</span>
-          </button>
-        )}
+            {isMoreOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: '240px',
+                  background: '#070d1e',
+                  border: '1.5px solid #1e3a8a',
+                  borderRadius: '14px',
+                  padding: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  zIndex: 1000,
+                  boxShadow: '0 20px 45px rgba(0,0,0,0.85)',
+                }}
+              >
+                <button
+                  onClick={() => handleNavClick('academy')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#f8fafc',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <GraduationCap size={15} className="text-cyan-400" />
+                  <span>Cadet Academy</span>
+                </button>
 
-        {/* Judge Mode indicator */}
-        {isJudgeMode && (
-          <button
-            onClick={() => { onOpenJudgePreview(); soundFx.playClick(900); }}
-            style={{
-              padding: '4px 8px',
-              borderRadius: 'var(--radius-card)',
-              background: 'var(--color-paper-card)',
-              border: 'var(--rule-hair) solid var(--color-accent-amber)',
-              color: 'var(--color-accent-amber)',
-              fontSize: '10.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-            className="global-nav-judge-btn"
-            title="NASA Space Apps Judge Preview Mode"
-          >
-            <Eye size={12} />
-            <span>Judge Mode</span>
-          </button>
-        )}
+                <button
+                  onClick={() => handleNavClick('simulators')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#f8fafc',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <Gamepad2 size={15} className="text-emerald-400" />
+                  <span>Simulators</span>
+                </button>
 
-        {/* Audio Ambience Toggle */}
+                <button
+                  onClick={() => handleNavClick('learning', { tab: 'COMIC' })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#f8fafc',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <BookOpen size={15} className="text-amber-400" />
+                  <span>Hub &amp; Comics</span>
+                </button>
+
+                <button
+                  onClick={() => handleNavClick('teacher')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#f8fafc',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <School size={15} className="text-pink-400" />
+                  <span>Educators</span>
+                </button>
+
+                <div style={{ height: '1px', background: '#1e293b', margin: '4px 0' }} />
+
+                <button
+                  onClick={() => { setIsMoreOpen(false); onOpenSettings(); soundFx.playClick(700); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#cbd5e1',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Sliders size={14} />
+                  <span>Settings</span>
+                </button>
+
+                <button
+                  onClick={() => { setIsMoreOpen(false); onOpenCertificate(); soundFx.playVictory(); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#fbbf24',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Award size={14} />
+                  <span>Certificate</span>
+                </button>
+
+                <button
+                  onClick={() => { setIsMoreOpen(false); onOpenHowToPlay(); soundFx.playClick(700); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#38bdf8',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                  }}
+                >
+                  <HelpCircle size={14} />
+                  <span>Guide</span>
+                </button>
+
+                <div style={{ height: '1px', background: '#1e293b', margin: '4px 0' }} />
+
+                <button
+                  onClick={() => { setIsMoreOpen(false); onOpenAuth(); soundFx.playClick(750); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'rgba(56, 189, 248, 0.08)',
+                    border: '1px solid rgba(56, 189, 248, 0.25)',
+                    color: '#38bdf8',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <UserIcon size={14} />
+                  <span>{currentUser ? `@${currentUser.username}` : 'Cadet Login (Optional)'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </nav>
+      </div>
+
+      {/* ── 3. RIGHT AUDIO & MOBILE TOGGLE ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Sound Toggle */}
         <button
           onClick={handleToggleAudio}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: 'var(--radius-card)',
-            border: isAudioMuted ? 'var(--rule-hair) solid var(--color-rule)' : 'var(--rule-hair) solid var(--color-rule-highlight)',
-            background: isAudioMuted ? 'var(--color-paper-2)' : 'var(--color-accent-2-alpha)',
-            color: isAudioMuted ? 'var(--color-muted)' : 'var(--color-accent-2)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          title={isAudioMuted ? 'Unmute Deep Space Audio' : 'Mute Deep Space Audio'}
-        >
-          {isAudioMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-        </button>
-
-        {/* Field Guide / Help */}
-        <button
-          onClick={() => { onOpenHowToPlay(); soundFx.playClick(700); }}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: 'var(--radius-card)',
-            border: 'var(--rule-hair) solid var(--color-rule)',
-            background: 'var(--color-paper-2)',
-            color: 'var(--color-ink)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          className="global-nav-desktop-tool"
-          title="Field Survival Guide"
-        >
-          <BookOpen size={14} />
-        </button>
-
-        {/* Flight Certificate */}
-        <button
-          onClick={() => { onOpenCertificate(); soundFx.playVictory(); }}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: 'var(--radius-card)',
-            border: 'var(--rule-hair) solid var(--color-rule)',
-            background: 'var(--color-paper-2)',
-            color: 'var(--color-accent)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          className="global-nav-desktop-tool"
-          title="Astronaut Flight Certificate"
-        >
-          <Award size={14} />
-        </button>
-
-        {/* Settings */}
-        <button
-          onClick={() => { onOpenSettings(); soundFx.playClick(700); }}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: 'var(--radius-card)',
-            border: 'var(--rule-hair) solid var(--color-rule)',
-            background: 'var(--color-paper-2)',
-            color: 'var(--color-ink)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          className="global-nav-desktop-tool"
-          title="System Settings"
-        >
-          <Sliders size={14} />
-        </button>
-
-        {/* Science & Telemetry Panels Dropdown */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => { setIsToolsDropdownOpen(!isToolsDropdownOpen); soundFx.playClick(750); }}
-            style={{
-              padding: '5px 10px',
-              borderRadius: 'var(--radius-card)',
-              border: isToolsDropdownOpen ? 'var(--rule-hair) solid var(--color-accent-2)' : 'var(--rule-hair) solid var(--color-rule)',
-              background: isToolsDropdownOpen ? 'var(--color-accent-2-alpha)' : 'var(--color-paper-2)',
-              color: isToolsDropdownOpen ? 'var(--color-accent-2)' : 'var(--color-ink)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              fontSize: '11px',
-              fontWeight: 700,
-            }}
-            className="global-nav-desktop-tool"
-            title="Access NASA Panels: Telemetry, Targets Map, Data Sources & AI Disclosures"
-          >
-            <Activity size={14} />
-            <span>Panels</span>
-          </button>
-
-          {isToolsDropdownOpen && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 'calc(100% + 8px)',
-                right: 0,
-                width: '240px',
-                background: 'var(--color-paper-2)',
-                border: 'var(--rule-hair) solid var(--color-rule)',
-                borderRadius: 'var(--radius-card)',
-                padding: '6px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2px',
-                zIndex: 1000,
-              }}
-            >
-              {onOpenTelemetry && (
-                <button
-                  onClick={() => { setIsToolsDropdownOpen(false); onOpenTelemetry(); soundFx.playTelemetryChirp(); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: 'var(--radius-card)', background: 'transparent', border: 'none', color: 'var(--color-success)', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 600 }}
-                >
-                  <Zap size={14} />
-                  <span>Live NASA Telemetry</span>
-                </button>
-              )}
-              {onOpenPlanetaryMap && (
-                <button
-                  onClick={() => { setIsToolsDropdownOpen(false); onOpenPlanetaryMap(); soundFx.playClick(800); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: 'var(--radius-card)', background: 'transparent', border: 'none', color: 'var(--color-accent-2)', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 600 }}
-                >
-                  <Compass size={14} />
-                  <span>Target Command Map</span>
-                </button>
-              )}
-              {onOpenNasaData && (
-                <button
-                  onClick={() => { setIsToolsDropdownOpen(false); onOpenNasaData(); soundFx.playClick(750); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: 'var(--radius-card)', background: 'transparent', border: 'none', color: 'var(--color-ink)', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 600 }}
-                >
-                  <Rocket size={14} />
-                  <span>NASA Data Sources</span>
-                </button>
-              )}
-              {onOpenAIDisclosure && (
-                <button
-                  onClick={() => { setIsToolsDropdownOpen(false); onOpenAIDisclosure(); soundFx.playClick(750); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: 'var(--radius-card)', background: 'transparent', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 600 }}
-                >
-                  <ShieldCheck size={14} />
-                  <span>AI Disclosure</span>
-                </button>
-              )}
-              {onOpenAbout && (
-                <button
-                  onClick={() => { setIsToolsDropdownOpen(false); onOpenAbout(); soundFx.playClick(750); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: 'var(--radius-card)', background: 'transparent', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 600 }}
-                >
-                  <Users size={14} />
-                  <span>About Team Mysterio</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Cadet User Profile Pill */}
-        <button
-          onClick={() => { onOpenAuth(); soundFx.playClick(800); }}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            padding: '4px 10px',
-            borderRadius: 'var(--radius-card)',
-            background: 'var(--color-paper-2)',
-            border: 'var(--rule-hair) solid var(--color-rule)',
-            color: 'var(--color-ink)',
+            padding: '6px 12px',
+            borderRadius: '9999px',
+            background: isAudioMuted ? 'rgba(15, 23, 42, 0.6)' : 'rgba(56, 189, 248, 0.15)',
+            border: isAudioMuted ? '1px solid #334155' : '1px solid #38bdf8',
+            color: isAudioMuted ? '#94a3b8' : '#38bdf8',
             cursor: 'pointer',
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 700,
+            transition: 'all 0.15s ease',
           }}
-          title={currentUser ? `Cadet @${currentUser.username}` : 'Cadet Log In / Character Locker'}
+          title={isAudioMuted ? 'Unmute Deep Space Audio' : 'Mute Deep Space Audio'}
         >
-          <span style={{ fontSize: '13px' }}>{currentUser?.avatar || '🧑‍🚀'}</span>
-          <span style={{ maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {currentUser ? `@${currentUser.username}` : 'Cadet Login'}
-          </span>
+          {isAudioMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+          <span className="hidden sm:inline">{isAudioMuted ? 'Muted' : 'Sound ON'}</span>
         </button>
 
-        {/* Mobile Hamburger Trigger */}
+        {/* Mobile Hamburger */}
         <button
-          onClick={() => { setIsMobileMenuOpen(!isMobileMenuOpen); soundFx.playClick(750); }}
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           style={{
             display: 'none',
-            width: '32px',
-            height: '32px',
-            borderRadius: 'var(--radius-card)',
-            border: 'var(--rule-hair) solid var(--color-rule)',
-            background: 'var(--color-paper-2)',
-            color: 'var(--color-ink)',
+            width: '36px',
+            height: '36px',
+            borderRadius: '8px',
+            background: '#09122a',
+            border: '1px solid #1e3a8a',
+            color: '#ffffff',
             cursor: 'pointer',
             alignItems: 'center',
             justifyContent: 'center',
           }}
           className="global-nav-hamburger"
-          aria-label="Toggle mobile navigation menu"
+          aria-label="Toggle navigation menu"
         >
-          {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
 
-      {/* Mobile Slide-in Drawer */}
+      {/* Mobile Slide-down Drawer */}
       {isMobileMenuOpen && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            top: '52px',
-            zIndex: 998,
-            background: 'var(--color-paper-2)',
-            borderTop: 'var(--rule-hair) solid var(--color-rule)',
+            top: '56px',
+            zIndex: 999,
+            background: '#030712',
+            padding: '20px',
             display: 'flex',
             flexDirection: 'column',
-            padding: '16px',
-            gap: '8px',
+            gap: '10px',
             overflowY: 'auto',
           }}
         >
-          <div style={{
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: 'normal',
-            color: 'var(--color-accent-2)',
-            fontFamily: 'var(--font-body)',
-            marginBottom: '4px',
-          }}>
-            Flight Sectors
-          </div>
-
-          {navLinks.map((link) => {
-            const isActive = currentRoute === link.route;
-            return (
-              <button
-                key={link.route}
-                onClick={() => handleNavClick(link.route)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--radius-card)',
-                  fontSize: '13px',
-                  fontWeight: isActive ? 700 : 500,
-                  color: isActive ? 'var(--color-accent-ink)' : 'var(--color-ink)',
-                  background: isActive ? 'var(--color-accent)' : 'transparent',
-                  border: isActive ? '1px solid var(--color-accent)' : '1px solid var(--color-rule)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ color: isActive ? 'var(--color-accent-ink)' : 'var(--color-accent-2)' }}>{link.icon}</span>
-                  <span>{link.label}</span>
-                </div>
-                {link.badge && (
-                  <span style={{
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    padding: '2px 7px',
-                    borderRadius: 'var(--radius-pill)',
-                    background: isActive ? 'var(--color-accent-ink)' : 'var(--color-paper-card)',
-                    color: isActive ? 'var(--color-accent)' : 'var(--color-ink)',
-                    border: '1px solid var(--color-rule)',
-                  }}>
-                    {link.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          <div style={{ height: '1px', background: 'var(--color-rule)', margin: '8px 0' }} />
-
-          <div style={{
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: 'normal',
-            color: 'var(--color-muted)',
-            fontFamily: 'var(--font-body)',
-            marginBottom: '4px',
-          }}>
-            Quick Tools
-          </div>
-
           <button
-            onClick={() => { onOpenHowToPlay(); setIsMobileMenuOpen(false); soundFx.playClick(700); }}
+            onClick={() => handleNavClick('mission')}
             style={{
-              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-              borderRadius: 'var(--radius-card)', fontSize: '12px', fontWeight: 600, color: 'var(--color-ink)',
-              background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+              padding: '14px',
+              borderRadius: '12px',
+              background: '#ea580c',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '15px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
             }}
           >
-            <BookOpen size={16} /><span>Field Survival Guide</span>
+            <Rocket size={18} />
+            <span>Play: Build Outpost</span>
           </button>
 
           <button
-            onClick={() => { onOpenCertificate(); setIsMobileMenuOpen(false); soundFx.playVictory(); }}
+            onClick={() => handleNavClick('explore')}
             style={{
-              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-              borderRadius: 'var(--radius-card)', fontSize: '12px', fontWeight: 600, color: 'var(--color-accent)',
-              background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: '#09122a',
+              border: '1px solid #1e3a8a',
+              color: '#38bdf8',
+              fontSize: '14px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
             }}
           >
-            <Award size={16} /><span>Flight Certificate</span>
+            <Globe size={18} />
+            <span>Explore Space (3D Orrery)</span>
           </button>
 
           <button
-            onClick={() => { onOpenSettings(); setIsMobileMenuOpen(false); soundFx.playClick(700); }}
+            onClick={() => handleNavClick('learning')}
             style={{
-              display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px',
-              borderRadius: 'var(--radius-card)', fontSize: '12px', fontWeight: 600, color: 'var(--color-ink)',
-              background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: '#09122a',
+              border: '1px solid #1e3a8a',
+              color: '#ffffff',
+              fontSize: '14px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
             }}
           >
-            <Sliders size={16} /><span>System Settings</span>
+            <BookOpen size={18} />
+            <span>Learn: Hub &amp; Comics</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('academy')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: '#09122a',
+              border: '1px solid #1e3a8a',
+              color: '#ffffff',
+              fontSize: '14px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+            }}
+          >
+            <GraduationCap size={18} />
+            <span>Cadet Academy</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('simulators')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: '#09122a',
+              border: '1px solid #1e3a8a',
+              color: '#ffffff',
+              fontSize: '14px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+            }}
+          >
+            <Gamepad2 size={18} />
+            <span>Simulators</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('teacher')}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: '#09122a',
+              border: '1px solid #1e3a8a',
+              color: '#ffffff',
+              fontSize: '14px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer',
+            }}
+          >
+            <School size={18} />
+            <span>Educators</span>
+          </button>
+
+          <div style={{ height: '1px', background: '#1e293b', margin: '8px 0' }} />
+
+          <button
+            onClick={() => { setIsMobileMenuOpen(false); onOpenHowToPlay(); }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: 'transparent',
+              border: '1px solid #334155',
+              color: '#cbd5e1',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            ❓ 30-Sec Guide
+          </button>
+
+          <button
+            onClick={() => { setIsMobileMenuOpen(false); onOpenCertificate(); }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: 'transparent',
+              border: '1px solid #334155',
+              color: '#fbbf24',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            📜 Flight Certificate
+          </button>
+
+          <button
+            onClick={() => { setIsMobileMenuOpen(false); onOpenAuth(); }}
+            style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid #0284c7',
+              color: '#38bdf8',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            🧑‍🚀 {currentUser ? `@${currentUser.username}` : 'Cadet Login (Optional)'}
           </button>
         </div>
       )}
     </header>
   );
 };
+
+export default GlobalNavBar;

@@ -40,4 +40,6 @@ venv/
 
 # Local tools & agent cache
 .taste-skill/
+.chrome-temp-shot/
+.chrome-test-profile/
 

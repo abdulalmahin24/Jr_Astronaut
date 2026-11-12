@@ -18,12 +18,15 @@ import {
   DEFAULT_MARS_OUTPOST,
   generateMissionObjectives,
 } from './utils/simulationEngine';
+import { DIFFICULTY_PROFILES, CREW_SPECIALTY_BONUSES } from './config/outpostBalanceConfig';
 import type { OutpostConfiguration } from './types/game';
 import { soundFx } from './utils/audioEffects';
 import { speechEngine } from './utils/speechEngine';
 import { JudgePreviewBadge, JudgePreviewModal } from './components/JudgePreviewMode';
 
 // Code-split Dedicated Pages
+const GameLandingHomePage = lazy(() => import('./pages/GameLandingHomePage'));
+const ExploreSpacePage = lazy(() => import('./pages/ExploreSpacePage'));
 const OrreryHomePage = lazy(() => import('./pages/OrreryHomePage'));
 const MissionControlPage = lazy(() => import('./pages/MissionControlPage'));
 const AstronautAcademyPage = lazy(() => import('./pages/AstronautAcademyPage'));
@@ -61,14 +64,17 @@ const INITIAL_GAME_STATE: GameState = {
   difficultyMode: 'CADET',
   currentSol: 1,
   totalSols: 30,
+  buildPoints: 12,
   resources: {
-    power: 75,
-    water: 80,
-    oxygen: 90,
-    food: 24,
+    power: DIFFICULTY_PROFILES.CADET.startingResources.power,
+    water: DIFFICULTY_PROFILES.CADET.startingResources.water,
+    oxygen: DIFFICULTY_PROFILES.CADET.startingResources.oxygen,
+    food: DIFFICULTY_PROFILES.CADET.startingResources.food,
     radiation: 12,
-    science: 10,
-    crewHealth: 95
+    science: DIFFICULTY_PROFILES.CADET.startingResources.science,
+    crewHealth: DIFFICULTY_PROFILES.CADET.startingResources.crewHealth,
+    crewMorale: DIFFICULTY_PROFILES.CADET.startingResources.crewMorale ?? 95,
+    shielding: DIFFICULTY_PROFILES.CADET.startingResources.shielding,
   },
   modules: {
     habitat: { status: 'NOMINAL', lifeSupportLoadKw: 12 },
@@ -126,8 +132,8 @@ export const App: React.FC = () => {
     choiceOption?: ChoiceOption;
   } | null>(null);
 
-  // Viewport Settings
-  const [is3DView, setIs3DView] = useState(true);
+  // Viewport Settings (Default to 2D Outpost Overview as requested)
+  const [is3DView, setIs3DView] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(true);
   const [isShieldActive, setIsShieldActive] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
@@ -213,6 +219,24 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Listen for destination & difficulty switch in route params e.g. #/mission?dest=mars&diff=CADET
+  useEffect(() => {
+    if (route === 'mission') {
+      if (params.dest) {
+        const targetDest = params.dest.toUpperCase() === 'MARS' ? 'MARS' : 'MOON';
+        if (gameState.destination !== targetDest) {
+          handleSwitchOutpostDestination(targetDest);
+        }
+      }
+      if (params.diff) {
+        const targetDiff = params.diff.toUpperCase() as DifficultyMode;
+        if (gameState.difficultyMode !== targetDiff) {
+          handleSelectDifficulty(targetDiff);
+        }
+      }
+    }
+  }, [route, params.dest, params.diff]);
+
   const triggerScreenShake = () => {
     setIsShaking(true);
     setTimeout(() => setIsShaking(false), 460);
@@ -243,20 +267,51 @@ export const App: React.FC = () => {
     }));
   };
 
+  const handleBuildModule = (spec: import('./data/outpostBalanceConfig').BuildableModuleSpec) => {
+    setGameState((prev) => {
+      const currentBP = prev.buildPoints ?? (prev.difficultyMode === 'CADET' ? 12 : 8);
+      if (currentBP < spec.buildCostBP) return prev;
+
+      const nextBP = currentBP - spec.buildCostBP;
+      const nextRes = {
+        ...prev.resources,
+        power: Math.min(100, Math.max(0, prev.resources.power + (spec.statDeltas.power || 0))),
+        oxygen: Math.min(100, Math.max(0, prev.resources.oxygen + (spec.statDeltas.oxygen || 0))),
+        water: Math.min(100, Math.max(0, prev.resources.water + (spec.statDeltas.water || 0))),
+        food: Math.max(0, prev.resources.food + (spec.statDeltas.food || 0)),
+        shielding: Math.min(100, Math.max(0, (prev.resources.shielding ?? 70) + (spec.statDeltas.shielding || 0))),
+        crewHealth: Math.min(100, Math.max(0, prev.resources.crewHealth + (spec.statDeltas.crewHealth || 0))),
+        crewMorale: Math.min(100, Math.max(0, (prev.resources.crewMorale ?? 85) + (spec.statDeltas.crewMorale || 0))),
+      };
+
+      const nextState: GameState = {
+        ...prev,
+        buildPoints: nextBP,
+        resources: nextRes,
+        builtModules: [...(prev.builtModules || []), spec.id],
+      };
+      saveGameStateToStorage(nextState);
+      return nextState;
+    });
+  };
+
   const handleSelectChoice = (choice: ChoiceOption) => {
     if (gameState.isGameOver || !gameState.activeEvent) return;
 
+    const turnResult = computeDailySimulationTurn(gameState);
+
     const updatedResources = {
-      power: Math.min(100, Math.max(0, gameState.resources.power + (choice.resourceDelta.power || 0))),
-      water: Math.min(100, Math.max(0, gameState.resources.water + (choice.resourceDelta.water || 0))),
-      oxygen: Math.min(100, Math.max(0, gameState.resources.oxygen + (choice.resourceDelta.oxygen || 0))),
-      food: Math.max(0, gameState.resources.food + (choice.resourceDelta.food || 0)),
-      radiation: Math.max(0, gameState.resources.radiation + (choice.resourceDelta.radiation || 0)),
-      science: gameState.resources.science + (choice.resourceDelta.science || 0),
-      crewHealth: Math.min(100, Math.max(0, gameState.resources.crewHealth + (choice.resourceDelta.crewHealth || 0)))
+      power: Math.min(100, Math.max(0, turnResult.updatedResources.power + (choice.resourceDelta.power || 0))),
+      water: Math.min(100, Math.max(0, turnResult.updatedResources.water + (choice.resourceDelta.water || 0))),
+      oxygen: Math.min(100, Math.max(0, turnResult.updatedResources.oxygen + (choice.resourceDelta.oxygen || 0))),
+      food: Math.max(0, turnResult.updatedResources.food + (choice.resourceDelta.food || 0)),
+      radiation: Math.max(0, turnResult.updatedResources.radiation + (choice.resourceDelta.radiation || 0)),
+      science: turnResult.updatedResources.science + (choice.resourceDelta.science || 0),
+      crewHealth: Math.min(100, Math.max(0, turnResult.updatedResources.crewHealth + (choice.resourceDelta.crewHealth || 0))),
+      crewMorale: Math.min(100, Math.max(0, (turnResult.updatedResources.crewMorale ?? 85) + (choice.resourceDelta.crewMorale || 0))),
+      shielding: Math.min(100, Math.max(0, (turnResult.updatedResources.shielding ?? 70) + (choice.resourceDelta.shielding || 0))),
     };
 
-    const turnResult = computeDailySimulationTurn(gameState);
     const historyEntry: SolHistoryEntry = {
       sol: gameState.currentSol,
       eventTitle: gameState.activeEvent.title,
@@ -267,15 +322,28 @@ export const App: React.FC = () => {
 
     const newHistory = [...gameState.history, historyEntry];
 
-    let isGameOver = false;
-    let outcome: 'IN_PROGRESS' | 'VICTORY' | 'CRITICAL_FAILURE' = 'IN_PROGRESS';
+    let isGameOver = turnResult.isGameOver;
+    let outcome: 'IN_PROGRESS' | 'VICTORY' | 'CRITICAL_FAILURE' = turnResult.outcome === 'PARTIAL_SUCCESS' ? 'VICTORY' : turnResult.outcome;
+    let endingScenarioId = turnResult.endingScenarioId;
 
-    if (updatedResources.oxygen <= 0 || updatedResources.power <= 0 || updatedResources.water <= 0 || updatedResources.radiation >= 100 || updatedResources.crewHealth <= 0) {
+    if (
+      updatedResources.oxygen <= 0 ||
+      updatedResources.power <= 0 ||
+      updatedResources.water <= 0 ||
+      updatedResources.radiation >= 100 ||
+      updatedResources.crewHealth <= 0 ||
+      (updatedResources.crewMorale ?? 85) <= 0
+    ) {
       isGameOver = true;
       outcome = 'CRITICAL_FAILURE';
+      if (updatedResources.oxygen <= 0) endingScenarioId = 'DEPRESSURIZATION_HYPOXIA';
+      else if (updatedResources.power <= 0) endingScenarioId = 'LIFE_SUPPORT_FREEZE';
+      else if (updatedResources.water <= 0) endingScenarioId = 'DESICCATION_DEHYDRATION';
+      else if (updatedResources.radiation >= 100) endingScenarioId = 'RADIATION_CASUALTY';
+      else endingScenarioId = 'CREW_MORALE_COLLAPSE';
     }
 
-    if (choice.id === 'opt-magnetic-shield') {
+    if (choice.id === 'opt-magnetic-shield' || choice.id.includes('shield')) {
       soundFx.playShieldHum();
       setIsShieldActive(true);
     } else if (choice.id === 'opt-spin-up-kilopower' || choice.id === 'opt-kilopower') {
@@ -293,6 +361,7 @@ export const App: React.FC = () => {
     if (!isGameOver && !nextEvent) {
       isGameOver = true;
       outcome = 'VICTORY';
+      endingScenarioId = updatedResources.crewHealth >= 75 && (updatedResources.crewMorale ?? 85) >= 70 ? 'GOLDEN_TRIUMPH' : 'SURVIVAL_VICTORY';
     }
 
     setLastConsequence({
@@ -300,6 +369,8 @@ export const App: React.FC = () => {
       insight: choice.educationalInsight,
       choiceTitle: choice.title
     });
+
+    const nextBP = (gameState.buildPoints ?? 8) + turnResult.buildPointsEarned;
 
     setGameState((prev) => ({
       ...prev,
@@ -309,6 +380,9 @@ export const App: React.FC = () => {
       history: newHistory,
       objectives: turnResult.updatedObjectives,
       netPowerKw: turnResult.telemetry.netPowerKw,
+      buildPoints: nextBP,
+      activeWarning: turnResult.activeWarning,
+      endingScenarioId,
       isGameOver,
       gameOutcome: outcome,
     }));
@@ -321,26 +395,47 @@ export const App: React.FC = () => {
     soundFx.playReactorStart();
   };
 
-  const handleSwitchOutpostDestination = (dest: 'MOON' | 'MARS') => {
+  const handleSwitchOutpostDestination = (dest: 'MOON' | 'MARS', diff?: DifficultyMode, cargoId?: string) => {
     const targetMission = dest === 'MARS' ? MARS_JEZERO_BASE_MISSION : ARTEMIS_LUNAR_BASE_MISSION;
     setCurrentMission(targetMission);
-    const missionDeck = getMissionScenarioDeck(targetMission, gameState.difficultyMode as DifficultyTier);
+    const chosenDifficulty = diff || gameState.difficultyMode || 'CADET';
+    const diffKey: 'CADET' | 'OFFICER' | 'COMMANDER' =
+      chosenDifficulty === 'CADET' || (chosenDifficulty as any) === 'EXPLORER'
+        ? 'CADET'
+        : chosenDifficulty === 'COMMANDER' || (chosenDifficulty as any) === 'SCIENTIST'
+          ? 'COMMANDER'
+          : 'OFFICER';
+    const diffProfile = DIFFICULTY_PROFILES[diffKey];
+    const missionDeck = getMissionScenarioDeck(targetMission, chosenDifficulty as DifficultyTier);
     const initialObjectives = generateMissionObjectives(dest);
     const config = dest === 'MARS' ? DEFAULT_MARS_OUTPOST : DEFAULT_LUNAR_OUTPOST;
 
+    let powerBonus = 0;
+    let waterBonus = 0;
+    let foodBonus = 0;
+    let shieldBonus = 0;
+
+    if (cargoId === 'battery') powerBonus = 20;
+    else if (cargoId === 'water_filter' || cargoId === 'water') waterBonus = 20;
+    else if (cargoId === 'seed_vault' || cargoId === 'food') foodBonus = 8;
+    else if (cargoId === 'regolith_shield' || cargoId === 'shield') shieldBonus = 15;
+
     const nextState: GameState = {
       destination: dest,
-      difficultyMode: gameState.difficultyMode,
+      difficultyMode: chosenDifficulty,
       currentSol: 1,
       totalSols: dest === 'MARS' ? 40 : 30,
+      buildPoints: diffProfile.initialBuildPoints,
       resources: {
-        power: 75,
-        water: 80,
-        oxygen: 90,
-        food: dest === 'MARS' ? 32 : 24,
+        power: Math.min(100, diffProfile.startingResources.power + powerBonus),
+        water: Math.min(100, diffProfile.startingResources.water + waterBonus),
+        oxygen: diffProfile.startingResources.oxygen,
+        food: (dest === 'MARS' ? diffProfile.startingResources.food + 6 : diffProfile.startingResources.food) + foodBonus,
         radiation: dest === 'MARS' ? 8 : 12,
-        science: 10,
-        crewHealth: 95
+        science: diffProfile.startingResources.science,
+        crewHealth: diffProfile.startingResources.crewHealth,
+        crewMorale: Math.min(100, (diffProfile.startingResources.crewMorale ?? 90) + CREW_SPECIALTY_BONUSES.COMMANDER.moraleBonusPct),
+        shielding: Math.min(100, diffProfile.startingResources.shielding + shieldBonus),
       },
       modules: {
         habitat: { status: 'NOMINAL', lifeSupportLoadKw: 12 },
@@ -470,7 +565,7 @@ export const App: React.FC = () => {
     switch (route) {
       case 'home':
         return (
-          <OrreryHomePage
+          <GameLandingHomePage
             onNavigate={navigate}
             hasSavedGame={!!savedGameInfo}
             savedGameSol={savedGameInfo?.currentSol}
@@ -490,6 +585,44 @@ export const App: React.FC = () => {
             onOpenLiveActivity={() => setIsLiveActivityModalOpen(true)}
             onOpenMultiplayerLobby={() => setIsMultiplayerLobbyOpen(true)}
             onStartMission={() => setIsConstructionModalOpen(true)}
+            onBuildOutpost={(dest, diff, cargoId) => {
+              handleSwitchOutpostDestination(dest, diff, cargoId);
+              navigate('mission');
+            }}
+            onContinueMission={() => {
+              const saved = loadGameStateFromStorage() || savedGameInfo;
+              if (saved) setGameState(saved);
+              navigate('simulators');
+            }}
+          />
+        );
+
+      case 'explore':
+        return (
+          <ExploreSpacePage
+            onNavigate={navigate}
+            hasSavedGame={!!savedGameInfo}
+            savedGameSol={savedGameInfo?.currentSol}
+            savedGameDest={savedGameInfo?.destination === 'MARS' ? 'Mars' : 'Moon'}
+            currentUser={currentUser}
+            onUserUpdate={setCurrentUser}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
+            onOpenCertificate={() => setIsCertificateOpen(true)}
+            isJudgeMode={isJudgeMode}
+            onOpenJudgePreview={() => setIsJudgeModalOpen(true)}
+            onOpenTelemetry={() => setIsTelemetryOpen(true)}
+            onOpenScienceHub={() => setIsNasaDataOpen(true)}
+            onOpenCredits={() => setIsAboutOpen(true)}
+            onOpenCharacterLocker={() => setIsCharacterModalOpen(true)}
+            onOpenLiveActivity={() => setIsLiveActivityModalOpen(true)}
+            onOpenMultiplayerLobby={() => setIsMultiplayerLobbyOpen(true)}
+            onStartMission={() => setIsConstructionModalOpen(true)}
+            onBuildOutpost={(dest, diff) => {
+              handleSwitchOutpostDestination(dest, diff);
+              navigate('mission');
+            }}
             onContinueMission={() => {
               const saved = loadGameStateFromStorage() || savedGameInfo;
               if (saved) setGameState(saved);
@@ -500,10 +633,26 @@ export const App: React.FC = () => {
 
       case 'mission':
         return (
-          <SimulatorsHubPage
-            initialSimulator={params.sim}
+          <MissionControlPage
+            gameState={gameState}
+            currentMission={currentMission}
+            lastConsequence={lastConsequence}
+            is3DView={is3DView}
+            onToggle3DView={setIs3DView}
+            isTheaterMode={isTheaterMode}
+            onToggleTheaterMode={setIsTheaterMode}
+            isShieldActive={isShieldActive}
+            isShaking={isShaking}
+            onSelectChoice={handleSelectChoice}
+            onSelectDifficulty={handleSelectDifficulty}
+            onRestart={handleRestart}
             onNavigate={navigate}
-            onCompleteRoverMission={handleCompleteRoverEVA}
+            onOpenRoverEVA={() => navigate('simulators', { sim: 'rover' })}
+            onOpenPlanetaryMap={() => setIsPlanetaryMapOpen(true)}
+            onOpenOutpostConstruction={() => setIsConstructionModalOpen(true)}
+            onSwitchDestination={handleSwitchOutpostDestination}
+            onOpenAutopsyHelp={() => setIsHowToPlayOpen(true)}
+            onBuildModule={handleBuildModule}
           />
         );
 
@@ -586,30 +735,42 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="app-root-shell" style={{ minHeight: '100vh', background: 'var(--color-space-950, #04070e)', display: 'flex', flexDirection: 'column' }}>
+    <div
+      className="app-root-shell"
+      style={{
+        minHeight: '100vh',
+        height: route === 'home' || route === 'mission' ? '100vh' : 'auto',
+        overflow: route === 'home' || route === 'mission' ? 'hidden' : 'visible',
+        background: 'var(--color-space-950, #04070e)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       
-      {/* Universal Quiet Aerospace Navigation Bar */}
-      <GlobalNavBar
-        currentRoute={route}
-        onNavigate={navigate}
-        currentUser={currentUser}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
-        onOpenCertificate={() => setIsCertificateOpen(true)}
-        isJudgeMode={isJudgeMode}
-        onOpenJudgePreview={() => setIsJudgeModalOpen(true)}
-        completedMissionsCount={completedMissions.length}
-        onOpenTelemetry={() => setIsTelemetryOpen(true)}
-        onOpenPlanetaryMap={() => setIsPlanetaryMapOpen(true)}
-        onOpenNasaData={() => setIsNasaDataOpen(true)}
-        onOpenAIDisclosure={() => setIsAIModalOpen(true)}
-        onOpenAbout={() => setIsAboutOpen(true)}
-        onOpenMultiplayerLobby={() => setIsMultiplayerLobbyOpen(true)}
-      />
+      {/* Universal Quiet Aerospace Navigation Bar (Hidden during full-immersion Outpost Mission) */}
+      {route !== 'mission' && (
+        <GlobalNavBar
+          currentRoute={route}
+          onNavigate={navigate}
+          currentUser={currentUser}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
+          onOpenCertificate={() => setIsCertificateOpen(true)}
+          isJudgeMode={isJudgeMode}
+          onOpenJudgePreview={() => setIsJudgeModalOpen(true)}
+          completedMissionsCount={completedMissions.length}
+          onOpenTelemetry={() => setIsTelemetryOpen(true)}
+          onOpenPlanetaryMap={() => setIsPlanetaryMapOpen(true)}
+          onOpenNasaData={() => setIsNasaDataOpen(true)}
+          onOpenAIDisclosure={() => setIsAIModalOpen(true)}
+          onOpenAbout={() => setIsAboutOpen(true)}
+          onOpenMultiplayerLobby={() => setIsMultiplayerLobbyOpen(true)}
+        />
+      )}
 
       {/* Main Page Area Mounted via URL Router */}
-      <main style={{ flex: 1, position: 'relative' }}>
+      <main style={{ flex: 1, position: 'relative', paddingTop: route === 'mission' ? 0 : 'var(--header-height, 56px)' }}>
         <Suspense fallback={<PageFallback />}>
           {renderActivePage()}
         </Suspense>

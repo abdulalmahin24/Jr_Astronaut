@@ -254,8 +254,8 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
   const [hitmarker, setHitmarker] = useState(false);
   const [targetRange, setTargetRange] = useState<number | null>(null);
   const [actionFeed, setActionFeed] = useState<Array<{ id: number; text: string; type: 'loot' | 'scan' | 'flag' | 'info' }>>([
-    { id: 1, text: 'TACTICAL RADAR & EVA SUIT ONLINE', type: 'info' },
-    { id: 2, text: 'MINING LASER EQUIPPED [SLOT 1]', type: 'info' }
+    { id: 1, text: 'SURFACE SCANNER & ASTRONAUT SUIT NOMINAL', type: 'info' },
+    { id: 2, text: 'SAMPLE SAMPLER EQUIPPED [SLOT 1]', type: 'info' }
   ]);
 
   const [isTouchDevice] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
@@ -341,13 +341,13 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
       if (e.code === 'Digit1' || e.key === '1') {
         setActiveTool('LASER');
         soundFx.playClick(950);
-        pushActionFeed('SLOT [1]: PLASMA MINING LASER ARMED', 'info');
+        pushActionFeed('SLOT [1]: REGOLITH SAMPLER ARMED', 'info');
       }
       // [2] Sonar Scanner
       if (e.code === 'Digit2' || e.key === '2') {
         setActiveTool('SCANNER');
         soundFx.playClick(1050);
-        pushActionFeed('SLOT [2]: TERRAIN RADAR SCANNER ARMED', 'scan');
+        pushActionFeed('SLOT [2]: TERRAIN SCANNER ARMED', 'scan');
       }
       // [3] NASA Flag
       if (e.code === 'Digit3' || e.key === '3') {
@@ -1547,7 +1547,7 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
                 border: '1px solid rgba(56, 189, 248, 0.4)',
               }}
             >
-              ADS 32° · {targetRange !== null ? `${targetRange}m` : 'SCANNING'}
+              ZOOM 32° · {targetRange !== null ? `${targetRange}m` : 'SCANNING'}
             </div>
           )}
         </div>
@@ -1574,8 +1574,8 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
         <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981' }} />
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: '#38bdf8', letterSpacing: '0.08em', fontWeight: 700 }}>
           {mission?.destination === 'MARS'
-            ? 'ASTROCAMP MARS OUTPOST · JEZERO CRATER 18.4°N · ELEV -2500m · EVA SUIT ACTIVE'
-            : 'ARTEMIS BASE CAMP · SHACKLETON RIM 89.9°S · ELEV 1840m · EVA SUIT ACTIVE'}
+            ? 'ASTROCAMP MARS OUTPOST · JEZERO CRATER 18.4°N · ELEV -2500m'
+            : 'ARTEMIS BASE CAMP · SHACKLETON RIM 89.9°S · ELEV 1840m'}
         </span>
       </div>
 
@@ -1652,9 +1652,9 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
             <span>🟢 MOUSE AIM LOCKED · [ESC TO FREE]</span>
           ) : (
             <>
-              <span>🎯 CLICK SCREEN TO LOCK MOUSE AIM</span>
+              <span>👀 CLICK SCREEN TO LOOK AROUND</span>
               <span style={{ color: '#64748b' }}>·</span>
-              <span style={{ color: '#f59e0b' }}>RIGHT-CLICK ADS</span>
+              <span style={{ color: '#f59e0b' }}>RIGHT-CLICK ZOOM</span>
             </>
           )}
         </div>
@@ -1705,7 +1705,7 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
 
         {/* Radar Label */}
         <span style={{ position: 'absolute', bottom: '2px', fontFamily: "'JetBrains Mono', monospace", fontSize: '7px', color: '#64748b' }}>
-          RADAR 50m
+          SCANNER 50m
         </span>
       </div>
 
@@ -2440,8 +2440,8 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
           onPointerDown={(e) => e.stopPropagation()}
         >
           {[
-            { id: 'LASER', slot: '1', name: 'MINING LASER', icon: '⚡' },
-            { id: 'SCANNER', slot: '2', name: 'RADAR SCAN', icon: '📡' },
+            { id: 'LASER', slot: '1', name: 'SAMPLE SAMPLER', icon: '⚡' },
+            { id: 'SCANNER', slot: '2', name: 'TERRAIN SCAN', icon: '📡' },
             { id: 'FLAG', slot: '3', name: 'NASA FLAG', icon: '🚩' },
           ].map((t) => (
             <button
@@ -2503,10 +2503,10 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
               gap: '4px',
               fontFamily: "'JetBrains Mono', monospace",
             }}
-            title="Toggle ADS Aim Down Sights [Right-Click or R]"
+            title="Toggle Telescopic Zoom [Right-Click or R]"
           >
             <span>🎯</span>
-            <span>{isAiming ? 'ADS ON' : 'AIM ADS'}</span>
+            <span>{isAiming ? 'ZOOM ON' : 'ZOOM VIEW'}</span>
           </button>
         </div>
       )}
