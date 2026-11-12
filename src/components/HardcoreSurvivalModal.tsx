@@ -1,11 +1,12 @@
 // ============================================================================
-// HardcoreSurvivalModal.tsx — Hardcore Survival Missions Modal Wrapper
-// Clean modal mount for the 5-Mission 3D Spaceflight & Orbital Simulator
+// HardcoreSurvivalModal.tsx — NASA 3D Spaceflight & Survival Missions Modal
+// Launches the Full-Screen Ellipse-Style Spaceflight Simulator
 // ============================================================================
 
 import React from 'react';
-import { HardcoreSurvivalSimulator } from './HardcoreSurvivalSimulator';
+import { FullMissionLifecycleModal } from './FullMissionLifecycleModal';
 import type { HardcoreMissionId } from '../missions/survivalMissions';
+import type { ExpeditionDestination } from '../missions/fullMissionLifecycle';
 
 interface HardcoreSurvivalModalProps {
   isOpen: boolean;
@@ -17,17 +18,24 @@ interface HardcoreSurvivalModalProps {
 export const HardcoreSurvivalModal: React.FC<HardcoreSurvivalModalProps> = ({
   isOpen,
   onClose,
-  initialMissionId,
+  initialMissionId = 'lunar-voyager',
   onMissionCompleted,
 }) => {
   if (!isOpen) return null;
 
+  const dest: ExpeditionDestination =
+    initialMissionId === 'mars-voyager' ? 'MARS' :
+    initialMissionId === 'orbital-pioneer' ? 'ORBITAL' :
+    initialMissionId === 'suborbital-pioneer' ? 'SUBORBITAL' : 'MOON';
+
   return (
-    <HardcoreSurvivalSimulator
-      initialMissionId={initialMissionId}
+    <FullMissionLifecycleModal
+      isOpen={isOpen}
       onClose={onClose}
-      onMissionCompleted={onMissionCompleted}
+      initialDestination={dest}
+      onMissionCompleted={(_dest, credits) => {
+        onMissionCompleted?.(initialMissionId, credits);
+      }}
     />
   );
 };
-
