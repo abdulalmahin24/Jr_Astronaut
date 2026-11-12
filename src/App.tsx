@@ -184,7 +184,12 @@ export const App: React.FC = () => {
   const [selectedComicIssueId, setSelectedComicIssueId] = useState<string | undefined>(undefined);
 
   // General Modals
-  const [isNasaModalOpen, setIsNasaModalOpen] = useState(false);
+  const [isNasaModalOpen, setIsNasaModalOpen] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') return new URLSearchParams(window.location.search).has('nasaData');
+    } catch {}
+    return false;
+  });
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -206,9 +211,19 @@ export const App: React.FC = () => {
   const [isOrreryOpen, setIsOrreryOpen] = useState(false);
   const [isMarsEDLOpen, setIsMarsEDLOpen] = useState(false);
   const [isMarsSurvivalOpen, setIsMarsSurvivalOpen] = useState(false);
-  const [isHardcoreSurvivalOpen, setIsHardcoreSurvivalOpen] = useState(false);
+  const [isHardcoreSurvivalOpen, setIsHardcoreSurvivalOpen] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') return new URLSearchParams(window.location.search).has('hardcore');
+    } catch {}
+    return false;
+  });
   const [hardcoreInitialMission, setHardcoreInitialMission] = useState<HardcoreMissionId | undefined>();
-  const [isFullExpeditionOpen, setIsFullExpeditionOpen] = useState(false);
+  const [isFullExpeditionOpen, setIsFullExpeditionOpen] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') return new URLSearchParams(window.location.search).has('expedition');
+    } catch {}
+    return false;
+  });
   const [isMoonbaseAlphaOpen, setIsMoonbaseAlphaOpen] = useState(false);
   const [isBlackHoleOpen, setIsBlackHoleOpen] = useState(false);
   const [isMoonquakeMapOpen, setIsMoonquakeMapOpen] = useState(false);
