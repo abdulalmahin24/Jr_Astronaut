@@ -830,23 +830,19 @@ export const App: React.FC = () => {
           />
         )}
         <AstronautAcademyModal
-          isOpen={isAcademyModalOpen || isSpaceGamesHubOpen || isCampaignMapOpen}
+          isOpen={isAcademyModalOpen || isCampaignMapOpen}
           initialTab={
             isCampaignMapOpen
               ? 'NASA_76_CAMPAIGN'
-              : isSpaceGamesHubOpen
-              ? 'ACADEMY_30_MISSIONS'
               : 'CURRICULUM'
           }
           onClose={() => {
             setIsAcademyModalOpen(false);
-            setIsSpaceGamesHubOpen(false);
             setIsCampaignMapOpen(false);
           }}
           completedMissions={completedMissions}
           onLaunchMission={(missionId) => {
             setIsAcademyModalOpen(false);
-            setIsSpaceGamesHubOpen(false);
             setIsCampaignMapOpen(false);
             handleLaunchMissionGame(missionId);
           }}
@@ -2118,23 +2114,19 @@ export const App: React.FC = () => {
       />
 
       <AstronautAcademyModal
-        isOpen={isAcademyModalOpen || isSpaceGamesHubOpen || isCampaignMapOpen}
+        isOpen={isAcademyModalOpen || isCampaignMapOpen}
         initialTab={
           isCampaignMapOpen
             ? 'NASA_76_CAMPAIGN'
-            : isSpaceGamesHubOpen
-            ? 'ACADEMY_30_MISSIONS'
             : 'CURRICULUM'
         }
         onClose={() => {
           setIsAcademyModalOpen(false);
-          setIsSpaceGamesHubOpen(false);
           setIsCampaignMapOpen(false);
         }}
         completedMissions={completedMissions}
         onLaunchMission={(missionId) => {
           setIsAcademyModalOpen(false);
-          setIsSpaceGamesHubOpen(false);
           setIsCampaignMapOpen(false);
           handleLaunchMissionGame(missionId);
         }}

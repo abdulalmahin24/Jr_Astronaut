@@ -1151,6 +1151,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       </div>
                     </button>
                   )}
+                  {onOpenMarsEDL && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenMarsEDL, 'reactor'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🔥</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Mars 2020 EDL Simulator</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>7 Minutes of Terror Entry & Landing</div>
+                      </div>
+                    </button>
+                  )}
+                  {onOpenExpedition && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenExpedition, 'reactor'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🚀</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Earth to Moon Expedition</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Artemis Multi-Stage Lunar Mission</div>
+                      </div>
+                    </button>
+                  )}
                   {onOpenSpaceGamesHub && (
                     <button
                       className="pubg-hub-subitem"

@@ -35,5 +35,6 @@ NASA_Projct.zip
 test_*.mjs
 test_*.png
 live_*.png
+scratch/
 *.py
 
