@@ -384,6 +384,13 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     announceCapcom('Houston Capcom: Orbital insertion confirmed! All systems nominal. 185 km stable circular orbit achieved!');
   };
 
+  // Pitch Adjustment for manual steering
+  const handlePitchChange = (delta: number) => {
+    const state = flightStateRef.current;
+    state.pitchDeg = Math.max(0, Math.min(90, state.pitchDeg + delta));
+    soundFx.playClick(850);
+  };
+
   // Primary Action triggered via Spacebar or big button
   const handlePrimaryAction = () => {
     const state = flightStateRef.current;
@@ -402,7 +409,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       doBoosterSeparationRef.current();
     } else if (!state.fairingSeparated && state.altitudeKm >= 45) {
       doFairingSeparationRef.current();
-    } else if (state.stage === 2 && state.altitudeKm >= 90) {
+    } else if (!state.stage1Separated && state.altitudeKm >= 80) {
       doCoreStageSeparationRef.current();
     } else if (state.altitudeKm >= 135 && !state.orbitConfirmed) {
       confirmOrbitInsertion();
@@ -1606,14 +1613,33 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
           camera.position.y += (Math.random() - 0.5) * 0.1 * state.throttle;
         }
 
-        // Ascend along 3D LEO Orbital Insertion Corridor around Earth
-        const altRatio = Math.min(1.0, state.altitudeKm / 185);
-        spacecraftGroup.position.x = THREE.MathUtils.lerp(0, 380, Math.pow(altRatio, 1.35));
-        spacecraftGroup.position.y = 4 + THREE.MathUtils.lerp(0, 330, altRatio);
-        spacecraftGroup.position.z = THREE.MathUtils.lerp(0, -250, Math.pow(altRatio, 1.35));
+        // Manual Ascent and Steering along 3D LEO Orbital Insertion Corridor
+        const pitchRad = (state.pitchDeg * Math.PI) / 180;
+        const vertRatio = Math.sin(pitchRad);
 
-        // Pitch Over (Gravity Turn) into orbital inclination
-        state.pitchDeg = Math.max(0, 90 - altRatio * 90);
+        // Stage 1 vs Stage 2 engine efficiency
+        const thrustEff = state.stage === 1 ? (state.srbSeparated ? 0.78 : 1.0) : 1.18;
+        state.velocityKms = Math.min(7.85, state.velocityKms + state.throttle * dt * 0.28 * thrustEff);
+
+        // Dead weight penalty if boosters not manually separated past 36 km
+        if (!state.srbSeparated && state.altitudeKm > 36) {
+          state.velocityKms = Math.max(0.4, state.velocityKms - dt * 0.15);
+        }
+
+        // Dead weight penalty if fairing not manually separated past 75 km
+        if (!state.fairingSeparated && state.altitudeKm > 75) {
+          state.velocityKms = Math.max(1.0, state.velocityKms - dt * 0.08);
+        }
+
+        state.altitudeKm += state.velocityKms * vertRatio * dt * 11.5;
+        const altRatio = Math.min(1.0, state.altitudeKm / 185);
+        const downrangeProgress = Math.min(1.0, Math.max(0, ((90 - state.pitchDeg) / 90) * altRatio * 1.35));
+
+        spacecraftGroup.position.x = THREE.MathUtils.lerp(0, 380, Math.pow(downrangeProgress, 1.25));
+        spacecraftGroup.position.y = 4 + THREE.MathUtils.lerp(0, 330, altRatio);
+        spacecraftGroup.position.z = THREE.MathUtils.lerp(0, -250, Math.pow(downrangeProgress, 1.25));
+
+        // Rocket visual attitude directly reflects user's manual pitch angle
         const radPitch = ((90 - state.pitchDeg) * Math.PI) / 180;
         spacecraftGroup.rotation.z = -radPitch * 0.95;
 
@@ -1689,18 +1715,19 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
         }
       }
 
-      // ── AUTOMATIC ALTITUDE MILESTONES (Korolev Cross, Fairing, MECO, LEO Insertion) ──
+      // ── MANUAL FLIGHT MILESTONES & PROMPTS (ASTRONAUT OPERATED) ──
       if (state.altitudeKm >= 36 && !state.srbSeparated) {
-        doBoosterSeparation();
-      }
-      if (state.altitudeKm >= 75 && !state.fairingSeparated) {
-        doFairingSeparation();
-      }
-      if (state.altitudeKm >= 125 && !state.stage1Separated) {
-        doCoreStageSeparation();
-      }
-      if (state.altitudeKm >= 185 && !state.orbitConfirmed) {
-        confirmOrbitInsertion();
+        state.statusText = '⚠️ BOOSTER BURNOUT REACHED · PRESS [SPACE] OR CLICK BUTTON TO JETTISON BOOSTERS!';
+        state.statusColor = '#f59e0b';
+      } else if (state.altitudeKm >= 75 && !state.fairingSeparated) {
+        state.statusText = '⚠️ VACUUM REACHED · PRESS [SPACE] OR CLICK BUTTON TO JETTISON FAIRING!';
+        state.statusColor = '#38bdf8';
+      } else if (state.altitudeKm >= 125 && !state.stage1Separated) {
+        state.statusText = '⚠️ MECO BURNOUT · PRESS [SPACE] OR CLICK BUTTON TO SEPARATE STAGE 1!';
+        state.statusColor = '#a855f7';
+      } else if (state.altitudeKm >= 185 && !state.orbitConfirmed) {
+        state.statusText = '🎯 ORBIT INSERTION WINDOW REACHED · PRESS [SPACE] OR CLICK CONFIRM TO INSERT ORBIT!';
+        state.statusColor = '#22c55e';
       }
 
       // ── CAMERA MODES WITH CONTINUOUS VEHICLE TRACKING ──
@@ -2539,6 +2566,42 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
               title="Throttle Down (S key)"
             >
               THROTTLE -
+            </button>
+          </div>
+
+          {/* Manual Pitch Steering Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={() => handlePitchChange(10)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                background: 'rgba(30, 41, 59, 0.8)',
+                color: '#f8fafc',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 800,
+              }}
+              title="Pitch Up (D key / Right Arrow)"
+            >
+              ⮝ PITCH +10°
+            </button>
+            <button
+              onClick={() => handlePitchChange(-10)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                background: 'rgba(30, 41, 59, 0.8)',
+                color: '#f8fafc',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 800,
+              }}
+              title="Pitch Down / Gravity Turn (A key / Left Arrow)"
+            >
+              ⮟ PITCH -10°
             </button>
           </div>
 

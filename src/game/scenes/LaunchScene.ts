@@ -341,10 +341,10 @@ export class LaunchScene extends Phaser.Scene {
     // Scroll the world
     this.scrollY = (this.altitude / this.cfg.params.targetAltitudeKm) * (this.cameras.main.height - 150);
 
-    // Stage auto-separation at 40% altitude
+    // Prompt player for manual stage separation at 40% altitude
     if (this.cfg.params.hasStageSeparation && !this.stagesSeparated &&
       this.altitude > this.cfg.params.targetAltitudeKm * 0.4) {
-      this.triggerStageSeparation();
+      this.phaseText.setText('⚠️ PRESS [SPACE] TO SEPARATE BOOSTER STAGE!');
     }
   }
 

@@ -4550,15 +4550,13 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           if (boosterRightPlumeRef.current) boosterRightPlumeRef.current.visible = false;
         }
 
-        // Automatic Flight Milestones (if astronaut hasn't manually hit separation keys)
+        // Manual Flight Milestones & Prompts (Astronaut must hit separation keys or on-screen buttons)
         if (state.altitudeKm >= 36 && !state.boosterSeparated) {
-          handleBoosterSeparation();
-        }
-        if (state.altitudeKm >= 75 && !state.fairingSeparated) {
-          handleFairingSeparation();
-        }
-        if (state.altitudeKm >= 125 && state.stage === 1) {
-          handleStage1Separation();
+          state.statusText = '⚠️ BOOSTER BURNOUT REACHED · PRESS [SPACE] OR CLICK JETTISON BOOSTERS!';
+        } else if (state.altitudeKm >= 75 && !state.fairingSeparated) {
+          state.statusText = '⚠️ VACUUM REACHED · PRESS [SPACE] OR CLICK JETTISON FAIRING!';
+        } else if (state.altitudeKm >= 125 && state.stage === 1) {
+          state.statusText = '⚠️ S-IC MECO BURNOUT · PRESS [SPACE] OR CLICK SEPARATE STAGE 1!';
         }
 
         // Dynamic Atmospheric Sky & Fog Transition
