@@ -67,7 +67,7 @@ export const MissionCampaignModal: React.FC<MissionCampaignModalProps> = ({
               <div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '16px', fontWeight: 800, color: '#fbbf24', lineHeight: 1 }}>
                   {completedMissions.length}
-                  <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 400, marginLeft: '4px' }}>/ 76</span>
+                  <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 400, marginLeft: '4px' }}>/ 76 (+4 Endgame)</span>
                 </div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#34d399', fontWeight: 700 }}>
                   {completionPct}% COMPLETE

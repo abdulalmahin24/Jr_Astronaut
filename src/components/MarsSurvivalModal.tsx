@@ -32,12 +32,14 @@ interface MarsSurvivalModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMissionCompleted?: (missionId: string, creditsEarned: number) => void;
+  onLaunchManualMission?: (missionId: string) => void;
 }
 
 export const MarsSurvivalModal: React.FC<MarsSurvivalModalProps> = ({
   isOpen,
   onClose,
   onMissionCompleted,
+  onLaunchManualMission,
 }) => {
   const [selectedMissionIndex, setSelectedMissionIndex] = useState(0);
   const activeMission: MarsSurvivalMission = MARS_SURVIVAL_MISSIONS[selectedMissionIndex];
@@ -418,6 +420,58 @@ export const MarsSurvivalModal: React.FC<MarsSurvivalModalProps> = ({
               background: 'radial-gradient(ellipse at 50% 20%, rgba(30, 15, 15, 0.35) 0%, rgba(5, 8, 17, 0.95) 100%)',
             }}
           >
+            {/* 3D / 2D MANUAL FLIGHT LAUNCH BUTTON */}
+            {onLaunchManualMission && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '12px 16px',
+                background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.28) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                border: '1.5px solid #ef4444',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                boxShadow: '0 4px 20px rgba(239, 68, 68, 0.3)',
+              }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 900, color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>🎮</span>
+                    <span>100% MANUAL AEROSPACE FLIGHT & SURFACE SIMULATOR</span>
+                    <span style={{ fontSize: '9px', background: '#ef4444', color: '#ffffff', padding: '1px 5px', borderRadius: '4px' }}>
+                      HARDEST TIER 5
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '9.5px', color: '#cbd5e1', marginTop: '2px' }}>
+                    Launch this mission directly with full manual joystick / WASD thrusters & obstacle navigation!
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const manualId = `NASA-M07${selectedMissionIndex + 7}`;
+                    onClose();
+                    onLaunchManualMission(manualId);
+                    soundFx.playReactorStart();
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 16px',
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 0 14px rgba(239, 68, 68, 0.6)',
+                  }}
+                >
+                  PLAY MANUALLY (3D) ▶
+                </button>
+              </div>
+            )}
+
             {/* Top Vital Gauges */}
             <div
               style={{

@@ -1052,6 +1052,7 @@ export const App: React.FC = () => {
             awardCadetCredits(credits);
             soundFx.playVictory();
           }}
+          onLaunchManualMission={(mid) => handleLaunchMissionGame(mid)}
         />
         <MoonbaseAlphaSimulator
           isOpen={isMoonbaseAlphaOpen}
@@ -2344,6 +2345,7 @@ export const App: React.FC = () => {
           awardCadetCredits(credits);
           soundFx.playVictory();
         }}
+        onLaunchManualMission={(mid) => handleLaunchMissionGame(mid)}
       />
       <MoonbaseAlphaSimulator
         isOpen={isMoonbaseAlphaOpen}

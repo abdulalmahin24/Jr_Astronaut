@@ -1645,6 +1645,90 @@ export const MISSION_GAME_DATA: MissionGameConfig[] = [
       timeLimitSec: 90,
     } as TelescopeParams,
   },
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NASA MARS PLANETARY SURVIVAL — 4 HARDEST ENDGAME MISSIONS (UNLOCKED POST-76)
+  // Based on NASA 2020 MOXIE, Curiosity REMS, Mars Trek GIS & NASA Eyes Data
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: 'NASA-M077',
+    missionName: 'Jezero Delta: MOXIE O₂ & Ingenuity Flight',
+    programName: 'Mars Planetary Survival',
+    year: '2026–2030 (Endgame)',
+    gameType: 'rover',
+    difficulty: 5,
+    briefing: 'ENDGAME CLIMAX 1 OF 4: Jezero Crater delta deposit. Extreme 610 Pa thin atmosphere. Manually navigate rocky scree, scout boulder obstacles with Ingenuity, and extract oxygen using MOXIE solid oxide electrolysis.',
+    objective: 'Manually pilot the rover across 8 high-hazard waypoints with active sandstorms, keeping SOXE electrolysis temperature steady at 800°C without cathode coking.',
+    funFact: 'NASA MOXIE produced 122 grams of oxygen on Mars — enough for a small dog to breathe for 10 hours — by splitting CO2 at 800°C.',
+    params: {
+      gridCols: 16,
+      gridRows: 12,
+      craterDensity: 0.45,
+      numWaypoints: 8,
+      batteryCapacity: 85,
+      sandstormProbability: 0.8,
+      timeLimitSec: 80,
+    } as RoverParams,
+  },
+  {
+    id: 'NASA-M078',
+    missionName: 'Gale Crater: REMS Extreme Global Dust Storm',
+    programName: 'Mars Planetary Survival',
+    year: '2026–2030 (Endgame)',
+    gameType: 'rover',
+    difficulty: 5,
+    briefing: 'ENDGAME CLIMAX 2 OF 4: Category-5 Martian global dust storm with optical depth τ = 4.2 and squalls up to 32 m/s. Navigate zero-visibility terrain and deploy electrostatic pulses before battery depletion.',
+    objective: 'Navigate 8 critical sensor waypoints in blinding dust storm. Battery drains twice as fast; trigger electrostatic dust clearing and reach the Kilopower shelter.',
+    funFact: 'Martian dust storms can envelop the entire globe for months, blocking over 99% of sunlight and generating static electric discharges across the regolith.',
+    params: {
+      gridCols: 16,
+      gridRows: 14,
+      craterDensity: 0.5,
+      numWaypoints: 8,
+      batteryCapacity: 75,
+      sandstormProbability: 0.95,
+      timeLimitSec: 75,
+    } as RoverParams,
+  },
+  {
+    id: 'NASA-M079',
+    missionName: 'Valles Marineris: -6.8km Subsurface Cryo-Ice Drilling',
+    programName: 'Mars Planetary Survival',
+    year: '2026–2030 (Endgame)',
+    gameType: 'lunar_landing',
+    difficulty: 5,
+    briefing: 'ENDGAME CLIMAX 3 OF 4: Coprates Chasma deep trench (-6,800m elevation). High atmospheric pressure (1,150 Pa). Execute a dangerous precision descent down steep 30° basalt scree and extract pure permafrost ice cores.',
+    objective: 'Execute high-precision descent onto a razor-thin basalt ledge inside Valles Marineris canyon under extreme crosswinds and terrain hazards.',
+    funFact: 'Valles Marineris is over 4,000 km long, 200 km wide, and up to 7 km deep — 4 times deeper and 10 times longer than Earth\'s Grand Canyon!',
+    params: {
+      gravity: 3.72,
+      fuelCapacity: 70,
+      targetZoneWidthPx: 30,
+      windDrift: 3.2,
+      hasTerrainHazards: true,
+      timeLimitSec: 55,
+      altitudeStartM: 1800,
+    } as LunarLandingParams,
+  },
+  {
+    id: 'NASA-M080',
+    missionName: 'Elysium Planitia: M4.7 Marsquake & Solar Radiation Storm',
+    programName: 'Mars Planetary Survival',
+    year: '2026–2030 (Endgame)',
+    gameType: 'docking',
+    difficulty: 5,
+    briefing: 'FINAL ENDGAME CLIMAX 4 OF 4: Magnitude 4.7 Marsquake in Cerberus Fossae ruptures habitat conduits while a solar Coronal Mass Ejection (CME) approaches! Manually align the emergency containment docking port to seal the crew in the 2-meter regolith bunker before lethal radiation arrives.',
+    objective: 'Manually align and dock the emergency storm shelter airlock within 45 seconds under severe seismic roll vibration and razor-thin tolerances.',
+    funFact: 'InSight recorded a Magnitude 4.7 marsquake on May 4, 2022 — the largest ever detected on another planet, sending seismic waves echoing through the Martian crust for hours.',
+    params: {
+      approachDistanceM: 50,
+      maxApproachSpeedMs: 0.6,
+      portDiameterPx: 20,
+      thrusterStrength: 1.4,
+      damping: 0.75,
+      hasRollAxis: true,
+      timeLimitSec: 45,
+    } as DockingParams,
+  },
   // ── NASA SPACE APPS 2026 MULTIPLAYER CO-OP SUITE ──────────────────
   {
     id: 'operation-shackleton',
@@ -1784,6 +1868,7 @@ export const PROGRAM_ORDER = [
   'Great Observatories',
   'Astrophysics',
   'Earth Science',
+  'Mars Planetary Survival',
 ];
 
 export const GAME_TYPE_LABELS: Record<GameType, string> = {

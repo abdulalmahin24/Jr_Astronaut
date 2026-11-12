@@ -125,6 +125,21 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
 }) => {
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isTestOverrideActive, setIsTestOverrideActive] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('astro_camp_override_endgame') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const completedStandardCount = completedMissions.filter((id) => {
+    if (!id.startsWith('NASA-M')) return false;
+    const num = parseInt(id.replace('NASA-M', ''), 10);
+    return num >= 1 && num <= 76;
+  }).length;
+
+  const isEndgameUnlocked = completedStandardCount >= 76 || isTestOverrideActive;
 
   // Group missions into historical eras
   const eras = [
@@ -176,16 +191,33 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
       title: 'Red Planet Explorers',
       subtitle: 'Viking, Pathfinder, Spirit, Curiosity & Perseverance',
       filter: (m: MissionGameConfig) =>
-        m.gameType === 'rover' || m.programName.includes('Mars'),
+        m.programName !== 'Mars Planetary Survival' &&
+        (m.gameType === 'rover' || m.programName.includes('Mars')),
     },
     {
       id: 'commercial-artemis',
       title: 'Next Generation & Artemis Return',
       subtitle: 'Commercial Crew, Moon to Mars (2020–Present)',
       filter: (m: MissionGameConfig) =>
-        m.programName.includes('Artemis') ||
-        m.programName.includes('Commercial') ||
-        parseInt(m.year) >= 2020,
+        m.programName !== 'Mars Planetary Survival' &&
+        !m.id.startsWith('NASA-M077') &&
+        !m.id.startsWith('NASA-M078') &&
+        !m.id.startsWith('NASA-M079') &&
+        !m.id.startsWith('NASA-M080') &&
+        (m.programName.includes('Artemis') ||
+          m.programName.includes('Commercial') ||
+          parseInt(m.year) >= 2020),
+    },
+    {
+      id: 'endgame-mars-survival',
+      title: '🔴 Grand Climax: NASA Mars Planetary Survival',
+      subtitle: '4 Extreme Post-76 Endgame Operations (Hardest Tier 5/5)',
+      filter: (m: MissionGameConfig) =>
+        m.programName === 'Mars Planetary Survival' ||
+        m.id === 'NASA-M077' ||
+        m.id === 'NASA-M078' ||
+        m.id === 'NASA-M079' ||
+        m.id === 'NASA-M080',
     },
   ];
 
@@ -227,13 +259,13 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
         <div className="campaign-hero-top">
           <div className="campaign-hero-info">
             <div className="campaign-hero-tag-row">
-              <span className="campaign-hero-tag">NASA HISTORICAL CAMPAIGN • 76 PLAYABLE MISSIONS</span>
+              <span className="campaign-hero-tag">NASA HISTORICAL CAMPAIGN • 76 MISSIONS + 4 MARS SURVIVAL CLIMAX</span>
               <span className="campaign-hero-pill">1961 — PRESENT</span>
             </div>
             <h2 className="campaign-hero-title">Earth to Deep Space Flight Simulator</h2>
             <p className="campaign-hero-desc">
               Experience the full trajectory of American space exploration with high-fidelity 3D WebGL physics,
-              realistic ascent dynamics, orbital docking corridors, lunar touchdowns, and rover navigation.
+              realistic ascent dynamics, orbital docking corridors, lunar touchdowns, and rover navigation. Complete all 76 missions to unlock the 4 hardest Mars Planetary Survival operations.
             </p>
           </div>
 
@@ -246,11 +278,11 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
               </div>
               <div>
                 <div className="campaign-progress-numbers">
-                  <span className="campaign-progress-count">{completedMissions.length}</span>
-                  <span className="campaign-progress-total">/ 76 COMPLETED</span>
+                  <span className="campaign-progress-count">{completedStandardCount}</span>
+                  <span className="campaign-progress-total">/ 76 COMPLETED (+4 ENDGAME)</span>
                 </div>
                 <div className="campaign-progress-status">
-                  {completionPct}% CAMPAIGN READINESS
+                  {Math.round((completedStandardCount / 76) * 100)}% CAMPAIGN READINESS {isEndgameUnlocked && '• 🔥 ENDGAME UNLOCKED'}
                 </div>
               </div>
             </div>
@@ -261,7 +293,7 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
         <div className="campaign-progress-bar-track">
           <div
             className="campaign-progress-bar-fill"
-            style={{ width: `${Math.max(2, completionPct)}%` }}
+            style={{ width: `${Math.max(2, Math.min(100, Math.round((completedStandardCount / 76) * 100)))}%` }}
           />
         </div>
 
@@ -269,7 +301,7 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
         <div className="campaign-toolbar">
           <div className="campaign-filter-tabs">
             {[
-              { id: 'all', label: 'All (76)' },
+              { id: 'all', label: `All (${MISSION_GAME_DATA.length})` },
               { id: 'launch', label: '🚀 Launch' },
               { id: 'docking', label: '🛸 Docking' },
               { id: 'lunar_landing', label: '🌑 Landing' },
@@ -291,7 +323,7 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
             <Search size={14} className="campaign-search-icon" />
             <input
               type="text"
-              placeholder="Search 76 missions by name, year, or program..."
+              placeholder="Search 80 missions (76 Historical + 4 Mars Survival Endgame)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="campaign-search-input"
@@ -308,76 +340,148 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
 
           return (
             <div key={era.id} className="campaign-era-section">
-              <div className="campaign-era-header">
-                <span className="campaign-era-dot" />
-                <h3 className="campaign-era-title">{era.title}</h3>
+              <div className="campaign-era-header" style={era.id === 'endgame-mars-survival' ? { borderBottom: '1px solid rgba(239, 68, 68, 0.4)', background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.2), transparent)' } : undefined}>
+                <span className="campaign-era-dot" style={era.id === 'endgame-mars-survival' ? { backgroundColor: '#ef4444', boxShadow: '0 0 10px #ef4444' } : undefined} />
+                <h3 className="campaign-era-title" style={era.id === 'endgame-mars-survival' ? { color: '#fca5a5' } : undefined}>{era.title}</h3>
                 <span className="campaign-era-sub">({era.subtitle})</span>
-                <span className="campaign-era-count">{eraMissions.length} Missions</span>
+                <span className="campaign-era-count" style={era.id === 'endgame-mars-survival' ? { background: '#ef4444', color: '#ffffff', fontWeight: 900 } : undefined}>
+                  {era.id === 'endgame-mars-survival' && !isEndgameUnlocked ? '🔒 4 MISSIONS (LOCKED)' : `${eraMissions.length} Missions`}
+                </span>
               </div>
 
-              <div className="campaign-grid">
-                {eraMissions.map((mission) => {
-                  const isDone = completedMissions.includes(mission.id);
+              {era.id === 'endgame-mars-survival' && !isEndgameUnlocked ? (
+                <div style={{
+                  padding: '28px 24px',
+                  borderRadius: '16px',
+                  background: 'linear-gradient(135deg, rgba(30, 10, 15, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
+                  border: '2px dashed rgba(239, 68, 68, 0.5)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  gap: '12px',
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.7)',
+                }}>
+                  <div style={{ fontSize: '42px' }}>🔒</div>
+                  <div style={{ fontSize: '17px', fontWeight: 900, color: '#fca5a5', fontFamily: 'var(--font-space)', letterSpacing: '0.04em' }}>
+                    POST-CAMPAIGN CLIMAX: COMPLETE ALL 76 NASA MISSIONS TO UNLOCK
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#94a3b8', fontFamily: 'var(--font-mono)', maxWidth: '640px', lineHeight: 1.6 }}>
+                    These 4 Mars Planetary Survival Operations are the <strong style={{ color: '#ef4444' }}>hardest manual crisis missions</strong> in the game. You must complete the 76 historical flight missions before taking manual control of these extreme Sol survival events.
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#fbbf24', fontWeight: 800 }}>
+                    <span>📊 Progress: {completedStandardCount} / 76 Completed</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsTestOverrideActive(true);
+                      try { localStorage.setItem('astro_camp_override_endgame', 'true'); } catch {}
+                    }}
+                    style={{
+                      marginTop: '6px',
+                      padding: '10px 22px',
+                      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(220, 38, 38, 0.75))',
+                      border: '1.5px solid #ef4444',
+                      color: '#ffffff',
+                      borderRadius: '8px',
+                      fontSize: '11.5px',
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-mono)',
+                      letterSpacing: '0.04em',
+                      boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)',
+                    }}
+                    title="Unlock immediately for evaluation without completing 76 flights"
+                  >
+                    🔓 JUDGE & CADET TEST OVERRIDE: UNLOCK 4 ENDGAME MISSIONS NOW
+                  </button>
+                </div>
+              ) : (
+                <div className="campaign-grid">
+                  {eraMissions.map((mission) => {
+                    const isDone = completedMissions.includes(mission.id);
+                    const isEndgameMission = era.id === 'endgame-mars-survival';
 
-                  return (
-                    <div
-                      key={mission.id}
-                      className={`campaign-card ${isDone ? 'completed' : ''}`}
-                    >
-                      <div>
-                        <div className="campaign-card-top">
-                          <span className="campaign-type-pill">
-                            {getGameTypeIcon(mission.gameType)}
-                            <span>{mission.gameType.replace('_', ' ')}</span>
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '9px', fontWeight: 800, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.35)', padding: '1px 5px', borderRadius: '4px' }}>
-                              🎬 3D TRAILER
+                    return (
+                      <div
+                        key={mission.id}
+                        className={`campaign-card ${isDone ? 'completed' : ''}`}
+                        style={isEndgameMission ? {
+                          border: '1.5px solid rgba(239, 68, 68, 0.6)',
+                          background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                          boxShadow: '0 8px 30px rgba(239, 68, 68, 0.2)',
+                        } : undefined}
+                      >
+                        <div>
+                          <div className="campaign-card-top">
+                            <span className="campaign-type-pill" style={isEndgameMission ? { background: 'rgba(239, 68, 68, 0.25)', borderColor: '#ef4444', color: '#fca5a5' } : undefined}>
+                              {getGameTypeIcon(mission.gameType)}
+                              <span>{mission.gameType.replace('_', ' ')}</span>
                             </span>
-                            <span className="campaign-year-tag">
-                              {mission.year}
-                              {isDone && <CheckCircle2 size={13} color="#34d399" />}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {isEndgameMission && (
+                                <span style={{ fontSize: '9px', fontWeight: 900, color: '#ffffff', background: '#ef4444', padding: '1px 6px', borderRadius: '4px' }}>
+                                  🔥 HARDEST TIER 5
+                                </span>
+                              )}
+                              <span style={{ fontSize: '9px', fontWeight: 800, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.35)', padding: '1px 5px', borderRadius: '4px' }}>
+                                🎬 3D TRAILER
+                              </span>
+                              <span className="campaign-year-tag">
+                                {mission.year}
+                                {isDone && <CheckCircle2 size={13} color="#34d399" />}
+                              </span>
+                            </div>
                           </div>
+
+                          <h4 className="campaign-card-title" style={isEndgameMission ? { color: '#fca5a5' } : undefined}>{mission.missionName}</h4>
+                          <p className="campaign-card-program">{mission.programName}</p>
+                          <p className="campaign-card-desc">{mission.objective}</p>
                         </div>
 
-                        <h4 className="campaign-card-title">{mission.missionName}</h4>
-                        <p className="campaign-card-program">{mission.programName}</p>
-                        <p className="campaign-card-desc">{mission.objective}</p>
-                      </div>
+                        <div className="campaign-card-bottom">
+                          <div className="campaign-star-row" title={`Difficulty: ${mission.difficulty}/5`}>
+                            {[...Array(5)].map((_, starIdx) => (
+                              <Star
+                                key={starIdx}
+                                size={12}
+                                fill={starIdx < mission.difficulty ? (isEndgameMission ? '#ef4444' : '#fbbf24') : 'none'}
+                                color={starIdx < mission.difficulty ? (isEndgameMission ? '#ef4444' : '#fbbf24') : '#475569'}
+                              />
+                            ))}
+                          </div>
 
-                      <div className="campaign-card-bottom">
-                        <div className="campaign-star-row" title={`Difficulty: ${mission.difficulty}/5`}>
-                          {[...Array(5)].map((_, starIdx) => (
-                            <Star
-                              key={starIdx}
-                              size={12}
-                              fill={starIdx < mission.difficulty ? '#fbbf24' : 'none'}
-                              color={starIdx < mission.difficulty ? '#fbbf24' : '#475569'}
-                            />
-                          ))}
+                          <button
+                            onClick={() => onLaunchMission(mission.id)}
+                            className="campaign-play-btn"
+                            style={isEndgameMission ? {
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              background: 'linear-gradient(135deg, #dc2626, #991b1b)',
+                              border: '1px solid #ef4444',
+                              color: '#ffffff',
+                              fontWeight: 900,
+                              boxShadow: '0 0 14px rgba(239, 68, 68, 0.5)',
+                            } : {
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                              border: '1px solid #38bdf8',
+                              color: '#ffffff',
+                            }}
+                          >
+                            <Play size={12} fill="currentColor" />
+                            <span>{isEndgameMission ? '🔥 MANUAL FLIGHT / SURVIVAL' : isDone ? '🎬 REPLAY TRAILER & 3D' : '🎬 LAUNCH (TRAILER ➔ 3D)'}</span>
+                          </button>
                         </div>
-
-                        <button
-                          onClick={() => onLaunchMission(mission.id)}
-                          className="campaign-play-btn"
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                            border: '1px solid #38bdf8',
-                            color: '#ffffff',
-                          }}
-                        >
-                          <Play size={12} fill="currentColor" />
-                          <span>{isDone ? '🎬 REPLAY TRAILER & 3D' : '🎬 LAUNCH (TRAILER ➔ 3D)'}</span>
-                        </button>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
