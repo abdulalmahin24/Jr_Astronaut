@@ -39,6 +39,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Shield,
+  ShieldCheck,
   Rocket,
   Wrench,
   Sun,
@@ -68,6 +69,7 @@ import {
   generateLaunchWeather,
 } from '../missions/fullMissionLifecycle';
 import { soundFx } from '../utils/audioEffects';
+import { NasaDataModal } from './NasaDataModal';
 import { awardCadetCredits } from '../utils/gearBonusHelper';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { getSharedGLTFLoader } from '../utils/modelLoader';
@@ -337,6 +339,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   const [viewMode, setViewMode] = useState<FlightViewMode>('CHASE');
   const [timeWarp, setTimeWarp] = useState<number>(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [isNasaModalOpen, setIsNasaModalOpen] = useState(false);
 
   // VAB Configuration State (Custom Rocket & Equipment Builder)
   const [selectedBooster, setSelectedBooster] = useState<RocketBooster>(VAB_BOOSTERS[0]);
@@ -1621,6 +1624,28 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           {/* Right Header Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
+              onClick={() => setIsNasaModalOpen(true)}
+              style={{
+                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.35), rgba(30, 58, 138, 0.55))',
+                border: '1px solid #38bdf8',
+                color: '#38bdf8',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontWeight: 800,
+                fontSize: '11px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 0 10px rgba(56, 189, 248, 0.25)',
+              }}
+              title="Open NASA Open Data Plan (2 Moon + 2 Mars Survival Missions)"
+            >
+              <ShieldCheck size={14} />
+              <span>NASA SURVIVAL PLAN (2 MOON + 2 MARS)</span>
+            </button>
+
+            <button
               onClick={() => setSoundEnabled((v) => !v)}
               style={{
                 background: 'rgba(15, 23, 42, 0.75)',
@@ -2486,6 +2511,9 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           </div>
         )}
       </div>
+
+      {/* NASA 4-Platform Open Survival Data Plan Modal */}
+      <NasaDataModal isOpen={isNasaModalOpen} onClose={() => setIsNasaModalOpen(false)} />
     </div>
   );
 };

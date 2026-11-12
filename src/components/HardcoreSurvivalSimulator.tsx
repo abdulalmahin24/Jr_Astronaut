@@ -15,6 +15,7 @@ import {
   Volume2,
   VolumeX,
   ShieldAlert,
+  ShieldCheck,
   Flame,
   Radio,
   ExternalLink,
@@ -41,6 +42,7 @@ import {
 import { soundFx } from '../utils/audioEffects';
 import { awardCadetCredits } from '../utils/gearBonusHelper';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
+import { NasaDataModal } from './NasaDataModal';
 
 interface HardcoreSurvivalSimulatorProps {
   initialMissionId?: HardcoreMissionId;
@@ -60,6 +62,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
   const [isPaused, setIsPaused] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [cameraMode, setCameraMode] = useState<'orbit' | 'chase' | 'cockpit'>('chase');
+  const [isNasaModalOpen, setIsNasaModalOpen] = useState(false);
 
   const mountRef = useRef<HTMLDivElement>(null);
   const debrisFieldRef = useRef<DebrisObject[]>([]);
@@ -86,6 +89,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     heatShield: 100,
     countdownTimer: 300,
     shakeIntensity: 0,
+    maxAltitudeKm: 0,
     outcome: 'IN_PROGRESS' as 'IN_PROGRESS' | 'SUCCESS' | 'FAILED',
     failureReason: '',
     successMessage: '',
@@ -120,6 +124,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       heatShield: 100,
       countdownTimer: mission.hasCountdownTimer ? mission.countdownDurationSec : 300,
       shakeIntensity: 0,
+      maxAltitudeKm: mission.initialAltitudeKm,
       outcome: 'IN_PROGRESS',
       failureReason: '',
       successMessage: '',
@@ -431,14 +436,16 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         p.vxKms += (thrustX - coriolisKms2) * dt;
 
         p.altKm += p.vyKms * dt;
+        p.maxAltitudeKm = Math.max(p.maxAltitudeKm || 0, p.altKm);
         p.rKm = bodyConfig.radiusKm + p.altKm;
         p.vKms = Math.sqrt(p.vyKms * p.vyKms + p.vxKms * p.vxKms);
 
         // Orbital angular position for 3D navigation
         p.orbitalTheta = (p.orbitalTheta || 0) + (p.vxKms / Math.max(100, p.rKm)) * dt;
 
-        // Ground crash check (except suicide-burn landing which handles its own touchdown)
-        if (p.altKm <= 0 && activeMission.id !== 'suicide-burn') {
+        // Ground crash check (except landing missions which handle their own touchdown)
+        const isLandingMission = activeMission.id === 'suicide-burn' || activeMission.id === 'lunar-voyager' || activeMission.id === 'mars-voyager';
+        if (p.altKm <= 0 && !isLandingMission) {
           p.altKm = 0;
           p.outcome = 'FAILED';
           p.failureReason = 'CRASH IMPACT: Spacecraft crashed into the planetary surface.';
@@ -517,6 +524,64 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             } else {
               p.outcome = 'FAILED';
               p.failureReason = `LANDER TIPPED: Horizontal drift was ${horizSpeedMs.toFixed(1)} m/s (Limit: 1.0 m/s)`;
+              if (soundEnabled) soundFx.playExplosion();
+            }
+          }
+        }
+
+        // Mission 1 Win Condition: Sub-Orbital Pioneer (Kármán 100 km Boundary)
+        if (activeMission.id === 'suborbital-pioneer') {
+          if (p.altKm >= 100 || (kepler.apoapsisAltitudeKm >= 100 && p.altKm >= 80)) {
+            p.outcome = 'SUCCESS';
+            p.successMessage = `KÁRMÁN BOUNDARY BREACHED! Sub-orbital apogee achieved: ${Math.max(p.altKm, kepler.apoapsisAltitudeKm).toFixed(1)} km (> 100 km target). Microgravity reached!`;
+          }
+        }
+
+        // Mission 2 Win Condition: Orbital Pioneer (Low Earth Orbit 200 km)
+        if (activeMission.id === 'orbital-pioneer') {
+          if (kepler.periapsisAltitudeKm >= 140 && p.vKms >= 7.6) {
+            p.outcome = 'SUCCESS';
+            p.successMessage = `LOW EARTH ORBIT INSERTION CONFIRMED! Periapsis: ${kepler.periapsisAltitudeKm.toFixed(0)} km, Velocity: ${p.vKms.toFixed(2)} km/s (Target: >= 7.6 km/s). Multi-stage ascent complete!`;
+          }
+        }
+
+        // Mission 3 Win Condition: Lunar Voyager (Powered Retro Landing)
+        if (activeMission.id === 'lunar-voyager') {
+          if (p.altKm <= 0.005) {
+            p.altKm = 0;
+            const impactSpeedMs = Math.abs(p.vyKms * 1000);
+            const horizSpeedMs = Math.abs(p.vxKms * 1000);
+            if (impactSpeedMs <= 3.5 && horizSpeedMs <= 1.5) {
+              p.outcome = 'SUCCESS';
+              p.successMessage = `TOUCHDOWN CONFIRMED! Lunar Voyager landed safely on Moon surface! Vertical speed: ${impactSpeedMs.toFixed(1)} m/s, Remaining Fuel: ${p.fuel.toFixed(1)}%. Ready for Neil Armstrong EVA!`;
+            } else if (impactSpeedMs > 3.5) {
+              p.outcome = 'FAILED';
+              p.failureReason = `LUNAR HARD CRASH: Touchdown vertical speed was ${impactSpeedMs.toFixed(1)} m/s (Structural safety limit: 3.5 m/s). Lander crushed!`;
+              if (soundEnabled) soundFx.playExplosion();
+            } else {
+              p.outcome = 'FAILED';
+              p.failureReason = `LANDER TIPPED: Horizontal drift was ${horizSpeedMs.toFixed(1)} m/s on crater slope (Limit: 1.5 m/s).`;
+              if (soundEnabled) soundFx.playExplosion();
+            }
+          }
+        }
+
+        // Mission 4 Win Condition: Mars Interplanetary Voyager (EDL Touchdown)
+        if (activeMission.id === 'mars-voyager') {
+          if (p.altKm <= 0.005) {
+            p.altKm = 0;
+            const impactSpeedMs = Math.abs(p.vyKms * 1000);
+            const horizSpeedMs = Math.abs(p.vxKms * 1000);
+            if (impactSpeedMs <= 4.0 && horizSpeedMs <= 2.0 && p.heatShield > 0) {
+              p.outcome = 'SUCCESS';
+              p.successMessage = `MARS JEZERO CRATER TOUCHDOWN! Velocity: ${impactSpeedMs.toFixed(1)} m/s, Heat Shield: ${p.heatShield.toFixed(0)}%. Planetary survival mission active!`;
+            } else if (p.heatShield <= 0) {
+              p.outcome = 'FAILED';
+              p.failureReason = `HEAT SHIELD FAILURE: Atmospheric entry temperatures breached structural bulkheads!`;
+              if (soundEnabled) soundFx.playExplosion();
+            } else {
+              p.outcome = 'FAILED';
+              p.failureReason = `MARS CRASH IMPACT: Touchdown vertical speed was ${impactSpeedMs.toFixed(1)} m/s (Structural limit: 4.0 m/s).`;
               if (soundEnabled) soundFx.playExplosion();
             }
           }
@@ -787,6 +852,28 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         {/* Header Right Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
+            onClick={() => setIsNasaModalOpen(true)}
+            style={{
+              background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(30, 58, 138, 0.6))',
+              border: '1.5px solid #38bdf8',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              color: '#38bdf8',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)',
+            }}
+            title="Open NASA Open Data Plan (2 Moon + 2 Mars Survival Missions)"
+          >
+            <ShieldCheck size={14} />
+            <span>NASA SURVIVAL DATA PLAN (2 MOON + 2 MARS)</span>
+          </button>
+
+          <button
             onClick={() => setCameraMode((prev) => (prev === 'orbit' ? 'chase' : prev === 'chase' ? 'cockpit' : 'orbit'))}
             style={{
               background: 'rgba(255, 255, 255, 0.08)',
@@ -900,7 +987,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
               }}
             >
               <span style={{ color: '#ef4444', fontWeight: 900 }}>M{m.missionNumber}</span>
-              <span>{m.title.split(':')[0]}</span>
+              <span>{m.title.includes(':') ? m.title.split(':')[1].trim() : m.title}</span>
             </button>
           );
         })}
@@ -1427,6 +1514,9 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           Open NASA Portals: <strong style={{ color: '#4ade80' }}>data.nasa.gov</strong> · <strong style={{ color: '#38bdf8' }}>api.nasa.gov</strong> · <strong style={{ color: '#fb923c' }}>earthdata.nasa.gov</strong> · <strong style={{ color: '#c084fc' }}>jpl.nasa.gov</strong>
         </div>
       </footer>
+
+      {/* NASA 4-Platform Open Survival Data Plan Modal */}
+      <NasaDataModal isOpen={isNasaModalOpen} onClose={() => setIsNasaModalOpen(false)} />
     </div>
   );
 };
