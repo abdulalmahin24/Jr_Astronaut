@@ -224,6 +224,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
   const doBoosterSeparationRef = useRef<() => void>(() => {});
   const doFairingSeparationRef = useRef<() => void>(() => {});
   const doCoreStageSeparationRef = useRef<() => void>(() => {});
+  const karmanAnnouncedRef = useRef<boolean>(false);
 
   // Flight Phase & Controls State
   const [phase, setPhase] = useState<ExpeditionPhase>('PAD_LAUNCH');
@@ -262,7 +263,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     };
   }, [selectedProfileId]);
 
-  // Telemetry HUD State
+  // Telemetry HUD State (Ellipse / KSP Style Astrodynamics)
   const [telemetry, setTelemetry] = useState({
     altitudeKm: 0,
     velocityKms: 0,
@@ -274,6 +275,11 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     stage: 1,
     statusText: 'PAD 39B ARMED · READY FOR LIFTOFF',
     statusColor: '#38bdf8',
+    apoapsisKm: 0,
+    periapsisKm: 0,
+    vertSpeedMs: 0,
+    horizSpeedKms: 0,
+    dynamicPressureQ: 0,
   });
 
   // Flight simulation internal variables ref
@@ -435,6 +441,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       state.orbitConfirmed = false;
       state.isFinished = false;
       state.stage = 1;
+      karmanAnnouncedRef.current = false;
       if (prof === 'NEW_SHEPARD') {
         state.statusText = 'LAUNCH SITE ONE (WEST TEXAS) · NEW SHEPARD ARMED FOR 10-MIN FLIGHT';
       } else if (prof === 'APOLLO_11') {
@@ -631,10 +638,11 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     };
     setPhase('PAD_LAUNCH');
 
-    // 1. Scene, Camera, Renderer
+    // 1. Scene, Camera, Renderer (Realistic Florida Daytime Sky to Space Vacuum)
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020409);
-    scene.fog = new THREE.FogExp2(0x020409, 0.00012);
+    const daySkyColor = new THREE.Color(0.22, 0.74, 0.97); // Daytime Florida Coast Azure
+    scene.background = daySkyColor;
+    scene.fog = new THREE.FogExp2(0x38bdf8, 0.00015);
 
     const camera = new THREE.PerspectiveCamera(54, width / height, 0.1, 50000);
     camera.position.set(0, 18, 56);
@@ -713,12 +721,18 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     }
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-    const starMat = new THREE.PointsMaterial({ vertexColors: true, size: 2.2, sizeAttenuation: false });
+    const starMat = new THREE.PointsMaterial({
+      vertexColors: true,
+      size: 2.2,
+      sizeAttenuation: false,
+      transparent: true,
+      opacity: 0.0, // Invisible at sea level daytime; fades in smoothly as rocket reaches space
+    });
     scene.add(new THREE.Points(starGeo, starMat));
 
     // 4. Photorealistic NASA Earth Globe & Atmosphere
     const textureLoader = new THREE.TextureLoader();
-    const earthRadius = 620;
+    const earthRadius = 750;
     const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
     const earthTexture = textureLoader.load('/assets/earth_orbit.jpg');
     earthTexture.colorSpace = THREE.SRGBColorSpace;
@@ -729,9 +743,9 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       metalness: 0.1,
     });
     const earthMesh = new THREE.Mesh(earthGeo, earthMat);
-    earthMesh.position.set(0, -earthRadius - 120, 0);
+    earthMesh.position.set(0, -earthRadius - 10, 0);
     earthMesh.receiveShadow = true;
-    earthMesh.visible = false;
+    earthMesh.visible = true; // Curving blue Earth visible beneath the launch complex & climbing vehicle
     scene.add(earthMesh);
 
     // Cyan Atmospheric Glow Shell
@@ -740,12 +754,12 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       color: 0x38bdf8,
       side: THREE.BackSide,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.38,
       blending: THREE.AdditiveBlending,
     });
     const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
-    atmoMesh.position.set(0, -earthRadius - 120, 0);
-    atmoMesh.visible = false;
+    atmoMesh.position.set(0, -earthRadius - 10, 0);
+    atmoMesh.visible = true;
     scene.add(atmoMesh);
 
     // 5. NASA Moon Surface (Hidden during launch-to-orbit missions)
@@ -880,9 +894,64 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     });
 
     // ─────────────────────────────────────────────────────────────
-    // 6. KENNEDY SPACE CENTER PAD 39B & MOBILE LAUNCHER TOWER
+    // 6. KENNEDY SPACE CENTER PAD 39B & MERRITT ISLAND COASTAL TERRAIN
     // ─────────────────────────────────────────────────────────────
     const padGroup = new THREE.Group();
+
+    // 6.1 Merritt Island Coastal Marshland Terrain Disc (Lush Florida Green)
+    const coastalTerrainGeo = new THREE.CircleGeometry(3800, 64);
+    const coastalTerrainMat = new THREE.MeshStandardMaterial({
+      color: 0x224424,
+      roughness: 0.95,
+      metalness: 0.05,
+    });
+    const coastalTerrain = new THREE.Mesh(coastalTerrainGeo, coastalTerrainMat);
+    coastalTerrain.rotation.x = -Math.PI / 2;
+    coastalTerrain.position.y = -0.1;
+    coastalTerrain.receiveShadow = true;
+    padGroup.add(coastalTerrain);
+
+    // 6.2 Atlantic Ocean Plane (East of Pad 39B Extending to Horizon)
+    const oceanGeo = new THREE.PlaneGeometry(6000, 6000);
+    const oceanMat = new THREE.MeshStandardMaterial({
+      color: 0x083344,
+      roughness: 0.22,
+      metalness: 0.65,
+    });
+    const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
+    oceanMesh.rotation.x = -Math.PI / 2;
+    oceanMesh.position.set(2400, -0.25, 0);
+    padGroup.add(oceanMesh);
+
+    // 6.3 Concrete Apron & Dual Crawlerway Roads
+    const padApronGeo = new THREE.BoxGeometry(160, 0.4, 160);
+    const padApronMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 });
+    const padApron = new THREE.Mesh(padApronGeo, padApronMat);
+    padApron.position.set(0, 0.2, 0);
+    padApron.receiveShadow = true;
+    padGroup.add(padApron);
+
+    const crawlerwayGeo = new THREE.BoxGeometry(24, 0.35, 900);
+    const crawlerwayMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 });
+    const crawlerway = new THREE.Mesh(crawlerwayGeo, crawlerwayMat);
+    crawlerway.position.set(0, 0.25, 450);
+    crawlerway.receiveShadow = true;
+    padGroup.add(crawlerway);
+
+    // 6.4 3 Giant Pad Lightning Arrestor Masts with Red Aviation Warning Beacons
+    for (let m = 0; m < 3; m++) {
+      const mAngle = (m * Math.PI * 2) / 3;
+      const mastGeo = new THREE.CylinderGeometry(0.35, 0.9, 98, 12);
+      const mastMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.75 });
+      const mast = new THREE.Mesh(mastGeo, mastMat);
+      mast.position.set(Math.cos(mAngle) * 55, 49, Math.sin(mAngle) * 55);
+      mast.castShadow = true;
+      padGroup.add(mast);
+
+      const mastBeacon = new THREE.PointLight(0xef4444, 1.4, 45);
+      mastBeacon.position.set(Math.cos(mAngle) * 55, 98, Math.sin(mAngle) * 55);
+      padGroup.add(mastBeacon);
+    }
 
     // Pad Base & Concrete Flame Trench
     const padConcreteGeo = new THREE.CylinderGeometry(40, 48, 8, 48);
@@ -1560,6 +1629,44 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     const smokeParticles = new THREE.Points(smokeGeo, smokeMat);
     scene.add(smokeParticles);
 
+    // Transonic Condensation Shockwave Cone (Mach 1 Condensation Ring)
+    const vaporConeGeo = new THREE.ConeGeometry(4.4, 4.0, 32, 1, true);
+    const vaporConeMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.45,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    });
+    const vaporCone = new THREE.Mesh(vaporConeGeo, vaporConeMat);
+    vaporCone.rotation.x = Math.PI;
+    vaporCone.position.y = 8;
+    vaporCone.visible = false;
+    spacecraftGroup.add(vaporCone);
+
+    // Continuous Trailing Billowing Smoke Plume System (Ellipse / KSP Smoke Column)
+    const plumeCount = 450;
+    const plumeGeo = new THREE.BufferGeometry();
+    const plumePos = new Float32Array(plumeCount * 3);
+    const plumeData: { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number; maxLife: number }[] = [];
+    for (let p = 0; p < plumeCount; p++) {
+      plumePos[p * 3] = 0;
+      plumePos[p * 3 + 1] = -9999;
+      plumePos[p * 3 + 2] = 0;
+      plumeData.push({ x: 0, y: -9999, z: 0, vx: 0, vy: 0, vz: 0, life: 999, maxLife: 7.5 });
+    }
+    plumeGeo.setAttribute('position', new THREE.BufferAttribute(plumePos, 3));
+    const plumeMat = new THREE.PointsMaterial({
+      color: 0xeeeeee,
+      size: 34,
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+    });
+    const continuousPlumeMesh = new THREE.Points(plumeGeo, plumeMat);
+    scene.add(continuousPlumeMesh);
+    let plumeCursor = 0;
+
     // ─────────────────────────────────────────────────────────────
     // 9. ANIMATION & PHYSICS GAME LOOP
     // ─────────────────────────────────────────────────────────────
@@ -1664,6 +1771,109 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
           }
           smokeGeo.attributes.position.needsUpdate = true;
         }
+
+        // Continuous Trailing Smoke Plume behind climbing vehicle (Ellipse / KSP Smoke Column)
+        if (state.altitudeKm < 85) {
+          for (let sp = 0; sp < 2; sp++) {
+            const pIdx = plumeCursor;
+            plumeCursor = (plumeCursor + 1) % plumeCount;
+            const worldNozzle = new THREE.Vector3(0, -2, 0);
+            spacecraftGroup.localToWorld(worldNozzle);
+            plumeData[pIdx] = {
+              x: worldNozzle.x + (Math.random() - 0.5) * 2.2,
+              y: worldNozzle.y - 0.8,
+              z: worldNozzle.z + (Math.random() - 0.5) * 2.2,
+              vx: (Math.random() - 0.5) * 3.5,
+              vy: -Math.random() * 5.0 - 2.0,
+              vz: (Math.random() - 0.5) * 3.5,
+              life: 0,
+              maxLife: 6.5,
+            };
+          }
+        }
+      }
+
+      // Update trailing plume positions and aging
+      const pPos = plumeGeo.attributes.position.array as Float32Array;
+      for (let i = 0; i < plumeCount; i++) {
+        const pd = plumeData[i];
+        if (pd.life < pd.maxLife) {
+          pd.life += dt;
+          pd.x += pd.vx * dt;
+          pd.y += pd.vy * dt;
+          pd.z += pd.vz * dt;
+          pPos[i * 3] = pd.x;
+          pPos[i * 3 + 1] = pd.y;
+          pPos[i * 3 + 2] = pd.z;
+        } else {
+          pPos[i * 3 + 1] = -9999;
+        }
+      }
+      plumeGeo.attributes.position.needsUpdate = true;
+
+      // Transonic Vapor Shock Cone (Mach 1 shock condensation around body)
+      const isTransonic = state.velocityKms >= 0.30 && state.velocityKms <= 0.42 && state.altitudeKm < 35 && isBurning;
+      vaporCone.visible = isTransonic;
+      if (isTransonic) {
+        const buzz = 1.0 + Math.sin(clock.getElapsedTime() * 45) * 0.08;
+        vaporCone.scale.set(buzz, 1.0, buzz);
+        vaporConeMat.opacity = 0.35 + Math.random() * 0.25;
+      }
+
+      // ── DYNAMIC ATMOSPHERIC SKY & FOG TRANSITION (DAYLIGHT COAST -> ROYAL BLUE -> SPACE VACUUM) ──
+      const alt = state.altitudeKm;
+      if (alt < 15) {
+        // Troposphere: Sunny Florida Blue Sky (0.22, 0.74, 0.97) -> Deep Blue (0.06, 0.20, 0.50)
+        const t = Math.min(1, alt / 15);
+        daySkyColor.setRGB(
+          THREE.MathUtils.lerp(0.22, 0.06, t),
+          THREE.MathUtils.lerp(0.74, 0.20, t),
+          THREE.MathUtils.lerp(0.97, 0.50, t)
+        );
+        if (scene.fog) {
+          scene.fog.color.copy(daySkyColor);
+          (scene.fog as THREE.FogExp2).density = THREE.MathUtils.lerp(0.00015, 0.00005, t);
+        }
+        starMat.opacity = 0;
+      } else if (alt < 55) {
+        // Stratosphere: Deep Royal Blue -> Twilight Inky Indigo (0.02, 0.04, 0.12)
+        const t = Math.min(1, (alt - 15) / 40);
+        daySkyColor.setRGB(
+          THREE.MathUtils.lerp(0.06, 0.02, t),
+          THREE.MathUtils.lerp(0.20, 0.04, t),
+          THREE.MathUtils.lerp(0.50, 0.12, t)
+        );
+        if (scene.fog) {
+          scene.fog.color.copy(daySkyColor);
+          (scene.fog as THREE.FogExp2).density = THREE.MathUtils.lerp(0.00005, 0.00001, t);
+        }
+        starMat.opacity = t * 0.55;
+      } else if (alt < 90) {
+        // Mesosphere: Twilight Indigo -> Pitch Black Space
+        const t = Math.min(1, (alt - 55) / 35);
+        daySkyColor.setRGB(
+          THREE.MathUtils.lerp(0.02, 0.008, t),
+          THREE.MathUtils.lerp(0.04, 0.012, t),
+          THREE.MathUtils.lerp(0.12, 0.024, t)
+        );
+        if (scene.fog) {
+          (scene.fog as THREE.FogExp2).density = 0;
+        }
+        starMat.opacity = 0.55 + t * 0.45;
+      } else {
+        // Space Vacuum: Deep cosmic void with high-contrast stars & Earth curvature
+        daySkyColor.setRGB(0.008, 0.012, 0.024);
+        if (scene.fog) {
+          (scene.fog as THREE.FogExp2).density = 0;
+        }
+        starMat.opacity = 1.0;
+      }
+
+      // Kármán Line (100 km) Announcement
+      if (state.altitudeKm >= 100 && !karmanAnnouncedRef.current) {
+        karmanAnnouncedRef.current = true;
+        announceCapcom('Kármán line crossed at 100 km! Welcome to space!');
+        soundFx.playVictory();
       }
 
       // ── PHYSICAL DRIFT OF SEPARATED ROCKET STAGES ──
@@ -1762,7 +1972,21 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       }
       prevExpeditionTarget.copy(vehicleTarget);
 
-      // Sync React HUD telemetry
+      // ── ASTRODYNAMICS & TRAJECTORY METRICS (Ap, Pe, Vs, Vh, Max-Q) ──
+      const pitchRad = (state.pitchDeg * Math.PI) / 180;
+      const vertRatio = Math.sin(pitchRad);
+      const horizRatio = Math.cos(pitchRad);
+      const vertSpeedMs = Math.round(state.velocityKms * vertRatio * 1000);
+      const horizSpeedKms = Number((state.velocityKms * horizRatio).toFixed(2));
+      const g = 0.00981; // km/s^2
+      const ballisticPeak = state.altitudeKm + ((state.velocityKms * vertRatio) ** 2) / (2 * g);
+      const orbitalProgress = Math.min(1.0, horizSpeedKms / 7.8);
+      const apoapsisKm = Math.round(Math.max(state.altitudeKm, ballisticPeak * (1 + orbitalProgress * 1.4)));
+      const periapsisKm = state.orbitConfirmed ? 185 : (horizSpeedKms > 5.5 ? Math.round(((horizSpeedKms - 5.5) / 2.3) * 185) : 0);
+      const atmoDensity = Math.exp(-state.altitudeKm / 8.5);
+      const dynamicPressureQ = Math.round(0.5 * atmoDensity * ((state.velocityKms * 1000) ** 2) * 0.001); // in kPa
+
+      // Sync React HUD telemetry (Ellipse / KSP Style)
       setTelemetry({
         altitudeKm: state.altitudeKm,
         velocityKms: state.velocityKms,
@@ -1774,6 +1998,11 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
         statusText: state.statusText,
         statusColor: state.statusColor,
         stage: state.stage,
+        apoapsisKm,
+        periapsisKm,
+        vertSpeedMs,
+        horizSpeedKms,
+        dynamicPressureQ,
       });
 
       // Update Navball attitude
@@ -2142,6 +2371,322 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
             onStageTrigger={handlePrimaryAction}
           />
         )}
+
+        {/* ── TOP-CENTER: ELLIPSE ASTRODYNAMICS TELEMETRY HUD ── */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 18,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            background: 'rgba(11, 19, 43, 0.92)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '12px',
+            padding: '8px 16px',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.75)',
+            pointerEvents: 'none',
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
+          {/* Apoapsis */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8.5px', color: '#94a3b8', fontWeight: 800 }}>APOAPSIS (Ap)</div>
+            <div style={{ fontSize: '13px', fontWeight: 900, color: '#38bdf8' }}>
+              {telemetry.apoapsisKm.toLocaleString()} <span style={{ fontSize: '9px' }}>KM</span>
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '22px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+          {/* Periapsis */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8.5px', color: '#94a3b8', fontWeight: 800 }}>PERIAPSIS (Pe)</div>
+            <div style={{ fontSize: '13px', fontWeight: 900, color: telemetry.periapsisKm > 0 ? '#34d399' : '#64748b' }}>
+              {telemetry.periapsisKm.toLocaleString()} <span style={{ fontSize: '9px' }}>KM</span>
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '22px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+          {/* Vertical Speed */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8.5px', color: '#94a3b8', fontWeight: 800 }}>VERT SPEED (Vs)</div>
+            <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc' }}>
+              {telemetry.vertSpeedMs >= 0 ? '+' : ''}{telemetry.vertSpeedMs.toLocaleString()} <span style={{ fontSize: '9px', color: '#38bdf8' }}>M/S</span>
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '22px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+          {/* Horizontal Speed */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '8.5px', color: '#94a3b8', fontWeight: 800 }}>HORIZ SPEED (Vh)</div>
+            <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc' }}>
+              {telemetry.horizSpeedKms.toFixed(2)} <span style={{ fontSize: '9px', color: '#38bdf8' }}>KM/S</span>
+            </div>
+          </div>
+
+          {/* Max-Q Alert Badge if dynamic pressure peaks */}
+          {telemetry.dynamicPressureQ > 30 && telemetry.altitudeKm < 22 && (
+            <div
+              style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                background: 'rgba(239, 68, 68, 0.35)',
+                border: '1px solid #ef4444',
+                color: '#fca5a5',
+                fontSize: '9.5px',
+                fontWeight: 900,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <span>⚠️</span>
+              <span>MAX-Q ({telemetry.dynamicPressureQ} kPa)</span>
+            </div>
+          )}
+        </div>
+
+        {/* ── KÁRMÁN LINE SPACE CROSSING CELEBRATION BANNER ── */}
+        {telemetry.altitudeKm >= 100 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '68px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 22,
+              background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(168, 85, 247, 0.3))',
+              border: '1px solid rgba(56, 189, 248, 0.75)',
+              borderRadius: '20px',
+              padding: '6px 20px',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 0 24px rgba(56, 189, 248, 0.55)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              fontWeight: 900,
+              color: '#f0f9ff',
+              pointerEvents: 'none',
+            }}
+          >
+            <span>🌌</span>
+            <span>KÁRMÁN LINE CROSSED (100 KM) · IN SPACE!</span>
+          </div>
+        )}
+
+        {/* ── LEFT: ELLIPSE VERTICAL INTERACTIVE THROTTLE SLIDER ── */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '20px',
+            bottom: '95px',
+            zIndex: 25,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'rgba(15, 23, 42, 0.92)',
+            padding: '12px 10px',
+            borderRadius: '16px',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(10px)',
+            width: '64px',
+          }}
+        >
+          {/* MAX Button */}
+          <button
+            onClick={() => {
+              flightStateRef.current.throttle = 1.0;
+              soundFx.playClick(950);
+            }}
+            style={{
+              width: '100%',
+              padding: '5px 0',
+              borderRadius: '6px',
+              background: telemetry.throttle >= 0.98 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'rgba(30, 41, 59, 0.9)',
+              border: '1px solid rgba(239, 68, 68, 0.6)',
+              color: '#ffffff',
+              fontSize: '10px',
+              fontWeight: 900,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-mono)',
+            }}
+            title="Set Throttle to 100% (or hold W)"
+          >
+            MAX
+          </button>
+
+          {/* Vertical Slider Track */}
+          <div
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const clickY = e.clientY - rect.top;
+              const newThr = Math.max(0, Math.min(1, 1 - clickY / rect.height));
+              flightStateRef.current.throttle = newThr;
+              soundFx.playClick(800 + newThr * 300);
+            }}
+            style={{
+              position: 'relative',
+              width: '24px',
+              height: '150px',
+              background: 'rgba(11, 19, 43, 0.95)',
+              borderRadius: '12px',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              cursor: 'ns-resize',
+              overflow: 'hidden',
+            }}
+            title="Drag or click to adjust Throttle (W / S)"
+          >
+            {/* Filled Liquid Level */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: `${telemetry.throttle * 100}%`,
+                background: telemetry.throttle > 0.8
+                  ? 'linear-gradient(to top, #10b981, #f59e0b, #ef4444)'
+                  : telemetry.throttle > 0.4
+                  ? 'linear-gradient(to top, #10b981, #f59e0b)'
+                  : '#10b981',
+                transition: 'height 0.05s ease-out',
+                boxShadow: telemetry.throttle > 0 ? '0 0 12px rgba(239, 68, 68, 0.8)' : 'none',
+              }}
+            />
+
+            {/* Horizontal Tick Lines */}
+            {[0.25, 0.5, 0.75].map((tick) => (
+              <div
+                key={tick}
+                style={{
+                  position: 'absolute',
+                  bottom: `${tick * 100}%`,
+                  left: 0,
+                  right: 0,
+                  height: '1px',
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  pointerEvents: 'none',
+                }}
+              />
+            ))}
+
+            {/* Draggable Indicator Handle */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: `calc(${telemetry.throttle * 100}% - 4px)`,
+                left: '-2px',
+                right: '-2px',
+                height: '8px',
+                background: '#ffffff',
+                borderRadius: '4px',
+                boxShadow: '0 0 8px #ffffff',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+
+          {/* CUT Button */}
+          <button
+            onClick={() => {
+              flightStateRef.current.throttle = 0.0;
+              soundFx.playClick(600);
+            }}
+            style={{
+              width: '100%',
+              padding: '5px 0',
+              borderRadius: '6px',
+              background: telemetry.throttle === 0 ? 'rgba(56, 189, 248, 0.3)' : 'rgba(30, 41, 59, 0.9)',
+              border: '1px solid rgba(148, 163, 184, 0.4)',
+              color: '#cbd5e1',
+              fontSize: '10px',
+              fontWeight: 900,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-mono)',
+            }}
+            title="Cut Engine Thrust (or press S)"
+          >
+            CUT
+          </button>
+
+          {/* Throttle % Label & Hotkey hint */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', fontWeight: 900, color: '#fb923c', fontFamily: 'var(--font-mono)' }}>
+              {(telemetry.throttle * 100).toFixed(0)}%
+            </div>
+            <div style={{ fontSize: '8.5px', color: '#64748b', fontFamily: 'var(--font-mono)' }}>[W / S]</div>
+          </div>
+        </div>
+
+        {/* ── RIGHT: ELLIPSE / KSP STAGE BUTTON ── */}
+        <div
+          style={{
+            position: 'absolute',
+            right: '20px',
+            bottom: '95px',
+            zIndex: 25,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <button
+            onClick={handlePrimaryAction}
+            style={{
+              width: '142px',
+              height: '78px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #991b1b 100%)',
+              border: '2px solid rgba(254, 215, 170, 0.85)',
+              color: '#ffffff',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 24px rgba(234, 88, 12, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35)',
+              transition: 'transform 0.1s, box-shadow 0.1s',
+            }}
+            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
+            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            title="Press [SPACE] or Click to Execute Next Flight Stage"
+          >
+            <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.12em', color: '#fed7aa', fontFamily: 'var(--font-mono)' }}>
+              STAGE {telemetry.stage}
+            </div>
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 900,
+                fontFamily: 'var(--font-space)',
+                letterSpacing: '0.04em',
+                textAlign: 'center',
+                lineHeight: 1.2,
+                padding: '2px 4px',
+              }}
+            >
+              {getActionLabel(selectedProfileId, phase, telemetry.throttle).replace(' [SPACE]', '')}
+            </div>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.75)', fontFamily: 'var(--font-mono)' }}>
+              [SPACE]
+            </div>
+          </button>
+          <div style={{ fontSize: '9px', color: '#94a3b8', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+            KSP MANUAL STAGING
+          </div>
+        </div>
 
         {/* ── TOP-LEFT: STATUS & PRIMARY FLIGHT TELEMETRY HUD ── */}
         <div
