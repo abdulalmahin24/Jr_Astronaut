@@ -41,6 +41,7 @@ import { NasaTelemetryPanel } from './components/NasaTelemetryPanel';
 import { FlightCertificateModal } from './components/FlightCertificateModal';
 import { SolarSystemOrreryModal } from './components/SolarSystemOrreryModal';
 import { MarsEDLSimulatorModal } from './components/MarsEDLSimulatorModal';
+import { MarsSurvivalModal } from './components/MarsSurvivalModal';
 import { AstronautCharacterModal } from './components/AstronautCharacterModal';
 import { LiveMissionActivityModal } from './components/LiveMissionActivityModal';
 import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
@@ -92,6 +93,7 @@ import {
   Scale,
   Building2,
   Flame,
+  ShieldAlert,
 } from 'lucide-react';
 
 const INITIAL_GAME_STATE: GameState = {
@@ -200,6 +202,7 @@ export const App: React.FC = () => {
   const [isCertificateOpen, setIsCertificateOpen] = useState(false);
   const [isOrreryOpen, setIsOrreryOpen] = useState(false);
   const [isMarsEDLOpen, setIsMarsEDLOpen] = useState(false);
+  const [isMarsSurvivalOpen, setIsMarsSurvivalOpen] = useState(false);
   const [isMoonbaseAlphaOpen, setIsMoonbaseAlphaOpen] = useState(false);
   const [isBlackHoleOpen, setIsBlackHoleOpen] = useState(false);
   const [isMoonquakeMapOpen, setIsMoonquakeMapOpen] = useState(false);
@@ -551,6 +554,7 @@ export const App: React.FC = () => {
     setIsCertificateOpen(false);
     setIsOrreryOpen(false);
     setIsMarsEDLOpen(false);
+    setIsMarsSurvivalOpen(false);
     setIsMoonbaseAlphaOpen(false);
     setIsBlackHoleOpen(false);
     setIsMoonquakeMapOpen(false);
@@ -743,6 +747,11 @@ export const App: React.FC = () => {
           onOpenMarsEDL={() => {
             closeAllModals();
             setIsMarsEDLOpen(true);
+            soundFx.playReactorStart();
+          }}
+          onOpenMarsSurvival={() => {
+            closeAllModals();
+            setIsMarsSurvivalOpen(true);
             soundFx.playReactorStart();
           }}
           onOpenMoonbaseAlpha={() => {
@@ -1028,6 +1037,14 @@ export const App: React.FC = () => {
         <MarsEDLSimulatorModal
           isOpen={isMarsEDLOpen}
           onClose={() => setIsMarsEDLOpen(false)}
+        />
+        <MarsSurvivalModal
+          isOpen={isMarsSurvivalOpen}
+          onClose={() => setIsMarsSurvivalOpen(false)}
+          onMissionCompleted={(_mid, credits) => {
+            awardCadetCredits(credits);
+            soundFx.playVictory();
+          }}
         />
         <MoonbaseAlphaSimulator
           isOpen={isMoonbaseAlphaOpen}
@@ -1401,6 +1418,12 @@ export const App: React.FC = () => {
                   <Flame size={14} /><span>🔴 Mars 2020 EDL</span>
                 </button>
                 <button
+                  onClick={() => { setIsMarsSurvivalOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '6px', border: 'none', background: 'transparent', color: '#f43f5e', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 700 }}
+                >
+                  <ShieldAlert size={14} className="text-rose-400" /><span>🔴 Mars Survival (4 Ops)</span>
+                </button>
+                <button
                   onClick={() => { setIsExpeditionOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '6px', border: 'none', background: 'transparent', color: '#fb923c', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 700 }}
                 >
@@ -1598,6 +1621,7 @@ export const App: React.FC = () => {
               { icon: <Award size={16} />, label: '🎖️ Flight Certificate', color: '#f59e0b', action: () => setIsCertificateOpen(true) },
               { icon: <Compass size={16} />, label: '🌌 NASA Eyes Orrery 3D', color: '#38bdf8', action: () => setIsOrreryOpen(true) },
               { icon: <Flame size={16} />, label: '🔴 Mars 2020 EDL (7 Min)', color: '#f87171', action: () => setIsMarsEDLOpen(true) },
+              { icon: <ShieldAlert size={16} />, label: '🔴 Mars Planetary Survival (4 Ops)', color: '#f43f5e', action: () => setIsMarsSurvivalOpen(true) },
               { icon: <RotateCcw size={16} />, label: 'Reset Simulation', color: '#94a3b8', action: handleRestart },
             ].map((item) => (
               <button
@@ -2297,6 +2321,14 @@ export const App: React.FC = () => {
       <MarsEDLSimulatorModal
         isOpen={isMarsEDLOpen}
         onClose={() => setIsMarsEDLOpen(false)}
+      />
+      <MarsSurvivalModal
+        isOpen={isMarsSurvivalOpen}
+        onClose={() => setIsMarsSurvivalOpen(false)}
+        onMissionCompleted={(_mid, credits) => {
+          awardCadetCredits(credits);
+          soundFx.playVictory();
+        }}
       />
       <MoonbaseAlphaSimulator
         isOpen={isMoonbaseAlphaOpen}

@@ -50,6 +50,7 @@ interface LandingPageProps {
   onOpenExpedition?: () => void;
   onOpenCampaign?: () => void;
   onOpenSpaceGamesHub?: () => void;
+  onOpenMarsSurvival?: () => void;
 }
 
 // ── Starfield Canvas ──────────────────────────────────────────────────────────
@@ -171,6 +172,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenExpedition,
   onOpenCampaign,
   onOpenSpaceGamesHub,
+  onOpenMarsSurvival,
   onUserUpdate,
 }) => {
   // Active historical astronaut selected by cadet
@@ -282,7 +284,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const [warping, setWarping] = useState(false);
   const [hangarAsset, setHangarAsset] = useState<'ASTRONAUT' | 'ROVER' | 'SPACECRAFT' | 'OUTPOST'>('ASTRONAUT');
-  const [selectedMatchMode, setSelectedMatchMode] = useState<'SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL'>('SPACE_GAMES');
+  const [selectedMatchMode, setSelectedMatchMode] = useState<'SPACE_GAMES' | 'MARS_SURVIVAL' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL'>('MARS_SURVIVAL');
   const [showModeDropdown, setShowModeDropdown] = useState(false);
   const [showIntelDossier, setShowIntelDossier] = useState(false);
   const [isSimsHubOpen, setIsSimsHubOpen] = useState(false);
@@ -299,7 +301,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setWarping(true);
     setTimeout(() => {
       setWarping(false);
-      if (selectedMatchMode === 'SPACE_GAMES' && onOpenSpaceGamesHub) {
+      if (selectedMatchMode === 'MARS_SURVIVAL' && onOpenMarsSurvival) {
+        onOpenMarsSurvival();
+      } else if (selectedMatchMode === 'SPACE_GAMES' && onOpenSpaceGamesHub) {
         onOpenSpaceGamesHub();
       } else if (selectedMatchMode === 'EARTH_TO_MOON' && onOpenExpedition) {
         onOpenExpedition();
@@ -894,7 +898,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div 
               className="pubg-mode-card"
               onClick={() => {
-                const modes: ('SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL')[] = [
+                const modes: ('MARS_SURVIVAL' | 'SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL')[] = [
+                  'MARS_SURVIVAL',
                   'SPACE_GAMES',
                   'EARTH_TO_MOON',
                   'SOL1_SURVIVAL',
@@ -913,6 +918,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900, letterSpacing: '0.06em' }}>
+                  {selectedMatchMode === 'MARS_SURVIVAL' && '🔴 MARS SURVIVAL SUITE (4 MISSIONS)'}
                   {selectedMatchMode === 'SPACE_GAMES' && '🪐 DEDICATED SPACE GAMES ARCADE (3 AGE TIERS)'}
                   {selectedMatchMode === 'EARTH_TO_MOON' && '🚀 ADVANCED ASTRONAUT EXPEDITIONS (LEVEL 5)'}
                   {selectedMatchMode === 'SOL1_SURVIVAL' && '🌕 LUNAR EXPEDITION'}
@@ -927,6 +933,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </span>
               </div>
               <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)' }}>
+                {selectedMatchMode === 'MARS_SURVIVAL' && "Jezero Delta · Gale REMS Storm · Valles Marineris · Elysium SEIS"}
                 {selectedMatchMode === 'SPACE_GAMES' && "No Man's Sky · KSP · Space Engineers · Star Citizen"}
                 {selectedMatchMode === 'EARTH_TO_MOON' && 'New Shepard (10 Min to Space), Artemis V, Apollo 11'}
                 {selectedMatchMode === 'SOL1_SURVIVAL' && 'Moon Base Survival (Sol 1)'}
@@ -937,7 +944,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {selectedMatchMode === 'MARS_EDL' && 'Jezero Crater Sky Crane EDL'}
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '6px', fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
-                <span>📍 {selectedMatchMode === 'SPACE_GAMES' ? 'Dedicated Arcade Suite (Ages 6-10 / 11-15 / 16+)' : selectedMatchMode === 'EARTH_TO_MOON' ? 'Classified: Advanced Astronauts Only' : selectedMatchMode === 'BLACK_HOLE' ? 'Kerr Event Horizon' : 'Shackleton Rim'}</span>
+                <span>📍 {selectedMatchMode === 'MARS_SURVIVAL' ? 'NASA PDS, REMS, Mars Trek GIS & Eyes Data' : selectedMatchMode === 'SPACE_GAMES' ? 'Dedicated Arcade Suite (Ages 6-10 / 11-15 / 16+)' : selectedMatchMode === 'EARTH_TO_MOON' ? 'Classified: Advanced Astronauts Only' : selectedMatchMode === 'BLACK_HOLE' ? 'Kerr Event Horizon' : 'Shackleton Rim'}</span>
                 <span>•</span>
                 <span style={{ color: '#10b981' }}>● Real-Time 3D Simulation</span>
               </div>

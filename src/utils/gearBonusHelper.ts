@@ -64,3 +64,4 @@ export function awardCadetCredits(amount: number): number {
     return amount;
   }
 }
+

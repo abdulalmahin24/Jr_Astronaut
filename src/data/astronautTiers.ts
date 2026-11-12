@@ -47,3 +47,4 @@ export const ASTRONAUT_TIERS: Record<AstronautAgeTier, TierConfig> = {
     landingSpeedMax: 2.2,
   },
 };
+
