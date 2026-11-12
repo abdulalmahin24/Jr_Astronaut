@@ -681,26 +681,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
           )}
 
-          {/* 9. FULL ROUND-TRIP EXPEDITION (VAB -> RETURN) */}
+          {/* 9. SURVIVAL EXPEDITIONS (4 MANUAL MISSIONS) */}
           {onOpenFullExpedition && (
             <button
               onClick={() => handleNavClick(onOpenFullExpedition, 'reactor')}
               className="tactical-badge-pill"
               style={{
                 cursor: 'pointer',
-                background: 'linear-gradient(180deg, rgba(37, 99, 235, 0.45), rgba(15, 23, 42, 0.95))',
+                background: 'linear-gradient(180deg, rgba(37, 99, 235, 0.55), rgba(15, 23, 42, 0.95))',
                 borderColor: '#38bdf8',
                 color: '#bae6fd',
                 fontWeight: 900,
                 fontSize: '11px',
-                padding: '4px 12px',
+                padding: '4px 14px',
                 gap: '6px',
-                boxShadow: '0 0 16px rgba(56, 189, 248, 0.55)',
+                boxShadow: '0 0 18px rgba(56, 189, 248, 0.65)',
               }}
-              title="Full Round-Trip Expedition: VAB Rocket Assembly -> Pad Weather -> Liftoff -> Landing -> Surface EVA -> Earth Return Splashdown!"
+              title="NASA 4 Survival Missions (100% Manual Flight): Sub-Orbital, LEO Orbit, Lunar Voyager [YouTube], Mars Voyager"
             >
-              <span>🌍🚀</span>
-              <span>FULL EXPEDITION (VAB ➔ RETURN)</span>
+              <span>🛡️🚀</span>
+              <span>SURVIVAL MISSIONS (4 OPS)</span>
             </button>
           )}
 
@@ -997,7 +997,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900, letterSpacing: '0.06em' }}>
-                  {selectedMatchMode === 'FULL_EXPEDITION' && '🌍 FULL ROUND-TRIP EXPEDITION (8 STAGES)'}
+                  {selectedMatchMode === 'FULL_EXPEDITION' && '🛡️🚀 SURVIVAL EXPEDITIONS (4 MANUAL MISSIONS)'}
                   {selectedMatchMode === 'HARDCORE_SURVIVAL' && '🔥 HARDCORE ORBITAL SURVIVAL (5 MISSIONS)'}
                   {selectedMatchMode === 'MARS_SURVIVAL' && '🔴 MARS SURVIVAL SUITE (4 MISSIONS)'}
                   {selectedMatchMode === 'SPACE_GAMES' && '🪐 DEDICATED SPACE GAMES ARCADE (3 AGE TIERS)'}
@@ -1014,7 +1014,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </span>
               </div>
               <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)' }}>
-                {selectedMatchMode === 'FULL_EXPEDITION' && 'VAB Build · Pad Weather · Staging · Landing · Surface EVA · Earth Return'}
+                {selectedMatchMode === 'FULL_EXPEDITION' && '100% Manual Flight Controls (W/S/A/D/Space/G/P) · Sub-Orbital, LEO Orbit, Lunar Voyager (YouTube), Mars Voyager'}
                 {selectedMatchMode === 'HARDCORE_SURVIVAL' && 'Kessler Syndrome · Solar Storm · Apollo 13 · Oberth · Suicide Burn'}
                 {selectedMatchMode === 'MARS_SURVIVAL' && "Jezero Delta · Gale REMS Storm · Valles Marineris · Elysium SEIS"}
                 {selectedMatchMode === 'SPACE_GAMES' && "No Man's Sky · KSP · Space Engineers · Star Citizen"}
@@ -1595,7 +1595,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </button>
             )}
 
-            {/* 8. Dedicated Full Round-Trip Expedition Button */}
+            {/* 8. Dedicated Survival Missions Expedition Button */}
             {onOpenFullExpedition && (
               <button
                 className="pubg-bottom-tab"
@@ -1603,7 +1603,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 id="pubg-tab-full-expedition"
                 style={{
                   borderColor: '#38bdf8',
-                  background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.45), rgba(15, 23, 42, 0.98))',
+                  background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.55), rgba(15, 23, 42, 0.98))',
                   color: '#bae6fd',
                   width: '100%',
                   boxSizing: 'border-box',
@@ -1611,16 +1611,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   padding: '7px 12px',
                   height: '42px',
                   borderWidth: '1.5px',
-                  boxShadow: '0 0 20px rgba(56, 189, 248, 0.45)',
+                  boxShadow: '0 0 20px rgba(56, 189, 248, 0.55)',
                 }}
-                title="Full Round-Trip Expedition: VAB Rocket Assembly -> Pad Weather -> Liftoff -> Landing -> Surface EVA -> Earth Return Splashdown!"
+                title="4 NASA Survival Expeditions: Sub-Orbital, LEO Orbit, Lunar Voyager (YouTube), Mars Voyager (100% Manual Flight Controls)"
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>🌍</span>
-                  <span style={{ fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>FULL EXPEDITION</span>
+                  <span style={{ fontSize: '18px' }}>🛡️</span>
+                  <span style={{ fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>SURVIVAL MISSIONS</span>
                 </div>
                 <span style={{ fontSize: '9px', background: '#2563eb', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
-                  8 STAGES
+                  4 OPS MANUAL
                 </span>
               </button>
             )}

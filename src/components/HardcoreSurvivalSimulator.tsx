@@ -49,7 +49,7 @@ interface HardcoreSurvivalSimulatorProps {
 }
 
 export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps> = ({
-  initialMissionId = 'kessler-syndrome',
+  initialMissionId = 'suborbital-pioneer',
   onClose,
   onMissionCompleted,
 }) => {

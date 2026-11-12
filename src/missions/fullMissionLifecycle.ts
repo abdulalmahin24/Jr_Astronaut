@@ -4,7 +4,7 @@
 // Grounded in Real Rocket Science, Tsiolkovsky Equation, NASA 45th Space Wing Weather Rules
 // ============================================================================
 
-export type ExpeditionDestination = 'MOON' | 'MARS';
+export type ExpeditionDestination = 'SUBORBITAL' | 'ORBITAL' | 'MOON' | 'MARS';
 
 export type LifecycleStage =
   | 'VAB_BUILD'         // 1. Vehicle Assembly: Select stages, engines & equipment
@@ -303,9 +303,14 @@ export function calculateRocketPhysics(config: RocketConfigSelection): RocketPhy
   const liftoffTWR = Number((totalLiftoffThrustKn / (totalLiftoffMassTons * g0)).toFixed(2));
 
   // Required Delta-V budget for full round-trip:
-  // Moon: LEO (9,200) + TLI (3,100) + LOI (850) + Lunar Descent (1,800) + Ascent (1,800) + TEI (850) = ~17,600 m/s
-  // In game balanced scale: Moon required = 10,200 m/s; Mars required = 12,800 m/s
-  const requiredDeltaVmS = config.destination === 'MOON' ? 10400 : 13200;
+  // Suborbital: 2,400 m/s
+  // LEO Orbital: 7,850 m/s
+  // Moon: 10,400 m/s
+  // Mars: 13,200 m/s
+  const requiredDeltaVmS =
+    config.destination === 'SUBORBITAL' ? 2400 :
+    config.destination === 'ORBITAL' ? 7850 :
+    config.destination === 'MOON' ? 10400 : 13200;
   const isMissionFeasible = totalDeltaVmS >= requiredDeltaVmS && liftoffTWR >= 1.15;
   const feasibilityMarginPct = Math.round(((totalDeltaVmS - requiredDeltaVmS) / requiredDeltaVmS) * 100);
 
@@ -425,10 +430,36 @@ export interface DestinationProfile {
 }
 
 export const DESTINATION_PROFILES: Record<ExpeditionDestination, DestinationProfile> = {
+  SUBORBITAL: {
+    id: 'SUBORBITAL',
+    name: 'Mission 1: Sub-Orbital Pioneer (Kármán 100 km Boundary)',
+    badge: '🚀 100 KM KÁRMÁN FLIGHT',
+    distanceKm: '105 km',
+    transferTimeDays: '25 Minutes',
+    surfaceGravityMs2: 9.81,
+    landingSite: 'Atlantic Ocean Recovery Zone (28.4°N, 78.2°W)',
+    landingCoordinates: '28.4° North, 78.2° West',
+    atmospherePressure: '101.3 kPa -> Microgravity',
+    surfaceTerrainDescription: 'Open ocean retrieval corridor, rapid recovery ship response, inflatable flotation collars deployed.',
+    primaryScienceDirective: 'Execute manual pitch gravity turn, cross the 100 km Kármán line into microgravity space, stage booster, re-orient heat shield, deploy parachutes at 4,000 m, and execute ocean splashdown.',
+  },
+  ORBITAL: {
+    id: 'ORBITAL',
+    name: 'Mission 2: Orbital Pioneer (Low Earth Orbit 200 km Insertion)',
+    badge: '🛰️ 200 KM LEO ORBITAL INSERTION',
+    distanceKm: '200 km',
+    transferTimeDays: '90 Minutes / Orbit',
+    surfaceGravityMs2: 9.81,
+    landingSite: 'Pacific Ocean Splashdown Zone (31.5°N, 121.2°W)',
+    landingCoordinates: '31.5° North, 121.2° West',
+    atmospherePressure: '101.3 kPa -> Vacuum',
+    surfaceTerrainDescription: 'Deep ocean recovery fleet with US Navy retrieval helicopter, carrier recovery taskforce.',
+    primaryScienceDirective: 'Multi-stage manual gravity turn, achieve 7.8 km/s orbital velocity, circularize 200 km LEO orbit, perform de-orbit retrograde burn, survive atmospheric entry, and parachute splashdown.',
+  },
   MOON: {
     id: 'MOON',
-    name: 'Moon: Artemis Base Camp (South Pole)',
-    badge: '🌕 LUNAR SHACKLETON EXPEDITION',
+    name: 'Mission 3: Lunar Voyager (Full Moon Expedition — YouTube Reference)',
+    badge: '🌕 LUNAR VOYAGER (ELLIPSE REFERENCE)',
     distanceKm: '384,400 km',
     transferTimeDays: '3.5 Days',
     surfaceGravityMs2: 1.62,
@@ -436,19 +467,20 @@ export const DESTINATION_PROFILES: Record<ExpeditionDestination, DestinationProf
     landingCoordinates: '89.9° South, Permanently Shadowed Region',
     atmospherePressure: '0 Pa (Hard Vacuum)',
     surfaceTerrainDescription: 'Ultra-fine abrasive regolith, deep titanium-rich craters, permanent solar towers, and cryogenic water-ice deposits inside shadows.',
-    primaryScienceDirective: 'Extract pristine volatile ice cores from permanently shadowed crater floor, deploy long-term seismic node, and establish American/UN scientific presence.',
+    primaryScienceDirective: 'Modeled after Ellipse: Lunar Voyager Mission 3 (YouTube: qXYpltxSTK0): Earth liftoff, TLI burn, manual lunar powered descent touchdown (< 3 m/s), plant flag & regolith drill EVA, lunar surface liftoff, trans-Earth return burn, hypersonic atmospheric entry, and parachute ocean splashdown.',
   },
   MARS: {
     id: 'MARS',
-    name: 'Mars: Jezero Crater Ancient River Delta',
-    badge: '🔴 RED PLANET EXPEDITION',
+    name: 'Mission 4: Mars Interplanetary Voyager (Earth Launch ➔ Mars EDL ➔ Return)',
+    badge: '🔴 RED PLANET INTERPLANETARY EXPEDITION',
     distanceKm: '225,000,000 km',
     transferTimeDays: '6 to 7 Months',
     surfaceGravityMs2: 3.72,
-    landingSite: 'Jezero Crater Delta Fan (18.38°N, 77.58°E)',
+    landingSite: 'Jezero Crater Ancient River Delta (18.38°N, 77.58°E)',
     landingCoordinates: '18.38° North, 77.58° East',
     atmospherePressure: '610 Pa (~0.6% Earth Atmosphere - 95% CO2)',
     surfaceTerrainDescription: 'Layered clay mudstones, basalt boulder fields, active dust devils, rusty perchlorate-rich dust dunes, and ancient riverbeds.',
-    primaryScienceDirective: 'Core ancient river delta stromatolite layers for fossilized microbial biosignatures, demonstrate MOXIE oxygen generation, and return intact core samples to Earth.',
+    primaryScienceDirective: 'Execute Earth multi-stage launch, Trans-Mars Injection burn, supersonic Mars atmospheric entry & powered touchdown, MOXIE O2 extraction and rover drill, surface liftoff, interplanetary return burn, and Pacific recovery.',
   },
 };
+

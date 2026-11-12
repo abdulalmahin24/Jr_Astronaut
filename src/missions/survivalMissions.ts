@@ -6,6 +6,10 @@
 // ============================================================================
 
 export type HardcoreMissionId =
+  | 'suborbital-pioneer'
+  | 'orbital-pioneer'
+  | 'lunar-voyager'
+  | 'mars-voyager'
   | 'kessler-syndrome'
   | 'solar-storm'
   | 'apollo-13'
@@ -37,6 +41,14 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyConfig> = {
     color: '#94a3b8',
     atmosphereHeightKm: 0,
     surfaceGravityMs2: 1.622,
+  },
+  MARS: {
+    name: 'Mars',
+    radiusKm: 3389.5,
+    mu: 42828.3752,
+    color: '#ef4444',
+    atmosphereHeightKm: 80,
+    surfaceGravityMs2: 3.72,
   },
   GAS_GIANT: {
     name: 'Jupiter Analogue (Zephyrus)',
@@ -99,7 +111,7 @@ export interface HardcoreMissionConfig {
   title: string;
   tagline: string;
   scenario: string;
-  targetBody: 'EARTH' | 'MOON' | 'GAS_GIANT';
+  targetBody: 'EARTH' | 'MOON' | 'MARS' | 'GAS_GIANT';
   initialAltitudeKm: number;
   initialVelocityKms: number;
   initialVerticalSpeedKms: number;
@@ -124,8 +136,132 @@ export interface HardcoreMissionConfig {
 
 export const HARDCORE_SURVIVAL_MISSIONS: HardcoreMissionConfig[] = [
   {
-    id: 'kessler-syndrome',
+    id: 'suborbital-pioneer',
     missionNumber: 1,
+    title: 'Mission 1: Sub-Orbital Pioneer & Kármán Boundary',
+    tagline: '100 km Atmospheric Punch, Microgravity & Ocean Splashdown',
+    scenario: 'Manual launch from Cape Canaveral. Throttle up, steer a gradual gravity turn, punch through atmospheric drag past the 100 km Kármán line into microgravity space. Decouple booster, orient capsule heat shield, and deploy parachutes below 4,000 m for ocean recovery.',
+    targetBody: 'EARTH',
+    initialAltitudeKm: 0.1,
+    initialVelocityKms: 0.05,
+    initialVerticalSpeedKms: 0.05,
+    initialPitchDeg: 90,
+    initialFuelPct: 100,
+    mainEngineAvailable: true,
+    rcsOnly: false,
+    hideTrajectoryLine: false,
+    hasDebrisField: false,
+    hasEngineHeat: false,
+    hasHeatShield: true,
+    hasCountdownTimer: false,
+    countdownDurationSec: 0,
+    targetObjective: 'Manually pilot rocket past 100 km Kármán line, achieve microgravity, re-enter atmosphere safely, and splash down with parachute below 8 m/s.',
+    scientificContext: 'Project Mercury Redstone (MR-3 Freedom 7) sent Alan Shepard on a 15-minute suborbital flight peaking at 187 km. Proved human ability to withstand launch Gs and microgravity disorientation.',
+    nasaDataSources: [
+      {
+        title: 'NASA Project Mercury Flight Operations Report MR-3',
+        url: 'https://www.nasa.gov/mission_pages/mercury/',
+        portal: 'data.nasa.gov',
+      },
+    ],
+  },
+  {
+    id: 'orbital-pioneer',
+    missionNumber: 2,
+    title: 'Mission 2: Orbital Pioneer: Low Earth Orbit 200 km',
+    tagline: 'Multi-Stage Staging, 7.8 km/s Orbital Velocity & De-Orbit Burn',
+    scenario: 'Execute a full multi-stage orbital insertion. Steer the gravity turn pitch program (90° down to 10°), decouple stage 1 booster with [SPACE], accelerate to orbital velocity (7.8 km/s), circularize orbit at 200 km, perform retrograde de-orbit burn, and splash down.',
+    targetBody: 'EARTH',
+    initialAltitudeKm: 0.1,
+    initialVelocityKms: 0.05,
+    initialVerticalSpeedKms: 0.05,
+    initialPitchDeg: 90,
+    initialFuelPct: 100,
+    mainEngineAvailable: true,
+    rcsOnly: false,
+    hideTrajectoryLine: false,
+    hasDebrisField: false,
+    hasEngineHeat: false,
+    hasHeatShield: true,
+    hasCountdownTimer: false,
+    countdownDurationSec: 0,
+    targetObjective: 'Achieve stable 200 km circular Low Earth Orbit (velocity >= 7.75 km/s, Periapsis > 150 km), complete orbit verification, retrograde burn, and ocean splashdown.',
+    scientificContext: 'First orbital velocity requirement (v = sqrt(G*M / r) = 7.8 km/s). Gravity turn optimizes fuel by letting gravity curve the flight vector without expending lateral gimbal energy.',
+    nasaDataSources: [
+      {
+        title: 'NASA Launch Vehicle Guidance & Trajectory Optimization',
+        url: 'https://data.nasa.gov/',
+        portal: 'data.nasa.gov',
+      },
+    ],
+  },
+  {
+    id: 'lunar-voyager',
+    missionNumber: 3,
+    title: 'Mission 3: Lunar Voyager (Full Moon Expedition — YouTube Reference)',
+    tagline: 'Earth Launch ➔ TLI ➔ Lunar Retro Touchdown ➔ Surface EVA ➔ Splashdown',
+    scenario: 'Modeled directly after Ellipse: Lunar Voyager Mission 3 (YouTube: qXYpltxSTK0). Earth liftoff, Trans-Lunar Injection burn, enter lunar orbit, perform manual retro powered descent to touch down gently (< 3 m/s), plant flag & drill core on surface EVA, liftoff into lunar orbit, trans-Earth return burn, hypersonic atmospheric entry, and parachute ocean splashdown!',
+    targetBody: 'MOON',
+    initialAltitudeKm: 3.5,
+    initialVelocityKms: 0.22,
+    initialVerticalSpeedKms: -0.21,
+    initialPitchDeg: 90,
+    initialFuelPct: 40,
+    mainEngineAvailable: true,
+    rcsOnly: false,
+    hideTrajectoryLine: false,
+    hasDebrisField: false,
+    hasEngineHeat: false,
+    hasHeatShield: true,
+    hasCountdownTimer: false,
+    countdownDurationSec: 0,
+    targetObjective: 'Execute pinpoint manual powered landing (< 3 m/s touchdown), complete surface EVA science, liftoff from Moon, and return capsule safely to Earth splashdown.',
+    scientificContext: 'Apollo Lunar Module Descent Propulsion System (LMDE) required throttlable deep-throttling pintle engines to cancel 1.6 km/s orbital velocity and touch down gently on unpredictable lunar crater topography.',
+    nasaDataSources: [
+      {
+        title: 'NASA Apollo Lunar Surface Journal (ALSJ) Descent Radar Data',
+        url: 'https://data.nasa.gov/',
+        portal: 'data.nasa.gov',
+      },
+    ],
+  },
+  {
+    id: 'mars-voyager',
+    missionNumber: 4,
+    title: 'Mission 4: Mars Interplanetary Voyager',
+    tagline: 'Earth Launch ➔ TMI ➔ Mars Hypersonic EDL ➔ MOXIE EVA ➔ Return Splashdown',
+    scenario: 'The ultimate interplanetary survival expedition. Earth launch, Trans-Mars Injection burn, brave hypersonic entry through thin Martian atmosphere (entry corridor heating), supersonic retro-propulsion touchdown in Jezero Crater, extract O2 with MOXIE, surface liftoff, trans-Earth return burn, and Pacific recovery.',
+    targetBody: 'MARS',
+    initialAltitudeKm: 12.0,
+    initialVelocityKms: 1.25,
+    initialVerticalSpeedKms: -0.65,
+    initialPitchDeg: 80,
+    initialFuelPct: 55,
+    mainEngineAvailable: true,
+    rcsOnly: false,
+    hideTrajectoryLine: false,
+    hasDebrisField: false,
+    hasEngineHeat: true,
+    hasHeatShield: true,
+    hasCountdownTimer: false,
+    countdownDurationSec: 0,
+    targetObjective: 'Survive Mars Entry, Descent, and Landing (EDL), land softly in Jezero Crater, complete MOXIE/sample science, launch from Mars surface, and return to Earth ocean recovery.',
+    scientificContext: 'Mars EDL combines atmospheric drag, supersonic parachutes, and powered terminal descent in a 610 Pa carbon dioxide atmosphere with 38% Earth gravity.',
+    nasaDataSources: [
+      {
+        title: 'NASA Mars 2020 Perseverance Entry, Descent, and Landing (EDL) Telemetry',
+        url: 'https://mars.nasa.gov/mars2020/',
+        portal: 'jpl.nasa.gov',
+      },
+    ],
+  },
+];
+
+// Bonus Orbital Mechanics Challenges (Available as supplementary simulations)
+export const BONUS_ORBITAL_CHALLENGE_MISSIONS: HardcoreMissionConfig[] = [
+  {
+    id: 'kessler-syndrome',
+    missionNumber: 5,
     title: 'Kessler Syndrome: Orbital Debris Survival',
     tagline: 'Cascade Collisions & Rapid Fuel Leak Mitigation',
     scenario: 'Spawn a dense field of 120 high-velocity orbital debris fragments (red pings on tactical radar) orbiting Earth between 200 km and 500 km altitude. Navigate through the debris storm with active hull breach detection.',
