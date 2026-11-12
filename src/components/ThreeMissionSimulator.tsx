@@ -358,7 +358,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const mountRef = useRef<HTMLDivElement>(null);
   const navballCanvasRef = useRef<HTMLCanvasElement>(null);
   const seismographCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [cameraMode, setCameraMode] = useState<CameraMode>('orbit');
+  const [cameraMode, setCameraMode] = useState<CameraMode>(mission.gameType === 'launch' ? 'chase' : 'orbit');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [showBriefing, setShowBriefing] = useState<boolean>(false);
   const [visualTone, setVisualTone] = useState<VisualToneMode>('REALISTIC_NASA');
@@ -4984,42 +4984,32 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         playerVehicle.position.y = 4 + Math.min(state.altitudeKm * 25, 450);
         groundPadGroup.position.y = -Math.min(state.altitudeKm * 25, 1400);
 
-        const effectiveTargetAlt = Math.min(p.targetAltitudeKm > 0 ? p.targetAltitudeKm : 185, 195);
-        const effectiveTargetVel = p.targetVelocityKms > 0 ? p.targetVelocityKms : 7.8;
-        const reachedOrbit = (state.altitudeKm >= effectiveTargetAlt * 0.9 && state.velocityKms >= effectiveTargetVel * 0.85) || state.altitudeKm >= 185;
+        const effectiveTargetAlt = p.targetAltitudeKm > 0 ? p.targetAltitudeKm : 185;
+        const reachedSpaceOrOrbit = isMercury
+          ? (state.altitudeKm >= 100 || state.altitudeKm >= effectiveTargetAlt * 0.85)
+          : ((state.altitudeKm >= effectiveTargetAlt * 0.85 && state.velocityKms >= 6.8) || state.altitudeKm >= 185);
 
         if (state.tliComplete) {
           state.isFinished = true;
           soundFx.playRadioChirp();
           confetti({ particleCount: 180, spread: 90 });
           setTimeout(() => onSuccess(1000), 2000);
-        } else if (reachedOrbit && !state.tliActive) {
-          if (simStateRef.current.flightPhase !== 'orbit' && simStateRef.current.flightPhase !== 'tli_burn' && simStateRef.current.flightPhase !== 'lunar_orbit') {
+        } else if (reachedSpaceOrOrbit && !state.tliActive) {
+          if (!state.isFinished) {
             simStateRef.current.flightPhase = 'orbit';
             setFlightPhase('orbit');
-            if (isLunarMission) {
-              state.statusText = '🌕 LOW EARTH ORBIT (LEO) ACQUIRED · PROCEED TO TRANS-LUNAR INJECTION (TLI) BURN!';
-              state.statusColor = '#38bdf8';
-              if (moonMeshRef.current) moonMeshRef.current.visible = true;
-              if (trajectoryLineRef.current) trajectoryLineRef.current.visible = true;
-            } else if (isMarsMission) {
-              state.statusText = '🔴 LOW EARTH ORBIT (LEO) ACQUIRED · PROCEED TO TRANS-MARS INJECTION (TMI) BURN!';
-              state.statusColor = '#ef4444';
-              if (moonMeshRef.current) moonMeshRef.current.visible = false;
-              if (trajectoryLineRef.current) trajectoryLineRef.current.visible = false;
-            } else {
-              // Earth Orbit / Suborbital Mission (Mercury, Gemini, Space Shuttle, Apollo test, Artemis test, ISS)
-              state.statusText = '🌍 ORBITAL INSERTION ACHIEVED · 185 KM × 185 KM CIRCULAR ORBIT ACHIEVED · MISSION ACCOMPLISHED!';
-              state.statusColor = '#22c55e';
-              if (moonMeshRef.current) moonMeshRef.current.visible = false;
-              if (trajectoryLineRef.current) trajectoryLineRef.current.visible = true;
-              state.isFinished = true;
-              soundFx.playVictory();
-              confetti({ particleCount: 220, spread: 90 });
-              setTimeout(() => onSuccess(1000), 2200);
-            }
+            state.isFinished = true;
+            soundFx.playVictory();
+            confetti({ particleCount: 220, spread: 90 });
+            state.statusText = isMercury
+              ? '🌌 REACHED SPACE! KÁRMÁN LINE (100 KM) PASSED · SUBORBITAL MISSION ACCOMPLISHED!'
+              : '🌍 ORBITAL INSERTION ACHIEVED · WELCOME TO SPACE · MISSION ACCOMPLISHED!';
+            state.statusColor = '#22c55e';
+            if (moonMeshRef.current) moonMeshRef.current.visible = false;
+            if (trajectoryLineRef.current) trajectoryLineRef.current.visible = true;
+            setTimeout(() => onSuccess(1000), 2500);
           }
-        } else if (state.timeRemaining <= 0 || (state.propellant <= 0 && state.altitudeKm < p.targetAltitudeKm * 0.7 && !state.tliActive)) {
+        } else if (state.timeRemaining <= 0 || (state.propellant <= 0 && state.altitudeKm < 60 && !state.tliActive)) {
           state.isFinished = true;
           soundFx.playAlarm();
           onFailure(`Trajectory profile missed. Final Altitude: ${state.altitudeKm.toFixed(1)} km`);
@@ -6466,9 +6456,49 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '5px',
+            gap: '6px',
           }}
         >
+          {/* Gravity Turn Pitch Steering Controls */}
+          <div style={{ display: 'flex', gap: '6px', width: '142px' }}>
+            <button
+              onClick={() => handlePitchChange(10)}
+              style={{
+                flex: 1,
+                padding: '5px 0',
+                background: 'rgba(15, 23, 42, 0.92)',
+                border: '1px solid rgba(56, 189, 248, 0.45)',
+                borderRadius: '8px',
+                color: '#38bdf8',
+                fontSize: '9.5px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+              }}
+              title="Pitch Up / Vertical (Key: A or Left Arrow)"
+            >
+              ▲ UP [A]
+            </button>
+            <button
+              onClick={() => handlePitchChange(-10)}
+              style={{
+                flex: 1,
+                padding: '5px 0',
+                background: 'rgba(15, 23, 42, 0.92)',
+                border: '1px solid rgba(245, 158, 11, 0.45)',
+                borderRadius: '8px',
+                color: '#fbbf24',
+                fontSize: '9.5px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+              }}
+              title="Pitch Down / Gravity Turn East (Key: D or Right Arrow)"
+            >
+              GRAV [D] ▶
+            </button>
+          </div>
+
           <button
             onClick={() => {
               handleTouchStaging();
@@ -6760,19 +6790,20 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         </div>
       </div>
 
-      {/* ─── RIGHT HUD: CO-OP CREW STATIONS & REAL-TIME LOGS ────── */}
-      <div
-        style={{
-          position: 'absolute',
-          right: '14px',
-          top: '72px',
-          maxWidth: '260px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          zIndex: 20,
-        }}
-      >
+      {/* ─── RIGHT HUD: CO-OP CREW STATIONS & REAL-TIME LOGS (ONLY IN MULTIPLAYER) ────── */}
+      {multiplayerActive && roomState && (
+        <div
+          style={{
+            position: 'absolute',
+            right: '14px',
+            top: '72px',
+            maxWidth: '260px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            zIndex: 20,
+          }}
+        >
         <div
           style={{
             background: hudTheme.cardBg,
@@ -6871,6 +6902,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           )}
         </div>
       </div>
+      )}
 
       {/* ─── DOCKING CROSSHAIR (FOR DOCKING MISSIONS) ─────────────── */}
       {mission.gameType === 'docking' && (
@@ -6972,189 +7004,59 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         </div>
       )}
 
-      {/* ─── ON-SCREEN LIFTOFF & PRE-LAUNCH CHECKLIST BANNER ─── */}
+      {/* ─── ON-SCREEN LIFTOFF READY BANNER (ELLIPSE ROCKET SIMULATOR MINIMAL STYLE) ─── */}
       {mission.gameType === 'launch' && telemetry.altitudeKm < 0.2 && telemetry.throttle === 0 && (
         <div
           style={{
             position: 'absolute',
-            bottom: cameraMode === 'cockpit' ? '185px' : '76px',
+            bottom: '84px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'rgba(11, 19, 38, 0.96)',
-            border: `1.5px solid ${countdownTime !== null ? '#38bdf8' : '#22c55e'}`,
-            borderRadius: '14px',
-            padding: '12px 20px',
+            background: 'rgba(2, 6, 23, 0.92)',
+            border: '1.5px solid #22c55e',
+            borderRadius: '24px',
+            padding: '6px 20px',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            zIndex: 35,
-            boxShadow: `0 0 35px ${countdownTime !== null ? 'rgba(56, 189, 248, 0.45)' : 'rgba(34, 197, 94, 0.35)'}`,
-            backdropFilter: 'blur(14px)',
-            maxWidth: '680px',
-            width: '94%',
+            alignItems: 'center',
+            gap: '14px',
+            zIndex: 25,
+            boxShadow: '0 0 24px rgba(34, 197, 94, 0.5)',
+            backdropFilter: 'blur(12px)',
+            pointerEvents: 'auto',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>👨‍🚀</span>
-              <div>
-                <span style={{ fontSize: '11px', fontWeight: 900, color: '#f8fafc', letterSpacing: '0.05em' }}>
-                  NASA ASTRONAUT PRE-LAUNCH FLIGHT READINESS CHECKLIST
-                </span>
-                <div style={{ fontSize: '9px', color: '#94a3b8' }}>
-                  {mission.programName?.includes('Artemis')
-                    ? 'Kennedy Space Center Launch Complex 39B · Artemis SLS Pad'
-                    : mission.programName?.includes('Apollo') || mission.programName?.includes('Shuttle')
-                    ? 'Kennedy Space Center Launch Complex 39A · Historic Saturn / Shuttle Pad'
-                    : 'Cape Canaveral Launch Complex 14 · Historic Mercury / Atlas Pad'} · Complete flight systems verification before ignition
-                </div>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '16px' }}>🚀</span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: '#f8fafc', letterSpacing: '0.04em' }}>
+                CAPE CANAVERAL LAUNCH PAD READY
+              </span>
+              <span style={{ fontSize: '9px', color: '#94a3b8' }}>
+                Drag throttle slider to 100% (Left) or Hit [SPACE] to Launch
+              </span>
             </div>
-            {countdownTime !== null ? (
-              <div style={{ background: '#020617', border: '1.5px solid #38bdf8', padding: '4px 12px', borderRadius: '8px', fontSize: '18px', fontWeight: 900, fontFamily: 'monospace', color: countdownTime <= 3 ? '#ef4444' : '#38bdf8', boxShadow: '0 0 15px rgba(56, 189, 248, 0.4)' }}>
-                T-{countdownTime < 10 ? `0${countdownTime}` : countdownTime}s
-              </div>
-            ) : (
-              <button
-                onClick={handleStartCountdown}
-                style={{
-                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                  border: '1px solid #38bdf8',
-                  color: '#fff',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  fontWeight: 900,
-                  fontSize: '10.5px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
-                }}
-              >
-                <span>⚡</span>
-                <span>AUTO-SEQUENCE & COUNTDOWN</span>
-              </button>
-            )}
           </div>
-
-          {/* 4 Interactive Pre-Launch Checklist Switches */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
-            <button
-              onClick={() => handleTogglePreflight('internalPower')}
-              disabled={countdownTime !== null}
-              style={{
-                background: preflightChecklist.internalPower ? 'rgba(34, 197, 94, 0.2)' : 'rgba(15, 23, 42, 0.8)',
-                border: `1px solid ${preflightChecklist.internalPower ? '#22c55e' : '#475569'}`,
-                color: preflightChecklist.internalPower ? '#86efac' : '#cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 8px',
-                textAlign: 'left',
-                cursor: countdownTime !== null ? 'default' : 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800 }}>
-                <span>1. INTERNAL POWER</span>
-                <span>{preflightChecklist.internalPower ? '✓ GO' : '⚪ PENDING'}</span>
-              </div>
-              <span style={{ fontSize: '7.5px', color: '#94a3b8' }}>Transfer to fuel cell bus</span>
-            </button>
-
-            <button
-              onClick={() => handleTogglePreflight('cryoPressurization')}
-              disabled={countdownTime !== null}
-              style={{
-                background: preflightChecklist.cryoPressurization ? 'rgba(34, 197, 94, 0.2)' : 'rgba(15, 23, 42, 0.8)',
-                border: `1px solid ${preflightChecklist.cryoPressurization ? '#22c55e' : '#475569'}`,
-                color: preflightChecklist.cryoPressurization ? '#86efac' : '#cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 8px',
-                textAlign: 'left',
-                cursor: countdownTime !== null ? 'default' : 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800 }}>
-                <span>2. CRYO TANKS</span>
-                <span>{preflightChecklist.cryoPressurization ? '✓ GO' : '⚪ PENDING'}</span>
-              </div>
-              <span style={{ fontSize: '7.5px', color: '#94a3b8' }}>Pressurize LOX to 52 PSI</span>
-            </button>
-
-            <button
-              onClick={() => handleTogglePreflight('gncAlignment')}
-              disabled={countdownTime !== null}
-              style={{
-                background: preflightChecklist.gncAlignment ? 'rgba(34, 197, 94, 0.2)' : 'rgba(15, 23, 42, 0.8)',
-                border: `1px solid ${preflightChecklist.gncAlignment ? '#22c55e' : '#475569'}`,
-                color: preflightChecklist.gncAlignment ? '#86efac' : '#cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 8px',
-                textAlign: 'left',
-                cursor: countdownTime !== null ? 'default' : 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800 }}>
-                <span>3. GNC INERTIAL</span>
-                <span>{preflightChecklist.gncAlignment ? '✓ GO' : '⚪ PENDING'}</span>
-              </div>
-              <span style={{ fontSize: '7.5px', color: '#94a3b8' }}>Align gyro azimuth 090°</span>
-            </button>
-
-            <button
-              onClick={() => handleTogglePreflight('waterDeluge')}
-              disabled={countdownTime !== null}
-              style={{
-                background: preflightChecklist.waterDeluge ? 'rgba(34, 197, 94, 0.2)' : 'rgba(15, 23, 42, 0.8)',
-                border: `1px solid ${preflightChecklist.waterDeluge ? '#22c55e' : '#475569'}`,
-                color: preflightChecklist.waterDeluge ? '#86efac' : '#cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 8px',
-                textAlign: 'left',
-                cursor: countdownTime !== null ? 'default' : 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800 }}>
-                <span>4. WATER DELUGE</span>
-                <span>{preflightChecklist.waterDeluge ? '✓ GO' : '⚪ PENDING'}</span>
-              </div>
-              <span style={{ fontSize: '7.5px', color: '#94a3b8' }}>Arm acoustic suppression</span>
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '6px' }}>
-            <span style={{ fontSize: '9px', color: '#94a3b8' }}>
-              {countdownTime !== null
-                ? `🚀 Terminal Count: ${countdownTime <= 6 ? 'Spooling engines (T-6s)' : 'All hold-down clamps active'}`
-                : 'Complete all 4 checks to start countdown or click IGNITE to launch immediately.'}
-            </span>
-            <button
-              onClick={handleIgnite}
-              style={{
-                background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                border: '1px solid #22c55e',
-                color: '#fff',
-                padding: '4px 10px',
-                borderRadius: '5px',
-                fontWeight: 900,
-                fontSize: '10px',
-                cursor: 'pointer',
-              }}
-            >
-              🔥 INSTANT IGNITE [W]
-            </button>
-          </div>
+          <button
+            onClick={handleIgnite}
+            style={{
+              background: 'linear-gradient(135deg, #16a34a, #15803d)',
+              border: '1.5px solid #22c55e',
+              color: '#fff',
+              padding: '6px 18px',
+              borderRadius: '16px',
+              fontWeight: 900,
+              fontSize: '11px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 0 16px rgba(34, 197, 94, 0.7)',
+              animation: 'pulse 1.8s infinite',
+            }}
+          >
+            <span>🔥</span>
+            <span>LAUNCH NOW [SPACE]</span>
+          </button>
         </div>
       )}
 
