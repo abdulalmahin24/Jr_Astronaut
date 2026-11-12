@@ -39,6 +39,7 @@ import {
   type CrewRole,
   type MultiplayerRoomState,
 } from '../utils/multiplayerMissionService';
+import { AuthenticCockpitOverlay } from './AuthenticCockpitOverlay';
 
 export type VisualToneMode = 'REALISTIC_NASA' | 'CINEMATIC_GRADE' | 'TACTICAL_HUD';
 
@@ -250,6 +251,100 @@ class AeroAudioSynth {
   }
 }
 
+// ─── PROCEDURAL KENNEDY SPACE CENTER LAUNCH PAD TEXTURES ─────────────────────
+const createProceduralKSCPadTexture = (): THREE.CanvasTexture => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d')!;
+
+  // 1. Coastal Florida wetland base (natural sandy scrub)
+  ctx.fillStyle = '#1c2820';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Sandy loam coastal grass patches
+  ctx.fillStyle = '#28362b';
+  for (let i = 0; i < 40; i++) {
+    const rx = (i * 47) % 1024;
+    const ry = (i * 89) % 1024;
+    ctx.beginPath();
+    ctx.arc(rx, ry, 50 + (i % 30), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 2. Concrete Circular Launch Mound (Pad 39 Hardstand)
+  ctx.fillStyle = '#374151'; // Outer concrete perimeter berm
+  ctx.beginPath();
+  ctx.arc(512, 512, 340, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#4b5563'; // Inner reinforced blast deck
+  ctx.beginPath();
+  ctx.arc(512, 512, 260, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Safety Perimeter Yellow Stripe
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.arc(512, 512, 260, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Central Flame Trench Cutout Graphic
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(440, 160, 144, 704);
+
+  // High-temperature Flame Deflector Blast Scorch Marks
+  const scorchGrad = ctx.createRadialGradient(512, 512, 40, 512, 512, 160);
+  scorchGrad.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
+  scorchGrad.addColorStop(0.5, 'rgba(30, 20, 15, 0.8)');
+  scorchGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = scorchGrad;
+  ctx.fillRect(400, 400, 224, 224);
+
+  // 3. Crawlerway Gravel Road (Leading South to VAB)
+  ctx.fillStyle = '#52525b';
+  ctx.fillRect(476, 512, 72, 512);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
+  return tex;
+};
+
+const createProceduralOceanTexture = (): THREE.CanvasTexture => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createLinearGradient(0, 0, 512, 512);
+  grad.addColorStop(0, '#042842');
+  grad.addColorStop(0.5, '#0c4a6e');
+  grad.addColorStop(1, '#032034');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+  ctx.lineWidth = 2;
+  for (let y = 12; y < 512; y += 20) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x < 512; x += 32) {
+      ctx.quadraticCurveTo(x + 16, y + ((x % 24 === 0) ? 5 : -5), x + 32, y);
+    }
+    ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(12, 12);
+  tex.needsUpdate = true;
+  return tex;
+};
+
 export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   mission,
   onSuccess,
@@ -270,6 +365,25 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const [activeRole, setActiveRole] = useState<CrewRole>(assignedRole);
   const [modelLoading, setModelLoading] = useState<boolean>(true);
   const [moonquakeAlert, setMoonquakeAlert] = useState<{ mag: number; depth: number; site: string } | null>(null);
+
+  // Determine Mission Destination Architecture (Earth Orbit vs Moon vs Mars)
+  const isLunarMission = useMemo(() => {
+    const name = (mission.missionName || '').toLowerCase();
+    const prog = (mission.programName || '').toLowerCase();
+    const brief = (mission.briefing || '').toLowerCase();
+    const obj = (mission.objective || '').toLowerCase();
+    const isApolloLunar = prog.includes('apollo') && !name.includes('apollo 7') && !name.includes('apollo 9') && !name.includes('astp') && !name.includes('skylab');
+    const isArtemisLunar = prog.includes('artemis') || name.includes('artemis');
+    const mentionsMoon = (brief.includes('moon') || brief.includes('lunar') || obj.includes('moon') || obj.includes('tli')) && !name.includes('earth orbit');
+    return isApolloLunar || isArtemisLunar || mentionsMoon || mission.gameType === 'lunar_landing';
+  }, [mission]);
+
+  const isMarsMission = useMemo(() => {
+    const name = (mission.missionName || '').toLowerCase();
+    const prog = (mission.programName || '').toLowerCase();
+    const brief = (mission.briefing || '').toLowerCase();
+    return name.includes('mars') || prog.includes('mars') || brief.includes('mars') || name.includes('perseverance') || name.includes('curiosity') || name.includes('viking');
+  }, [mission]);
 
   // Astronaut Academy Age & Difficulty Tier (Cadet 6-10 / Officer 11-15 / Commander 16+)
   const [ageTier, setAgeTier] = useState<AstronautAgeTier>(() => {
@@ -1461,6 +1575,10 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     if (isMarsRover) {
       scene.background = new THREE.Color(marsSkyColor);
       scene.fog = new THREE.FogExp2(0x9a3412, 0.0016);
+    } else if (mission.gameType === 'launch') {
+      // Photorealistic Florida Daytime Sky on Pad
+      scene.background = new THREE.Color(0x38bdf8); // Florida daytime azure blue
+      scene.fog = new THREE.FogExp2(0x93c5fd, 0.00028); // Daytime atmospheric coastal haze
     } else {
       scene.background = new THREE.Color(spaceVoidColor);
       scene.fog = new THREE.FogExp2(spaceVoidColor, 0.0002);
@@ -1570,8 +1688,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
     // 2. Multi-Source Lighting
     const sunLight = new THREE.DirectionalLight(
-      isMarsRover ? 0xffedd5 : 0xfff7e8,
-      isMarsRover ? 3.4 : (visualTone === 'CINEMATIC_GRADE' ? 3.5 : 2.9)
+      isMarsRover ? 0xffedd5 : 0xfffaed,
+      isMarsRover ? 3.4 : (mission.gameType === 'launch' ? 3.8 : (visualTone === 'CINEMATIC_GRADE' ? 3.5 : 2.9))
     );
     sunLight.position.set(280, 480, 220);
     sunLight.castShadow = true;
@@ -1583,8 +1701,12 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     scene.add(sunLight);
 
     const ambientLight = new THREE.AmbientLight(
-      isMarsRover ? 0x9a3412 : 0x0e1b2f,
-      isMarsRover ? 1.6 : 0.7
+      isMarsRover
+        ? 0x9a3412
+        : mission.gameType === 'launch'
+        ? 0xbae6fd // Warm Florida daylight ambient
+        : 0x0e1b2f,
+      isMarsRover ? 1.6 : (mission.gameType === 'launch' ? 1.15 : 0.7)
     );
     scene.add(ambientLight);
 
@@ -1891,12 +2013,13 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
     // 5.1 LAUNCH MISSION
     if (mission.gameType === 'launch') {
-      // Cape Canaveral / KSC Coastal Surface Terrain (eliminates sphere clipping on the pad)
+      // Cape Canaveral / KSC Coastal Surface Terrain with procedural photorealistic pad texture
+      const kscPadTex = createProceduralKSCPadTexture();
       const terrainGeo = new THREE.CircleGeometry(3600, 64);
       const terrainMat = new THREE.MeshStandardMaterial({
-        color: 0x1e2922, // coastal Florida scrub & wetland
-        roughness: 0.9,
-        metalness: 0.1,
+        map: kscPadTex,
+        roughness: 0.85,
+        metalness: 0.15,
       });
       const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
       terrainMesh.rotation.x = -Math.PI / 2;
@@ -1904,12 +2027,14 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       terrainMesh.receiveShadow = true;
       groundPadGroup.add(terrainMesh);
 
-      // Atlantic Ocean Coastline to the East
+      // Atlantic Ocean Coastline to the East with water ripple texture
+      const oceanTex = createProceduralOceanTexture();
       const oceanGeo = new THREE.PlaneGeometry(3600, 1800);
       const oceanMat = new THREE.MeshStandardMaterial({
-        color: 0x082f49,
-        roughness: 0.25,
-        metalness: 0.75,
+        map: oceanTex,
+        roughness: 0.2,
+        metalness: 0.8,
+        color: 0x38bdf8,
       });
       const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
       oceanMesh.rotation.x = -Math.PI / 2;
@@ -4451,15 +4576,61 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           }
         }
 
-        // Earth globe visibility based on altitude
+        // Dynamic Atmospheric Sky & Fog Transition
+        if (scene) {
+          const alt = state.altitudeKm;
+          if (alt < 15) {
+            // Troposphere (0 - 15 km): Florida Azure Daylight to Deep Blue
+            const t = Math.max(0, alt / 15);
+            scene.background = new THREE.Color(
+              (56 + (30 - 56) * t) / 255,
+              (189 + (58 - 189) * t) / 255,
+              (248 + (138 - 248) * t) / 255
+            );
+            if (scene.fog) {
+              scene.fog.color.copy(scene.background);
+              (scene.fog as THREE.FogExp2).density = 0.00028 * (1 - t * 0.75);
+            }
+          } else if (alt < 55) {
+            // Stratosphere (15 - 55 km): Deep Royal Blue to Twilight Inky Indigo
+            const t = (alt - 15) / 40;
+            scene.background = new THREE.Color(
+              (30 + (8 - 30) * t) / 255,
+              (58 + (12 - 58) * t) / 255,
+              (138 + (22 - 138) * t) / 255
+            );
+            if (scene.fog) {
+              scene.fog.color.copy(scene.background);
+              (scene.fog as THREE.FogExp2).density = 0.00007 * (1 - t);
+            }
+          } else {
+            // Mesosphere & Deep Space Void (> 55 km)
+            scene.background = new THREE.Color(0x020409);
+            if (scene.fog) {
+              (scene.fog as THREE.FogExp2).density = 0.000015;
+            }
+          }
+        }
+
+        // Photorealistic Curved Earth Globe rising smoothly beneath the spacecraft
         if (earthMeshRef.current && atmoMeshRef.current) {
-          if (state.altitudeKm > 32) {
+          if (state.altitudeKm > 8) {
             earthMeshRef.current.visible = true;
             atmoMeshRef.current.visible = true;
+            const targetY = -earthRadius - 120 + Math.min(state.altitudeKm * 1.8, 160);
+            earthMeshRef.current.position.y = targetY;
+            atmoMeshRef.current.position.y = targetY;
+            earthMeshRef.current.rotation.y = time * 0.00003;
+            atmoMeshRef.current.rotation.y = time * 0.00003;
           } else {
             earthMeshRef.current.visible = false;
             atmoMeshRef.current.visible = false;
           }
+        }
+
+        // Hide flat launch pad once high above Cape Canaveral to prevent clipping
+        if (groundPadGroup) {
+          groundPadGroup.visible = state.altitudeKm < 45;
         }
 
         if (canControl) {
@@ -4603,10 +4774,27 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           if (simStateRef.current.flightPhase !== 'orbit' && simStateRef.current.flightPhase !== 'tli_burn' && simStateRef.current.flightPhase !== 'lunar_orbit') {
             simStateRef.current.flightPhase = 'orbit';
             setFlightPhase('orbit');
-            state.statusText = '🌍 LOW EARTH ORBIT (LEO) ACQUIRED · PROCEED TO TRANS-LUNAR INJECTION (TLI) BURN!';
-            state.statusColor = '#38bdf8';
-            if (moonMeshRef.current) moonMeshRef.current.visible = true;
-            if (trajectoryLineRef.current) trajectoryLineRef.current.visible = true;
+            if (isLunarMission) {
+              state.statusText = '🌕 LOW EARTH ORBIT (LEO) ACQUIRED · PROCEED TO TRANS-LUNAR INJECTION (TLI) BURN!';
+              state.statusColor = '#38bdf8';
+              if (moonMeshRef.current) moonMeshRef.current.visible = true;
+              if (trajectoryLineRef.current) trajectoryLineRef.current.visible = true;
+            } else if (isMarsMission) {
+              state.statusText = '🔴 LOW EARTH ORBIT (LEO) ACQUIRED · PROCEED TO TRANS-MARS INJECTION (TMI) BURN!';
+              state.statusColor = '#ef4444';
+              if (moonMeshRef.current) moonMeshRef.current.visible = false;
+              if (trajectoryLineRef.current) trajectoryLineRef.current.visible = false;
+            } else {
+              // Earth Orbit / Suborbital Mission (Mercury, Gemini, Space Shuttle, ISS)
+              state.statusText = '🌍 LOW EARTH ORBIT (LEO) ACQUIRED · ORBITAL INSERTION CONFIRMED · MISSION COMPLETE!';
+              state.statusColor = '#22c55e';
+              if (moonMeshRef.current) moonMeshRef.current.visible = false;
+              if (trajectoryLineRef.current) trajectoryLineRef.current.visible = false;
+              state.isFinished = true;
+              soundFx.playVictory();
+              confetti({ particleCount: 220, spread: 90 });
+              setTimeout(() => onSuccess(1000), 2200);
+            }
           }
         } else if (state.timeRemaining <= 0 || (state.propellant <= 0 && state.altitudeKm < p.targetAltitudeKm * 0.7 && !state.tliActive)) {
           state.isFinished = true;
@@ -5415,287 +5603,30 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         </div>
       )}
 
-      {/* ─── IMMERSIVE FIRST-PERSON COCKPIT / DRIVER VIEWPORT HUD ──── */}
+      {/* ─── IMMERSIVE AUTHENTIC HISTORIC COCKPIT VIEWPORT ──── */}
       {cameraMode === 'cockpit' && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            zIndex: 15,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxShadow: 'inset 0 0 100px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(0, 0, 0, 0.95)',
+        <AuthenticCockpitOverlay
+          mission={mission}
+          telemetry={{
+            altitudeKm: telemetry.altitudeKm,
+            velocityKms: telemetry.velocityKms,
+            throttle: telemetry.throttle,
+            propellantPct: telemetry.propellantPct,
+            pitchDeg: telemetry.pitchDeg,
+            rollDeg: telemetry.rollDeg,
+            gForce: telemetry.gForce,
+            flightPhase,
+            targetAltitudeKm: (mission.params as any).targetAltitudeKm || 185,
+            targetVelocityKms: (mission.params as any).targetVelocityKms || 7.8,
+            isLunarMission,
+            isMarsMission,
+            destinationName: isLunarMission ? 'The Moon' : isMarsMission ? 'Mars' : 'Low Earth Orbit (LEO)',
           }}
-        >
-          {/* Top Bezel Mode Indicator */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              paddingTop: '50px',
-            }}
-          >
-            <div
-              style={{
-                background: 'rgba(2, 6, 23, 0.78)',
-                border: `1px solid ${hudTheme.primary}`,
-                borderRadius: '20px',
-                padding: '4px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backdropFilter: 'blur(8px)',
-                boxShadow: `0 0 15px ${hudTheme.glow}`,
-              }}
-            >
-              <div
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: hudTheme.primary,
-                  boxShadow: `0 0 6px ${hudTheme.primary}`,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: '9.5px',
-                  fontWeight: 800,
-                  color: hudTheme.primary,
-                  letterSpacing: '0.08em',
-                }}
-              >
-                {mission.gameType === 'rover'
-                  ? '🪑 ROVER DRIVER STATION · SURFACE OPTICS'
-                  : mission.gameType === 'lunar_landing'
-                  ? '👨‍🚀 APOLLO LUNAR MODULE FORWARD WINDOW · PDI GUIDANCE'
-                  : mission.gameType === 'docking'
-                  ? '🎯 FORWARD DOCKING CAMERA · CENTERLINE BORESIGHT'
-                  : mission.gameType === 'telescope'
-                  ? '🔭 CASSEGRAIN OPTICAL DETECTOR · PRIMARY FOCAL PLANE'
-                  : mission.gameType === 'deep_space'
-                  ? '📡 PROBE OPTICAL NAVIGATION SENSOR · 1ST PERSON SIGHT'
-                  : '👨‍🚀 CREW CAPSULE COCKPIT · FLIGHT DECK VIEW'}
-              </span>
-            </div>
-          </div>
-
-          {/* Center First-Person HUD Reticle */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '260px',
-              height: '260px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '24px',
-                height: '24px',
-                borderTop: `2px solid ${hudTheme.primary}`,
-                borderLeft: `2px solid ${hudTheme.primary}`,
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                width: '24px',
-                height: '24px',
-                borderTop: `2px solid ${hudTheme.primary}`,
-                borderRight: `2px solid ${hudTheme.primary}`,
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                width: '24px',
-                height: '24px',
-                borderBottom: `2px solid ${hudTheme.primary}`,
-                borderLeft: `2px solid ${hudTheme.primary}`,
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                right: 0,
-                width: '24px',
-                height: '24px',
-                borderBottom: `2px solid ${hudTheme.primary}`,
-                borderRight: `2px solid ${hudTheme.primary}`,
-              }}
-            />
-            <div
-              style={{
-                width: '36px',
-                height: '36px',
-                border: `1px dashed ${hudTheme.primary}`,
-                borderRadius: '50%',
-                opacity: 0.6,
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                width: '8px',
-                height: '1px',
-                background: hudTheme.primary,
-                opacity: 0.7,
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                height: '8px',
-                width: '1px',
-                background: hudTheme.primary,
-                opacity: 0.7,
-              }}
-            />
-          </div>
-
-          {/* Bottom Cockpit Edge Advisory & 360° Quick Look Bar */}
-          <div
-            style={{
-              paddingBottom: '68px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '6px',
-              pointerEvents: 'none',
-            }}
-          >
-            <div
-              style={{
-                background: 'rgba(2, 6, 23, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.4)',
-                borderRadius: '20px',
-                padding: '4px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 0 16px rgba(56, 189, 248, 0.25)',
-              }}
-            >
-              <span style={{ fontSize: '11px' }}>🖱️</span>
-              <span style={{ fontSize: '9px', fontWeight: 800, color: '#38bdf8', letterSpacing: '0.06em' }}>
-                DRAG MOUSE IN ANY DIRECTION TO LOOK 360° AROUND COCKPIT / WINDOWS / INSTRUMENTS
-              </span>
-            </div>
-
-            {/* Quick Look Direction Buttons */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                pointerEvents: 'auto',
-              }}
-            >
-              <button
-                onClick={() => handleCockpitLookSet(-Math.PI / 2, 0)}
-                style={{
-                  background: 'rgba(15, 23, 42, 0.8)',
-                  border: '1px solid rgba(148, 163, 184, 0.3)',
-                  color: '#94a3b8',
-                  borderRadius: '5px',
-                  padding: '3px 8px',
-                  fontSize: '8.5px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(6px)',
-                }}
-                title="Turn head 90° left to view left window / instruments (or drag mouse left)"
-              >
-                ⬅️ LOOK LEFT (90°)
-              </button>
-              <button
-                onClick={() => handleCockpitLookSet(0, 0)}
-                style={{
-                  background: 'rgba(56, 189, 248, 0.2)',
-                  border: '1px solid #38bdf8',
-                  color: '#38bdf8',
-                  borderRadius: '5px',
-                  padding: '3px 8px',
-                  fontSize: '8.5px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(6px)',
-                }}
-                title="Look straight ahead"
-              >
-                ⬆️ FRONT VIEW (0°)
-              </button>
-              <button
-                onClick={() => handleCockpitLookSet(Math.PI / 2, 0)}
-                style={{
-                  background: 'rgba(15, 23, 42, 0.8)',
-                  border: '1px solid rgba(148, 163, 184, 0.3)',
-                  color: '#94a3b8',
-                  borderRadius: '5px',
-                  padding: '3px 8px',
-                  fontSize: '8.5px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(6px)',
-                }}
-                title="Turn head 90° right to view right window / instruments (or drag mouse right)"
-              >
-                LOOK RIGHT (90°) ➡️
-              </button>
-              <button
-                onClick={() => handleCockpitLookSet(Math.PI, 0)}
-                style={{
-                  background: 'rgba(15, 23, 42, 0.8)',
-                  border: '1px solid rgba(148, 163, 184, 0.3)',
-                  color: '#94a3b8',
-                  borderRadius: '5px',
-                  padding: '3px 8px',
-                  fontSize: '8.5px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(6px)',
-                }}
-                title="Look 180° behind"
-              >
-                🔄 REAR (180°)
-              </button>
-              <button
-                onClick={() => handleCockpitLookSet(0, 0)}
-                style={{
-                  background: 'rgba(34, 197, 94, 0.2)',
-                  border: '1px solid #22c55e',
-                  color: '#86efac',
-                  borderRadius: '5px',
-                  padding: '3px 8px',
-                  fontSize: '8.5px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(6px)',
-                }}
-                title="Re-center view to forward"
-              >
-                🎯 RE-CENTER
-              </button>
-            </div>
-          </div>
-        </div>
+          cockpitLookYaw={cockpitLookRef.current.yaw}
+          cockpitLookPitch={cockpitLookRef.current.pitch}
+          onSetCockpitLook={handleCockpitLookSet}
+          onAbort={handleAbort}
+        />
       )}
 
       {/* ─── TOP COCKPIT AVIONICS STATUS BAR ────────────────────── */}
@@ -5971,15 +5902,24 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
             overflowX: 'auto',
           }}
         >
-          {[
-            { id: 'liftoff', label: '1. LIFTOFF', done: telemetry.altitudeKm > 0.05, current: telemetry.altitudeKm <= 35 && telemetry.altitudeKm > 0 },
-            { id: 'boosters', label: '2. BOOSTERS SEP', done: boosterSeparated, current: !boosterSeparated && telemetry.altitudeKm > 30 },
-            { id: 'fairing', label: '3. FAIRINGS', done: fairingSeparated, current: boosterSeparated && !fairingSeparated },
-            { id: 'meco', label: '4. S-II MECO', done: telemetry.stage === 2, current: fairingSeparated && telemetry.stage === 1 },
-            { id: 'orbit', label: '5. LEO ORBIT', done: telemetry.altitudeKm >= 140, current: telemetry.stage === 2 && telemetry.altitudeKm < 140 },
-            { id: 'tli', label: '6. TLI MOON BURN', done: tliComplete, current: tliActive && !tliComplete },
-            { id: 'lunar', label: '7. LUNAR ORBIT', done: tliComplete, current: tliComplete },
-          ].map((step, idx, arr) => (
+          {(isLunarMission
+            ? [
+                { id: 'liftoff', label: '1. LIFTOFF', done: telemetry.altitudeKm > 0.05, current: telemetry.altitudeKm <= 35 && telemetry.altitudeKm > 0 },
+                { id: 'boosters', label: '2. BOOSTERS SEP', done: boosterSeparated, current: !boosterSeparated && telemetry.altitudeKm > 30 },
+                { id: 'fairing', label: '3. FAIRINGS', done: fairingSeparated, current: boosterSeparated && !fairingSeparated },
+                { id: 'meco', label: '4. S-II MECO', done: telemetry.stage === 2, current: fairingSeparated && telemetry.stage === 1 },
+                { id: 'orbit', label: '5. LEO PARKING ORBIT', done: telemetry.altitudeKm >= 140, current: telemetry.stage === 2 && telemetry.altitudeKm < 140 },
+                { id: 'tli', label: '6. TLI MOON BURN', done: tliComplete, current: tliActive && !tliComplete },
+                { id: 'lunar', label: '7. LUNAR INSERTION', done: tliComplete, current: tliComplete },
+              ]
+            : [
+                { id: 'liftoff', label: '1. LIFTOFF', done: telemetry.altitudeKm > 0.05, current: telemetry.altitudeKm <= 35 && telemetry.altitudeKm > 0 },
+                { id: 'boosters', label: '2. BOOSTERS SEP', done: boosterSeparated, current: !boosterSeparated && telemetry.altitudeKm > 30 },
+                { id: 'fairing', label: '3. FAIRINGS', done: fairingSeparated, current: boosterSeparated && !fairingSeparated },
+                { id: 'meco', label: '4. CORE MECO', done: telemetry.stage === 2, current: fairingSeparated && telemetry.stage === 1 },
+                { id: 'orbit', label: '5. LEO ORBIT INSERTION', done: telemetry.altitudeKm >= 140, current: telemetry.stage === 2 && telemetry.altitudeKm < 140 },
+              ]
+          ).map((step, idx, arr) => (
             <React.Fragment key={step.id}>
               <div
                 style={{
@@ -6004,7 +5944,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
               )}
             </React.Fragment>
           ))}
-          {tliActive && (
+          {isLunarMission && tliActive && (
             <div style={{ marginLeft: '6px', paddingLeft: '8px', borderLeft: '1px solid #334155', fontSize: '9px', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
               <span>🌕 MOON:</span>
               <strong style={{ color: '#f8fafc' }}>{moonDistDisplay.toLocaleString()} KM</strong>
@@ -6472,7 +6412,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         <div
           style={{
             position: 'absolute',
-            bottom: '76px',
+            bottom: cameraMode === 'cockpit' ? '185px' : '76px',
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'rgba(11, 19, 38, 0.96)',
@@ -6497,7 +6437,11 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
                   NASA ASTRONAUT PRE-LAUNCH FLIGHT READINESS CHECKLIST
                 </span>
                 <div style={{ fontSize: '9px', color: '#94a3b8' }}>
-                  Cape Canaveral Launch Complex 14 · Complete flight systems verification before ignition
+                  {mission.programName?.includes('Artemis')
+                    ? 'Kennedy Space Center Launch Complex 39B · Artemis SLS Pad'
+                    : mission.programName?.includes('Apollo') || mission.programName?.includes('Shuttle')
+                    ? 'Kennedy Space Center Launch Complex 39A · Historic Saturn / Shuttle Pad'
+                    : 'Cape Canaveral Launch Complex 14 · Historic Mercury / Atlas Pad'} · Complete flight systems verification before ignition
                 </div>
               </div>
             </div>
@@ -6902,7 +6846,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
                     </button>
                   )}
 
-                  {telemetry.altitudeKm >= 135 && !tliActive && (
+                  {isLunarMission && telemetry.altitudeKm >= 135 && !tliActive && (
                     <button
                       onClick={handleInitiateTli}
                       style={{
@@ -6924,6 +6868,36 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
                     >
                       <span>🌕</span>
                       <span>FIRE TLI BURN TO MOON</span>
+                    </button>
+                  )}
+
+                  {!isLunarMission && telemetry.altitudeKm >= 135 && (
+                    <button
+                      onClick={() => {
+                        simStateRef.current.isFinished = true;
+                        soundFx.playVictory();
+                        confetti({ particleCount: 220, spread: 90 });
+                        setTimeout(() => onSuccess(1000), 2200);
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #059669, #047857)',
+                        border: '1.5px solid #34d399',
+                        color: '#ffffff',
+                        borderRadius: '6px',
+                        padding: '4px 12px',
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        boxShadow: '0 0 16px rgba(52, 211, 153, 0.65)',
+                        animation: 'pulse 1.8s infinite',
+                      }}
+                      title="Confirm Stable Low Earth Orbit (LEO) Insertion"
+                    >
+                      <span>🌍</span>
+                      <span>CONFIRM LEO ORBIT INSERTION</span>
                     </button>
                   )}
 
