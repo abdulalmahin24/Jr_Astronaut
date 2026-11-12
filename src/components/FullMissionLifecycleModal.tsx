@@ -2,7 +2,16 @@
 // FullMissionLifecycleModal.tsx — NASA 3D Spaceflight & Orbital Rocket Simulator
 // Full-Screen Immersive Aerospace Simulation Modeled Directly After:
 // "Ellipse: Rocket Simulator - Mission 3: Lunar Voyager" (YouTube: qXYpltxSTK0)
-// Complete Real-Time Flight: Pad Liftoff -> Staging -> Orbit -> TLI -> Powered Landing -> EVA -> Earth Return
+// Complete Real-Time Flight:
+// 1. VAB Rocket Builder & Equipment Selection (Custom 3D Assembly)
+// 2. Pad 39A Weather Clearance Check & Liftoff
+// 3. Multi-Stage Staging & Earth Orbit
+// 4. Authentic 3D Keplerian Translunar Trajectory Flight Path
+// 5. Apollo Lunar Module Powered Descent & Touchdown
+// 6. Third-Person Walkable Astronaut (Neil Armstrong) on Moon Surface
+//    (Active WASD Walking, Plant Flag, Drill Core Samples, Deploy Seismic Station)
+// 7. Board LM, Launch Ascent Stage (Leaving Descent Stage & Flag on Moon)
+// 8. Earth Return, Hypersonic Plasma Re-entry & Triple Chute Splashdown
 // Built for NASA Space Apps Challenge 2026 · Team Mysterio
 // ============================================================================
 
@@ -34,6 +43,12 @@ import {
   Wrench,
   Sun,
   Eye,
+  Footprints,
+  Activity,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 
 import {
@@ -43,13 +58,13 @@ import {
   type RocketUpperStage,
   type ScienceEquipment,
   type HeatShieldParachuteConfig,
-  type RocketConfigSelection,
   VAB_BOOSTERS,
   VAB_CORE_STAGES,
   VAB_UPPER_STAGES,
   VAB_SCIENCE_EQUIPMENT,
   VAB_REENTRY_CONFIGS,
   DESTINATION_PROFILES,
+  calculateRocketPhysics,
   generateLaunchWeather,
 } from '../missions/fullMissionLifecycle';
 import { soundFx } from '../utils/audioEffects';
@@ -64,27 +79,28 @@ interface FullMissionLifecycleModalProps {
   initialDestination?: ExpeditionDestination;
 }
 
-export type FlightViewMode = 'CHASE' | 'ORBIT_MAP' | 'PAD_CAM' | 'COCKPIT';
+export type FlightViewMode = 'CHASE' | 'ORBIT_MAP' | 'PAD_CAM' | 'ASTRONAUT_EVA';
 
 export type MissionPhase =
-  | 'PAD_READY'         // 1. On Launch Complex 39A Hardstand
-  | 'ASCENT'            // 2. Liftoff, Flame Trench Smoke, Gravity Turn
-  | 'STAGE1_SEP'        // 3. Solid Booster / S-IC Jettison
-  | 'ORBIT_INSERTION'   // 4. Upper Stage burn to 7.8 km/s LEO
-  | 'ORBIT_COAST'       // 5. Earth Parking Orbit (200x200 km)
-  | 'TLI_BURN'          // 6. Trans-Lunar / Trans-Mars Injection Burn
-  | 'DEEP_CRUISE'       // 7. Cislunar Transit (384,400 km) with Time Warp
-  | 'LUNAR_CAPTURE'     // 8. Lunar Orbit Insertion (LOI 100 km)
-  | 'RETRO_DESCENT'     // 9. Manual Lunar Descent with Apollo Lunar Module Eagle
-  | 'SURFACE_LANDED'    // 10. Touched down in Mare Tranquillitatis
-  | 'SURFACE_EVA'       // 11. Neil Armstrong steps out, plants flag, collects samples
-  | 'SURFACE_ASCENT'    // 12. Lunar Ascent Stage liftoff (leaving descent stage)
-  | 'TEI_RETURN'        // 13. Trans-Earth Injection Return Burn
-  | 'REENTRY_PLASMA'    // 14. Hypersonic 11 km/s Atmospheric Entry Fireball
-  | 'PARACHUTE_DESCENT' // 15. Triple Main Apollo Parachutes Deployed (4,000 m)
-  | 'SPLASHDOWN';       // 16. Pacific Ocean Splashdown & Retrieval
+  | 'VAB_BUILD'         // 1. Vehicle Assembly Building (Build rocket, choose equipment)
+  | 'PAD_READY'         // 2. Rollout to Launch Complex 39A & Weather Clearance
+  | 'ASCENT'            // 3. T-0 Liftoff, Flame Trench Smoke, Gravity Turn
+  | 'STAGE1_SEP'        // 4. Solid Booster / S-IC Jettison
+  | 'ORBIT_INSERTION'   // 5. Upper Stage burn to 7.8 km/s LEO
+  | 'ORBIT_COAST'       // 6. Earth Parking Orbit (200x200 km)
+  | 'TLI_BURN'          // 7. Trans-Lunar Injection (TLI) Trajectory Expansion
+  | 'DEEP_CRUISE'       // 8. 3D Translunar Trajectory Flight with Time Warp
+  | 'LUNAR_CAPTURE'     // 9. Lunar Orbit Insertion (LOI 100 km)
+  | 'RETRO_DESCENT'     // 10. Manual Lunar Descent with Apollo Lunar Module Eagle
+  | 'SURFACE_LANDED'    // 11. Touched down in Mare Tranquillitatis
+  | 'SURFACE_EVA'       // 12. Active Walkable Astronaut (Neil Armstrong) on Moon Surface
+  | 'SURFACE_ASCENT'    // 13. Lunar Ascent Stage liftoff (leaving descent stage & flag)
+  | 'TEI_RETURN'        // 14. Trans-Earth Injection Return Trajectory
+  | 'REENTRY_PLASMA'    // 15. Hypersonic 11 km/s Atmospheric Entry Fireball
+  | 'PARACHUTE_DESCENT' // 16. Triple Main Apollo Parachutes Deployed (4,000 m)
+  | 'SPLASHDOWN';       // 17. Pacific Ocean Splashdown & Retrieval
 
-// ─── PROCEDURAL WEB AUDIO SYNTHESIZER FOR SUB-BASS ROCKET ROAR ─────────────
+// ─── PROCEDURAL WEB AUDIO SYNTHESIZER ───────────────────────────────────────
 class AeroAudioSynth {
   private ctx: AudioContext | null = null;
   private engineOsc: OscillatorNode | null = null;
@@ -118,7 +134,6 @@ class AeroAudioSynth {
     }
 
     if (throttle > 0.02) {
-      // 1. Sub-bass acoustic combustion roar oscillator (35 - 90 Hz)
       if (!this.engineOsc) {
         this.engineOsc = this.ctx.createOscillator();
         this.engineOsc.type = 'sawtooth';
@@ -140,7 +155,6 @@ class AeroAudioSynth {
         this.engineGain.gain.setValueAtTime(Math.min(0.32, throttle * 0.28), this.ctx.currentTime);
       }
 
-      // 2. High-speed turbulent rocket exhaust roar (procedural combustion noise)
       if (!this.noiseNode) {
         const bufferSize = this.ctx.sampleRate * 2;
         const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -174,12 +188,8 @@ class AeroAudioSynth {
         this.noiseGain.gain.setValueAtTime(Math.min(0.4, throttle * 0.35), this.ctx.currentTime);
       }
     } else {
-      if (this.engineGain) {
-        this.engineGain.gain.setValueAtTime(0, this.ctx.currentTime);
-      }
-      if (this.noiseGain) {
-        this.noiseGain.gain.setValueAtTime(0, this.ctx.currentTime);
-      }
+      if (this.engineGain) this.engineGain.gain.setValueAtTime(0, this.ctx?.currentTime || 0);
+      if (this.noiseGain) this.noiseGain.gain.setValueAtTime(0, this.ctx?.currentTime || 0);
     }
   }
 
@@ -209,11 +219,9 @@ const createProceduralKSCPadTexture = (): THREE.CanvasTexture => {
   canvas.height = 1024;
   const ctx = canvas.getContext('2d')!;
 
-  // Florida wetlands scrub
   ctx.fillStyle = '#1e392a';
   ctx.fillRect(0, 0, 1024, 1024);
 
-  // Coastal sandy loam patches
   ctx.fillStyle = '#2c5339';
   for (let i = 0; i < 60; i++) {
     const rx = (i * 47) % 1024;
@@ -223,7 +231,6 @@ const createProceduralKSCPadTexture = (): THREE.CanvasTexture => {
     ctx.fill();
   }
 
-  // Circular Launch Berm (Pad 39A Hardstand)
   ctx.fillStyle = '#475569';
   ctx.beginPath();
   ctx.arc(512, 512, 340, 0, Math.PI * 2);
@@ -234,18 +241,15 @@ const createProceduralKSCPadTexture = (): THREE.CanvasTexture => {
   ctx.arc(512, 512, 260, 0, Math.PI * 2);
   ctx.fill();
 
-  // Safety Perimeter Yellow Stripe
   ctx.strokeStyle = '#f59e0b';
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.arc(512, 512, 260, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Flame trench cutout
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(440, 160, 144, 704);
 
-  // Scorch marks
   const scorch = ctx.createRadialGradient(512, 512, 40, 512, 512, 160);
   scorch.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
   scorch.addColorStop(0.5, 'rgba(30, 20, 15, 0.8)');
@@ -253,7 +257,6 @@ const createProceduralKSCPadTexture = (): THREE.CanvasTexture => {
   ctx.fillStyle = scorch;
   ctx.fillRect(400, 400, 224, 224);
 
-  // Crawlerway gravel track
   ctx.fillStyle = '#64748b';
   ctx.fillRect(476, 512, 72, 512);
 
@@ -273,12 +276,10 @@ const createProceduralSaturnRollTexture = (): THREE.CanvasTexture => {
   ctx.fillStyle = '#f8fafc';
   ctx.fillRect(0, 0, 512, 512);
 
-  // Apollo Saturn V Roll Markings (Black quadrants)
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(0, 100, 256, 160);
   ctx.fillRect(256, 260, 256, 160);
 
-  // USA & Red/Blue Stripes
   ctx.fillStyle = '#b91c1c';
   ctx.fillRect(60, 440, 140, 14);
   ctx.fillStyle = '#1e3a8a';
@@ -300,7 +301,6 @@ const createProceduralLunarRegolithTexture = (): THREE.CanvasTexture => {
   ctx.fillStyle = '#64748b';
   ctx.fillRect(0, 0, 512, 512);
 
-  // Craters
   for (let i = 0; i < 80; i++) {
     const cx = (i * 73) % 512;
     const cy = (i * 127) % 512;
@@ -332,22 +332,35 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   initialDestination = 'MOON',
 }) => {
   const [destination, setDestination] = useState<ExpeditionDestination>(initialDestination);
-  const [missionPhase, setMissionPhase] = useState<MissionPhase>('PAD_READY');
+  // Starts directly in VAB Assembly Builder as requested by user!
+  const [missionPhase, setMissionPhase] = useState<MissionPhase>('VAB_BUILD');
   const [viewMode, setViewMode] = useState<FlightViewMode>('CHASE');
   const [timeWarp, setTimeWarp] = useState<number>(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // VAB Configuration Drawer
-  const [isVabOpen, setIsVabOpen] = useState(false);
-  const [isWeatherOpen, setIsWeatherOpen] = useState(false);
+  // VAB Configuration State (Custom Rocket & Equipment Builder)
   const [selectedBooster, setSelectedBooster] = useState<RocketBooster>(VAB_BOOSTERS[0]);
   const [selectedCore, setSelectedCore] = useState<RocketCoreStage>(VAB_CORE_STAGES[0]);
   const [selectedUpper, setSelectedUpper] = useState<RocketUpperStage>(VAB_UPPER_STAGES[0]);
   const [selectedEquip, setSelectedEquip] = useState<ScienceEquipment[]>([
-    VAB_SCIENCE_EQUIPMENT[0],
-    VAB_SCIENCE_EQUIPMENT[1],
+    VAB_SCIENCE_EQUIPMENT[0], // Apollo 11 Flag
+    VAB_SCIENCE_EQUIPMENT[1], // Core Drill
+    VAB_SCIENCE_EQUIPMENT[2], // Seismic Station
   ]);
   const [selectedReentry, setSelectedReentry] = useState<HeatShieldParachuteConfig>(VAB_REENTRY_CONFIGS[0]);
+
+  // Real Rocket Physics Calculation
+  const rocketPhysics = useMemo(() => {
+    return calculateRocketPhysics({
+      destination,
+      booster: selectedBooster,
+      coreStage: selectedCore,
+      upperStage: selectedUpper,
+      selectedEquipment: selectedEquip,
+      reentryConfig: selectedReentry,
+      crewCount: 3,
+    });
+  }, [destination, selectedBooster, selectedCore, selectedUpper, selectedEquip, selectedReentry]);
 
   // Launch Pad Weather
   const weatherReport = useMemo(() => generateLaunchWeather(1), []);
@@ -364,20 +377,26 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   const [landingLegsDeployed, setLandingLegsDeployed] = useState<boolean>(false);
   const [parachutesDeployed, setParachutesDeployed] = useState<boolean>(false);
   const [touchdownStatus, setTouchdownStatus] = useState<'FLYING' | 'SAFE' | 'CRASHED'>('FLYING');
+
+  // Walkable Astronaut EVA State on Moon Surface
+  const [astroWalkPos, setAstroWalkPos] = useState({ x: 2.2, z: 2.2, rot: 0 });
   const [evaTasks, setEvaTasks] = useState<{ flagPlanted: boolean; sampleDrilled: boolean; seismicDeployed: boolean }>({
     flagPlanted: false,
     sampleDrilled: false,
     seismicDeployed: false,
   });
+  const [activeEvaPrompt, setActiveEvaPrompt] = useState<string | null>(null);
+
   const [directorCallout, setDirectorCallout] = useState<string>(
-    'SATURN V MOUNTED ON LC-39A · PRESS [🔥 IGNITE ENGINES] OR [Z] TO COMMENCE ASCENT'
+    'VAB WORKSHOP: CHOOSE YOUR ROCKET STAGES & SCIENCE EQUIPMENT THEN CLICK [ROLL OUT TO PAD 39A]'
   );
 
   const mountRef = useRef<HTMLDivElement>(null);
   const navballCanvasRef = useRef<HTMLCanvasElement>(null);
   const synthRef = useRef<AeroAudioSynth | null>(null);
+  const keysDownRef = useRef<Record<string, boolean>>({});
 
-  // Mutable animation state ref
+  // Simulation ref for 60 FPS animation loop
   const simRef = useRef({
     throttle: 0,
     pitchDeg: 90,
@@ -394,18 +413,22 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     timeWarp: 1,
     viewMode: 'CHASE' as FlightViewMode,
     orbitTheta: 0,
-    moonTheta: 0.5,
+    cislunarProgress: 0, // 0 (Earth Orbit) -> 1 (Moon Encounter)
     lunarDistanceM: 384400000,
     touchdown: 'FLYING' as 'FLYING' | 'SAFE' | 'CRASHED',
-    missionPhase: 'PAD_READY' as MissionPhase,
+    missionPhase: 'VAB_BUILD' as MissionPhase,
     cameraAngleX: 0,
     cameraAngleY: 0.25,
     isMouseDown: false,
     mouseLastX: 0,
     mouseLastY: 0,
+    astroX: 2.2,
+    astroZ: 2.2,
+    astroRot: 0,
+    astroBounceY: 0,
+    isWalking: false,
   });
 
-  // Sync state into simRef
   useEffect(() => { simRef.current.throttle = throttle; }, [throttle]);
   useEffect(() => { simRef.current.pitchDeg = pitchDeg; }, [pitchDeg]);
   useEffect(() => { simRef.current.timeWarp = timeWarp; }, [timeWarp]);
@@ -438,7 +461,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   // Reset simulation when destination changes or modal opens
   const resetSimulation = useCallback((dest: ExpeditionDestination) => {
     setDestination(dest);
-    setMissionPhase('PAD_READY');
+    setMissionPhase('VAB_BUILD');
     setViewMode('CHASE');
     setTimeWarp(1);
     setThrottle(0);
@@ -452,10 +475,10 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     setLandingLegsDeployed(false);
     setParachutesDeployed(false);
     setTouchdownStatus('FLYING');
+    setAstroWalkPos({ x: 2.2, z: 2.2, rot: 0 });
     setEvaTasks({ flagPlanted: false, sampleDrilled: false, seismicDeployed: false });
-    setIsVabOpen(false);
-    setIsWeatherOpen(false);
-    setDirectorCallout('SATURN V MOUNTED ON LC-39A · PRESS [🔥 IGNITE ENGINES] OR [Z] TO COMMENCE ASCENT');
+    setActiveEvaPrompt(null);
+    setDirectorCallout('VAB WORKSHOP: CHOOSE YOUR ROCKET STAGES & SCIENCE EQUIPMENT THEN CLICK [ROLL OUT TO PAD 39A]');
 
     simRef.current = {
       throttle: 0,
@@ -473,15 +496,20 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       timeWarp: 1,
       viewMode: 'CHASE',
       orbitTheta: 0,
-      moonTheta: 0.5,
+      cislunarProgress: 0,
       lunarDistanceM: 384400000,
       touchdown: 'FLYING',
-      missionPhase: 'PAD_READY',
+      missionPhase: 'VAB_BUILD',
       cameraAngleX: 0,
       cameraAngleY: 0.25,
       isMouseDown: false,
       mouseLastX: 0,
       mouseLastY: 0,
+      astroX: 2.2,
+      astroZ: 2.2,
+      astroRot: 0,
+      astroBounceY: 0,
+      isWalking: false,
     };
   }, []);
 
@@ -491,72 +519,80 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     }
   }, [isOpen, initialDestination, resetSimulation]);
 
-  // Keyboard Shortcuts: [W]/[S]/[Z]/[X], [A]/[D], [SPACE], [G], [P], [M]
+  // Keyboard Shortcuts & Active Walking Controls
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      keysDownRef.current[e.key.toLowerCase()] = true;
+      keysDownRef.current[e.code] = true;
+
       if (e.key === 'Escape') {
         onClose();
         return;
       }
 
-      // Throttle
-      if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
+      // EVA Moon Walking: [E] Interact
+      if (missionPhase === 'SURFACE_EVA' && (e.key === 'e' || e.key === 'E')) {
         e.preventDefault();
-        setThrottle((prev) => Math.min(100, prev + 5));
-        if (soundEnabled) soundFx.playThruster();
-      } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        setThrottle((prev) => Math.max(0, prev - 5));
-      } else if (e.key === 'z' || e.key === 'Z') {
-        e.preventDefault();
-        setThrottle(100);
-        if (soundEnabled) soundFx.playReactorStart();
-      } else if (e.key === 'x' || e.key === 'X') {
-        e.preventDefault();
-        setThrottle(0);
+        handleEvaInteract();
+        return;
       }
 
-      // Pitch Steering
-      else if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
-        e.preventDefault();
-        setPitchDeg((prev) => Math.min(90, prev + 3));
-      } else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        setPitchDeg((prev) => Math.max(0, prev - 3));
-      }
-
-      // Staging: [SPACE]
-      else if (e.code === 'Space') {
-        e.preventDefault();
-        handleStageTrigger();
+      // Flight Throttle
+      if (['ASCENT', 'ORBIT_INSERTION', 'TLI_BURN', 'RETRO_DESCENT'].includes(missionPhase)) {
+        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          setThrottle((prev) => Math.min(100, prev + 5));
+          if (soundEnabled) soundFx.playThruster();
+        } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          setThrottle((prev) => Math.max(0, prev - 5));
+        } else if (e.key === 'z' || e.key === 'Z') {
+          e.preventDefault();
+          setThrottle(100);
+          if (soundEnabled) soundFx.playReactorStart();
+        } else if (e.key === 'x' || e.key === 'X') {
+          e.preventDefault();
+          setThrottle(0);
+        } else if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          setPitchDeg((prev) => Math.min(90, prev + 3));
+        } else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          setPitchDeg((prev) => Math.max(0, prev - 3));
+        } else if (e.code === 'Space') {
+          e.preventDefault();
+          handleStageTrigger();
+        }
       }
 
       // Landing Gear: [G]
-      else if (e.key === 'g' || e.key === 'G') {
+      if (e.key === 'g' || e.key === 'G') {
         e.preventDefault();
         setLandingLegsDeployed((prev) => !prev);
         if (soundEnabled) soundFx.playClick(750);
       }
 
       // Parachutes: [P]
-      else if (e.key === 'p' || e.key === 'P') {
+      if (e.key === 'p' || e.key === 'P') {
         e.preventDefault();
         handleDeployChutes();
       }
+    };
 
-      // Map View Toggle: [M]
-      else if (e.key === 'm' || e.key === 'M') {
-        e.preventDefault();
-        setViewMode((prev) => (prev === 'CHASE' ? 'ORBIT_MAP' : 'CHASE'));
-        if (soundEnabled) soundFx.playTelemetryChirp();
-      }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysDownRef.current[e.key.toLowerCase()] = false;
+      keysDownRef.current[e.code] = false;
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, soundEnabled, onClose]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isOpen, missionPhase, soundEnabled, onClose]);
 
   // Stage Trigger Handler
   const handleStageTrigger = () => {
@@ -589,6 +625,40 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       simRef.current.chutesDeployed = true;
       setMissionPhase('PARACHUTE_DESCENT');
       setDirectorCallout('🪂 TRIPLE MAIN PARACHUTES DEPLOYED! DESCENT DECELERATING TO 6.5 m/s');
+      if (soundEnabled) soundFx.playReactorStart();
+    }
+  };
+
+  // EVA Interaction Trigger (Plant Flag, Drill Sample, Deploy PSE, Board LM)
+  const handleEvaInteract = () => {
+    const p = simRef.current;
+    const distFlag = Math.hypot(p.astroX - 6.5, p.astroZ - (-3.0));
+    const distDrill = Math.hypot(p.astroX - (-7.0), p.astroZ - 8.0);
+    const distSeismic = Math.hypot(p.astroX - 10.0, p.astroZ - 6.0);
+    const distLm = Math.hypot(p.astroX - 2.2, p.astroZ - 2.2);
+
+    if (distFlag < 3.2 && !evaTasks.flagPlanted) {
+      setEvaTasks((t) => ({ ...t, flagPlanted: true }));
+      setDirectorCallout('🚩 AMERICAN FLAG PROUDLY PLANTED AT TRANQUILITY BASE!');
+      confetti({ particleCount: 100, spread: 70 });
+      if (soundEnabled) soundFx.playVictory();
+    } else if (distDrill < 3.2 && !evaTasks.sampleDrilled) {
+      setEvaTasks((t) => ({ ...t, sampleDrilled: true }));
+      setDirectorCallout('⛏️ LUNAR REGOLITH CORE DRILL SAMPLE EXTRACTED & SECURED IN CONTAINER!');
+      confetti({ particleCount: 100, spread: 70 });
+      if (soundEnabled) soundFx.playReactorStart();
+    } else if (distSeismic < 3.2 && !evaTasks.seismicDeployed) {
+      setEvaTasks((t) => ({ ...t, seismicDeployed: true }));
+      setDirectorCallout('📡 APOLLO PSE PASSIVE SEISMIC STATION ONLINE (MONITORING MOONQUAKES)!');
+      confetti({ particleCount: 100, spread: 70 });
+      if (soundEnabled) soundFx.playTelemetryChirp();
+    } else if (distLm < 3.5 && evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) {
+      // Board LM and launch ascent stage
+      setMissionPhase('SURFACE_ASCENT');
+      setFlightAltM(100);
+      setFlightVyMs(85);
+      setThrottle(100);
+      setDirectorCallout('🚀 ASCENT STAGE LIFTOFF! SEPARATING FROM DESCENT STAGE (FLAG & LM BASE REMAIN ON MOON)');
       if (soundEnabled) soundFx.playReactorStart();
     }
   };
@@ -648,11 +718,33 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     const starPoints = new THREE.Points(starGeo, starMat);
     scene.add(starPoints);
 
-    // 3. CAPE CANAVERAL LAUNCH PAD 39A (Ground Scene at 0 km)
+    // 3. VAB ASSEMBLY HANGAR SCENE (Phase: VAB_BUILD)
+    const vabHangarGroup = new THREE.Group();
+    scene.add(vabHangarGroup);
+
+    // Hangar Floor Grid
+    const hangarFloorGeo = new THREE.PlaneGeometry(80, 80);
+    const hangarFloorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8, metalness: 0.3 });
+    const hangarFloor = new THREE.Mesh(hangarFloorGeo, hangarFloorMat);
+    hangarFloor.rotation.x = -Math.PI / 2;
+    hangarFloor.position.y = 0;
+    vabHangarGroup.add(hangarFloor);
+
+    // Hangar Steel Frame Work Platforms
+    for (let y = 6; y <= 24; y += 8) {
+      const platGeo = new THREE.RingGeometry(2.6, 6.5, 8);
+      const platMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, side: THREE.DoubleSide });
+      const plat = new THREE.Mesh(platGeo, platMat);
+      plat.rotation.x = -Math.PI / 2;
+      plat.position.y = y;
+      vabHangarGroup.add(plat);
+    }
+
+    // 4. CAPE CANAVERAL LAUNCH PAD 39A (Phase: PAD_READY & ASCENT)
     const groundSceneGroup = new THREE.Group();
+    groundSceneGroup.visible = false;
     scene.add(groundSceneGroup);
 
-    // Coastal Florida wetland base with procedural KSC Pad Texture
     const kscPadTex = createProceduralKSCPadTexture();
     const groundGeo = new THREE.CircleGeometry(3200, 64);
     const groundMat = new THREE.MeshStandardMaterial({ map: kscPadTex, roughness: 0.85, metalness: 0.15 });
@@ -661,7 +753,6 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     groundMesh.receiveShadow = true;
     groundSceneGroup.add(groundMesh);
 
-    // Atlantic Ocean Coastline to the East
     const oceanGeo = new THREE.PlaneGeometry(6000, 6000);
     const oceanMat = new THREE.MeshStandardMaterial({ color: 0x083344, roughness: 0.2, metalness: 0.8 });
     const oceanMesh = new THREE.Mesh(oceanGeo, oceanMat);
@@ -669,34 +760,26 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     oceanMesh.position.set(2400, -0.2, 0);
     groundSceneGroup.add(oceanMesh);
 
-    // 4 Steel Lightning Protection Masts with Flashing Red Beacons
+    // Lightning Masts
     for (let p = 0; p < 4; p++) {
       const ang = (p * Math.PI) / 2 + Math.PI / 4;
       const pylonGeo = new THREE.CylinderGeometry(0.5, 1.8, 85, 12);
       const pylonMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 });
       const pylon = new THREE.Mesh(pylonGeo, pylonMat);
-      const px = Math.cos(ang) * 58;
-      const pz = Math.sin(ang) * 58;
-      pylon.position.set(px, 42.5, pz);
+      pylon.position.set(Math.cos(ang) * 58, 42.5, Math.sin(ang) * 58);
       groundSceneGroup.add(pylon);
-
-      const beacon = new THREE.PointLight(0xef4444, 2.0, 30);
-      beacon.position.set(px, 86, pz);
-      groundSceneGroup.add(beacon);
     }
 
-    // Concrete Launch Hardstand Mound
+    // Launch Pad Mound
     const padGeo = new THREE.CylinderGeometry(30, 36, 6, 48);
     const padMat = new THREE.MeshStandardMaterial({ color: 0x272e3b, roughness: 0.85, metalness: 0.2 });
     const padMesh = new THREE.Mesh(padGeo, padMat);
     padMesh.position.y = 3;
-    padMesh.receiveShadow = true;
     groundSceneGroup.add(padMesh);
 
-    // Red Launch Umbilical Tower (LUT Gantry)
+    // Red Gantry Umbilical Tower
     const towerGroup = new THREE.Group();
     towerGroup.position.set(-18, 0, 0);
-
     const colGeo = new THREE.BoxGeometry(0.8, 62, 0.8);
     const towerMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, metalness: 0.6, roughness: 0.4 });
     for (let cx = -2.2; cx <= 2.2; cx += 4.4) {
@@ -706,14 +789,11 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         towerGroup.add(col);
       }
     }
-    // Gantry Service Arms that swing away at liftoff
     const armPivots: THREE.Group[] = [];
     for (let armY = 16; armY <= 48; armY += 10) {
       const armPivot = new THREE.Group();
       armPivot.position.set(2.2, armY, 0);
-      const armBarGeo = new THREE.BoxGeometry(14, 1.2, 1.2);
-      const armBarMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7 });
-      const armBar = new THREE.Mesh(armBarGeo, armBarMat);
+      const armBar = new THREE.Mesh(new THREE.BoxGeometry(14, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7 }));
       armBar.position.set(7, 0, 0);
       armPivot.add(armBar);
       towerGroup.add(armPivot);
@@ -721,7 +801,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     }
     groundSceneGroup.add(towerGroup);
 
-    // Launch Pad Flame Trench Smoke Particles
+    // Launchpad Smoke Particles
     const smokeCount = 120;
     const smokeGeo = new THREE.BufferGeometry();
     const smokePos = new Float32Array(smokeCount * 3);
@@ -735,8 +815,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     const smokePoints = new THREE.Points(smokeGeo, smokeMat);
     groundSceneGroup.add(smokePoints);
 
-    // 4. CELESTIAL BODIES (Earth & Moon)
-    // Earth Globe
+    // 5. CELESTIAL BODIES (Earth & Moon)
     const earthRadius = 240;
     const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
     const earthMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.45, metalness: 0.1 });
@@ -744,13 +823,11 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     earthMesh.position.set(0, -earthRadius, 0);
     scene.add(earthMesh);
 
-    // Earth Atmosphere Glow Rim
     const atmoGeo = new THREE.SphereGeometry(earthRadius * 1.035, 48, 48);
     const atmoMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, side: THREE.BackSide });
     const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
     earthMesh.add(atmoMesh);
 
-    // Moon Globe (in Cislunar / Lunar Orbit)
     const moonRadius = 80;
     const moonGeo = new THREE.SphereGeometry(moonRadius, 48, 48);
     const moonRegolithTex = createProceduralLunarRegolithTexture();
@@ -759,80 +836,65 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     moonMesh.position.set(900, 300, -1200);
     scene.add(moonMesh);
 
-    // 5. SATURN V HEAVY MULTI-STAGE ROCKET
+    // 6. SATURN V HEAVY MULTI-STAGE ROCKET
     const rocketMasterGroup = new THREE.Group();
     scene.add(rocketMasterGroup);
 
-    // Launch Escape System (LES) Tower (Pencil truss on apex)
+    // LES Tower
     const lesGroup = new THREE.Group();
     lesGroup.position.y = 8.5;
-    const lesTowerGeo = new THREE.CylinderGeometry(0.12, 0.4, 3.2, 8);
-    const lesTowerMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.5 });
-    const lesTower = new THREE.Mesh(lesTowerGeo, lesTowerMat);
+    const lesTower = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.4, 3.2, 8), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
     lesGroup.add(lesTower);
-    const lesNoseGeo = new THREE.ConeGeometry(0.25, 0.8, 12);
-    const lesNoseMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
-    const lesNose = new THREE.Mesh(lesNoseGeo, lesNoseMat);
+    const lesNose = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.8, 12), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
     lesNose.position.y = 2.0;
     lesGroup.add(lesNose);
     rocketMasterGroup.add(lesGroup);
 
-    // Apollo Command Module (White Cone)
-    const capGeo = new THREE.ConeGeometry(1.05, 1.8, 32);
-    const capMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.8, roughness: 0.2 });
-    const capMesh = new THREE.Mesh(capGeo, capMat);
+    // Command Module
+    const capMesh = new THREE.Mesh(new THREE.ConeGeometry(1.05, 1.8, 32), new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.8, roughness: 0.2 }));
     capMesh.position.y = 6.8;
     rocketMasterGroup.add(capMesh);
 
-    // Apollo Service Module (Silver reflective cylinder + RCS)
-    const smGeo = new THREE.CylinderGeometry(1.05, 1.05, 2.4, 32);
-    const smMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.7, roughness: 0.25 });
-    const smMesh = new THREE.Mesh(smGeo, smMat);
+    // Service Module
+    const smMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 2.4, 32), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.7, roughness: 0.25 }));
     smMesh.position.y = 4.7;
     rocketMasterGroup.add(smMesh);
 
-    // S-IVB Third Stage / Interstage
-    const s4bGeo = new THREE.CylinderGeometry(1.3, 1.3, 3.2, 32);
-    const s4bMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
-    const s4bMesh = new THREE.Mesh(s4bGeo, s4bMat);
+    // S-IVB Third Stage
+    const s4bMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 3.2, 32), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 }));
     s4bMesh.position.y = 1.9;
     rocketMasterGroup.add(s4bMesh);
 
-    // S-IC First Stage Fuselage with Apollo Roll Pattern Texture
+    // S-IC First Stage with Roll Pattern
     const saturnRollTex = createProceduralSaturnRollTexture();
-    const coreGeo = new THREE.CylinderGeometry(1.5, 1.5, 8.5, 32);
-    const coreMat = new THREE.MeshStandardMaterial({ map: saturnRollTex, roughness: 0.45, metalness: 0.2 });
-    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+    const coreMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 8.5, 32), new THREE.MeshStandardMaterial({ map: saturnRollTex, roughness: 0.45, metalness: 0.2 }));
     coreMesh.position.y = -3.95;
     rocketMasterGroup.add(coreMesh);
 
-    // 4 Aerodynamic Stabilization Fins at base
+    // Base Fins
     for (let f = 0; f < 4; f++) {
       const fAngle = (f * Math.PI) / 2;
-      const finGeo = new THREE.BoxGeometry(0.12, 1.8, 1.2);
-      const finMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
-      const fin = new THREE.Mesh(finGeo, finMat);
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 1.2), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
       fin.position.set(Math.cos(fAngle) * 1.8, -7.5, Math.sin(fAngle) * 1.8);
       fin.rotation.y = fAngle;
       coreMesh.add(fin);
     }
 
-    // 5x Rocketdyne F-1 Engine Bells
+    // 5x F-1 Engine Bells
     const bellGeo = new THREE.ConeGeometry(0.38, 1.1, 20);
     const bellMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.95, roughness: 0.15 });
     for (let e = 0; e < 5; e++) {
       const b = new THREE.Mesh(bellGeo, bellMat);
       b.rotation.x = Math.PI;
-      if (e === 0) {
-        b.position.set(0, -8.6, 0);
-      } else {
+      if (e === 0) b.position.set(0, -8.6, 0);
+      else {
         const a = (e * Math.PI) / 2;
         b.position.set(Math.cos(a) * 0.75, -8.6, Math.sin(a) * 0.75);
       }
       coreMesh.add(b);
     }
 
-    // Dual Solid Rocket Strap-on Boosters
+    // Strap-on Solid Boosters
     const boosterGroup = new THREE.Group();
     const bGeo = new THREE.CylinderGeometry(0.65, 0.65, 9.2, 24);
     const bMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.5, roughness: 0.3 });
@@ -840,7 +902,6 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     bLeft.position.set(-2.25, -3.6, 0);
     const bRight = new THREE.Mesh(bGeo, bMat);
     bRight.position.set(2.25, -3.6, 0);
-
     const bNoseGeo = new THREE.ConeGeometry(0.65, 2.0, 24);
     const bNoseL = new THREE.Mesh(bNoseGeo, bMat);
     bNoseL.position.y = 5.6;
@@ -848,26 +909,21 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     const bNoseR = new THREE.Mesh(bNoseGeo, bMat);
     bNoseR.position.y = 5.6;
     bRight.add(bNoseR);
-
     boosterGroup.add(bLeft, bRight);
     rocketMasterGroup.add(boosterGroup);
 
-    // Glowing Engine Flame Plumes
-    const flameGeo = new THREE.ConeGeometry(1.2, 6.0, 24);
-    const flameMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0 });
-    const flameMesh = new THREE.Mesh(flameGeo, flameMat);
+    // Glowing Engine Flame
+    const flameMesh = new THREE.Mesh(new THREE.ConeGeometry(1.2, 6.0, 24), new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0 }));
     flameMesh.rotation.x = Math.PI;
     flameMesh.position.y = -11.5;
     rocketMasterGroup.add(flameMesh);
 
-    // Hypersonic Atmospheric Re-entry Plasma Fireball Shell
-    const plasmaGeo = new THREE.SphereGeometry(1.9, 24, 24);
-    const plasmaMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0, blending: THREE.AdditiveBlending });
-    const plasmaMesh = new THREE.Mesh(plasmaGeo, plasmaMat);
+    // Plasma Fireball Shell
+    const plasmaMesh = new THREE.Mesh(new THREE.SphereGeometry(1.9, 24, 24), new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0, blending: THREE.AdditiveBlending }));
     plasmaMesh.position.y = 5.8;
     rocketMasterGroup.add(plasmaMesh);
 
-    // Triple Main Apollo Parachutes (Orange & White striped domes)
+    // Triple Main Parachutes
     const chuteGroup = new THREE.Group();
     chuteGroup.position.set(0, 9.5, 0);
     chuteGroup.visible = false;
@@ -882,76 +938,79 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     }
     rocketMasterGroup.add(chuteGroup);
 
-    // 6. AUTHENTIC APOLLO LUNAR MODULE (LM - EAGLE) FOR LUNAR PHASES
+    // 7. AUTHENTIC 3D TRANSLUNAR TRAJECTORY ORBIT PATH (Keplerian Ellipse)
+    const trajectoryCurveGroup = new THREE.Group();
+    trajectoryCurveGroup.visible = false;
+    scene.add(trajectoryCurveGroup);
+
+    // Curved transfer path from Earth (LEO) out to Moon orbit
+    const curvePoints: THREE.Vector3[] = [];
+    for (let i = 0; i <= 100; i++) {
+      const t = i / 100;
+      const r = 35 + (680 - 35) * Math.sin(t * Math.PI * 0.5);
+      const ang = t * (Math.PI * 0.78);
+      curvePoints.push(new THREE.Vector3(r * Math.cos(ang), Math.sin(t * Math.PI) * 22, -r * Math.sin(ang)));
+    }
+    const transferCurve = new THREE.CatmullRomCurve3(curvePoints);
+    const transferGeo = new THREE.TubeGeometry(transferCurve, 100, 0.45, 8, false);
+    const transferMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.75 });
+    const transferTube = new THREE.Mesh(transferGeo, transferMat);
+    trajectoryCurveGroup.add(transferTube);
+
+    // Moon Orbit Reference Ring
+    const moonOrbitRingGeo = new THREE.RingGeometry(678, 682, 96);
+    const moonOrbitRingMat = new THREE.MeshBasicMaterial({ color: 0x64748b, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
+    const moonOrbitRing = new THREE.Mesh(moonOrbitRingGeo, moonOrbitRingMat);
+    moonOrbitRing.rotation.x = -Math.PI / 2;
+    trajectoryCurveGroup.add(moonOrbitRing);
+
+    // Maneuver Icons along trajectory
+    const tliNode = new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 16), new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
+    tliNode.position.copy(curvePoints[0]);
+    trajectoryCurveGroup.add(tliNode);
+
+    const moonEncounterNode = new THREE.Mesh(new THREE.SphereGeometry(2.0, 16, 16), new THREE.MeshBasicMaterial({ color: 0xa855f7 }));
+    moonEncounterNode.position.copy(curvePoints[100]);
+    trajectoryCurveGroup.add(moonEncounterNode);
+
+    // 8. APOLLO LUNAR MODULE (LM - EAGLE)
     const apolloLmGroup = new THREE.Group();
     apolloLmGroup.visible = false;
     scene.add(apolloLmGroup);
 
-    // Octagonal Descent Stage with Gold Kapton Thermal Foil
-    const dStageGeo = new THREE.CylinderGeometry(2.4, 2.7, 1.6, 8);
-    const goldMliMat = new THREE.MeshStandardMaterial({ color: 0xca8a04, metalness: 0.95, roughness: 0.15 });
-    const dStage = new THREE.Mesh(dStageGeo, goldMliMat);
+    const dStage = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.7, 1.6, 8), new THREE.MeshStandardMaterial({ color: 0xca8a04, metalness: 0.95, roughness: 0.15 }));
     dStage.position.y = 0.8;
     apolloLmGroup.add(dStage);
 
-    // DPS Descent Engine Bell Nozzle
-    const dpsBellGeo = new THREE.ConeGeometry(0.85, 1.5, 24, 1, true);
-    const dpsBellMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.95, roughness: 0.2, side: THREE.DoubleSide });
-    const dpsBell = new THREE.Mesh(dpsBellGeo, dpsBellMat);
+    const dpsBell = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.5, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.95, roughness: 0.2, side: THREE.DoubleSide }));
     dpsBell.rotation.x = Math.PI;
     dpsBell.position.y = -0.55;
     apolloLmGroup.add(dpsBell);
 
-    // 4 Landing Gear Outrigger Struts & Footpads
+    // 4 Landing Struts & Footpads
     for (let leg = 0; leg < 4; leg++) {
       const lAngle = (leg * Math.PI) / 2 + Math.PI / 4;
       const cosA = Math.cos(lAngle);
       const sinA = Math.sin(lAngle);
 
-      const strutGeo = new THREE.CylinderGeometry(0.09, 0.11, 4.2, 8);
-      const strutMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9, roughness: 0.2 });
-      const strut = new THREE.Mesh(strutGeo, strutMat);
+      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 4.2, 8), new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9 }));
       strut.position.set(cosA * 3.3, 0.1, sinA * 3.3);
       strut.rotation.z = -cosA * 0.65;
       strut.rotation.x = sinA * 0.65;
       apolloLmGroup.add(strut);
 
-      const padGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.1, 16);
-      const padMat = new THREE.MeshStandardMaterial({ color: 0xca8a04, metalness: 0.9, roughness: 0.2 });
-      const pad = new THREE.Mesh(padGeo, padMat);
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0xca8a04, metalness: 0.9 }));
       pad.position.set(cosA * 4.6, -1.15, sinA * 4.6);
       apolloLmGroup.add(pad);
     }
 
-    // Ascent Stage (Triangular Cockpit Windows, Hatch, 4 RCS Quads)
     const ascentGroup = new THREE.Group();
     ascentGroup.position.y = 2.1;
-    const cabinGeo = new THREE.CylinderGeometry(1.6, 1.8, 1.7, 16);
-    const cabinMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.85, roughness: 0.3 });
-    const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+    const cabin = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, 1.7, 16), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.85, roughness: 0.3 }));
     ascentGroup.add(cabin);
-
-    // Forward Hatch & Triangular Windows
-    const winGeo = new THREE.BoxGeometry(0.4, 0.35, 0.1);
-    const winMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
-    const winL = new THREE.Mesh(winGeo, winMat);
-    winL.position.set(-0.45, 0.25, 1.8);
-    winL.rotation.y = 0.25;
-    const winR = new THREE.Mesh(winGeo, winMat);
-    winR.position.set(0.45, 0.25, 1.8);
-    winR.rotation.y = -0.25;
-    ascentGroup.add(winL, winR);
-
-    // 4 RCS Thruster Quads
-    for (let q = 0; q < 4; q++) {
-      const qAngle = (q * Math.PI) / 2;
-      const rcsBox = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-      rcsBox.position.set(Math.cos(qAngle) * 2.1, 0.3, Math.sin(qAngle) * 2.1);
-      ascentGroup.add(rcsBox);
-    }
     apolloLmGroup.add(ascentGroup);
 
-    // Try loading authentic Apollo Lunar Module GLTF as enhanced overlay
+    // Load authentic Apollo Lunar Module GLTF overlay
     const gltfLoader = getSharedGLTFLoader();
     gltfLoader.load(
       '/models/Apollo_Lunar_Module.glb',
@@ -959,58 +1018,43 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         const model = gltf.scene;
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
-        const targetH = 5.2;
-        const scale = targetH / Math.max(size.x, size.y, size.z);
+        const scale = 5.2 / Math.max(size.x, size.y, size.z);
         model.scale.setScalar(scale);
         box.setFromObject(model);
         model.position.y = -box.min.y - 1.15;
-        // If GLTF loads, hide procedural parts
         dStage.visible = false;
         cabin.visible = false;
         apolloLmGroup.add(model);
       },
       undefined,
-      () => {
-        // Fallback to high-res procedural LM already built
-      }
+      () => {}
     );
 
-    // 7. LUNAR SURFACE SCENE (Mare Tranquillitatis at 0 km altitude)
+    // 9. LUNAR SURFACE SCENE & INTERACTIVE MISSION WAYPOINTS
     const lunarSurfaceScene = new THREE.Group();
     lunarSurfaceScene.visible = false;
     scene.add(lunarSurfaceScene);
 
-    const lunarGroundGeo = new THREE.PlaneGeometry(1200, 1200, 48, 48);
-    const lunarGroundMat = new THREE.MeshStandardMaterial({ map: moonRegolithTex, roughness: 0.95 });
-    const lunarGroundMesh = new THREE.Mesh(lunarGroundGeo, lunarGroundMat);
+    const lunarGroundMesh = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200, 48, 48), new THREE.MeshStandardMaterial({ map: moonRegolithTex, roughness: 0.95 }));
     lunarGroundMesh.rotation.x = -Math.PI / 2;
     lunarGroundMesh.position.y = -1.2;
     lunarGroundMesh.receiveShadow = true;
     lunarSurfaceScene.add(lunarGroundMesh);
 
-    // Basalt Boulders scattered on lunar surface
+    // Basalt Boulders
     for (let b = 0; b < 25; b++) {
-      const rockGeo = new THREE.DodecahedronGeometry(0.6 + (b % 4) * 0.4);
-      const rockMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 });
-      const rock = new THREE.Mesh(rockGeo, rockMat);
-      const rx = (b * 19) % 180 - 90;
-      const rz = (b * 31) % 180 - 90;
-      rock.position.set(rx, -0.6, rz);
-      rock.rotation.set(b, b * 0.5, b * 0.2);
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.6 + (b % 4) * 0.4), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 }));
+      rock.position.set((b * 19) % 180 - 90, -0.6, (b * 31) % 180 - 90);
       lunarSurfaceScene.add(rock);
     }
 
-    // American Flag planted in lunar regolith
+    // WAYPOINT 1: American Flag Site
     const flagGroup = new THREE.Group();
-    flagGroup.position.set(5.5, -1.2, 4.0);
-
-    const poleGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.6, 8);
-    const poleMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9 });
-    const pole = new THREE.Mesh(poleGeo, poleMat);
+    flagGroup.position.set(6.5, -1.2, -3.0);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9 }));
     pole.position.y = 1.3;
     flagGroup.add(pole);
 
-    const flagGeo = new THREE.PlaneGeometry(1.2, 0.8);
     const flagCanvas = document.createElement('canvas');
     flagCanvas.width = 256;
     flagCanvas.height = 160;
@@ -1018,25 +1062,56 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     fctx.fillStyle = '#b91c1c';
     fctx.fillRect(0, 0, 256, 160);
     fctx.fillStyle = '#ffffff';
-    for (let s = 1; s < 7; s += 2) {
-      fctx.fillRect(0, (s * 160) / 7, 256, 160 / 14);
-    }
+    for (let s = 1; s < 7; s += 2) fctx.fillRect(0, (s * 160) / 7, 256, 160 / 14);
     fctx.fillStyle = '#1e3a8a';
     fctx.fillRect(0, 0, 100, 80);
-    const flagTex = new THREE.CanvasTexture(flagCanvas);
-    const flagMat = new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide });
-    const flagMesh = new THREE.Mesh(flagGeo, flagMat);
+    const flagMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(flagCanvas), side: THREE.DoubleSide }));
     flagMesh.position.set(0.65, 2.1, 0);
     flagGroup.add(flagMesh);
     lunarSurfaceScene.add(flagGroup);
 
-    // Neil Armstrong 3D Astronaut on EVA
+    // Glowing Waypoint Ring for Flag
+    const flagRing = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.8, 32), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide }));
+    flagRing.rotation.x = -Math.PI / 2;
+    flagRing.position.set(6.5, -1.18, -3.0);
+    lunarSurfaceScene.add(flagRing);
+
+    // WAYPOINT 2: Lunar Core Drill Rocks Site
+    const drillRocksGroup = new THREE.Group();
+    drillRocksGroup.position.set(-7.0, -1.2, 8.0);
+    for (let dr = 0; dr < 4; dr++) {
+      const dRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 + dr * 0.2), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 }));
+      dRock.position.set((dr % 2) * 1.2 - 0.6, 0.4, Math.floor(dr / 2) * 1.2 - 0.6);
+      drillRocksGroup.add(dRock);
+    }
+    const drillRing = new THREE.Mesh(new THREE.RingGeometry(1.6, 1.9, 32), new THREE.MeshBasicMaterial({ color: 0x22c55e, side: THREE.DoubleSide }));
+    drillRing.rotation.x = -Math.PI / 2;
+    drillRing.position.y = 0.02;
+    drillRocksGroup.add(drillRing);
+    lunarSurfaceScene.add(drillRocksGroup);
+
+    // WAYPOINT 3: Apollo Passive Seismic Experiment (PSE) Site
+    const pseStationGroup = new THREE.Group();
+    pseStationGroup.position.set(10.0, -1.2, 6.0);
+    const pseCentral = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9 }));
+    pseCentral.position.y = 0.35;
+    pseStationGroup.add(pseCentral);
+    for (let s = -1; s <= 1; s += 2) {
+      const pseWing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.8), new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.9 }));
+      pseWing.position.set(s * 1.1, 0.35, 0);
+      pseStationGroup.add(pseWing);
+    }
+    const pseRing = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.8, 32), new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide }));
+    pseRing.rotation.x = -Math.PI / 2;
+    pseRing.position.y = 0.02;
+    pseStationGroup.add(pseRing);
+    lunarSurfaceScene.add(pseStationGroup);
+
+    // 10. ACTIVE WALKABLE ASTRONAUT (NEIL ARMSTRONG)
     const astronautGroup = new THREE.Group();
-    astronautGroup.position.set(2.8, -1.2, 3.2);
-    astronautGroup.rotation.y = -Math.PI / 4;
+    astronautGroup.position.set(2.2, -1.2, 2.2);
     lunarSurfaceScene.add(astronautGroup);
 
-    // Procedural A7L spacesuit fallback
     const suitTorso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.5), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 }));
     suitTorso.position.y = 1.2;
     const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.95, roughness: 0.1 }));
@@ -1052,49 +1127,20 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         const astroModel = gltf.scene;
         const box = new THREE.Box3().setFromObject(astroModel);
         const size = box.getSize(new THREE.Vector3());
-        const targetH = 1.9;
-        const scale = targetH / Math.max(size.x, size.y, size.z);
+        const scale = 1.9 / Math.max(size.x, size.y, size.z);
         astroModel.scale.setScalar(scale);
         box.setFromObject(astroModel);
         astroModel.position.set(0, -box.min.y, 0);
-        // Hide procedural suit
         suitTorso.visible = false;
         helmet.visible = false;
         plssBackpack.visible = false;
         astronautGroup.add(astroModel);
       },
       undefined,
-      () => {
-        // Fallback procedural suit
-      }
+      () => {}
     );
 
-    // Lunar Landing Dust Particles
-    const dustCount = 80;
-    const dustGeo = new THREE.BufferGeometry();
-    const dustPos = new Float32Array(dustCount * 3);
-    for (let i = 0; i < dustCount * 3; i += 3) {
-      dustPos[i] = (Math.random() - 0.5) * 18;
-      dustPos[i + 1] = Math.random() * 2.5;
-      dustPos[i + 2] = (Math.random() - 0.5) * 18;
-    }
-    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-    const dustMat = new THREE.PointsMaterial({ color: 0x94a3b8, size: 2.2, transparent: true, opacity: 0 });
-    const dustPoints = new THREE.Points(dustGeo, dustMat);
-    lunarSurfaceScene.add(dustPoints);
-
-    // 8. ORBITAL MAP TRAJECTORY ELLIPSE LINE
-    const orbitPoints = 200;
-    const orbitPositions = new Float32Array(orbitPoints * 3);
-    const orbitGeo = new THREE.BufferGeometry();
-    orbitGeo.setAttribute('position', new THREE.BufferAttribute(orbitPositions, 3));
-    const orbitMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85, linewidth: 2 });
-    const orbitLine = new THREE.Line(orbitGeo, orbitMat);
-    scene.add(orbitLine);
-
-    // ─────────────────────────────────────────────────────────────────────────
     // MOUSE DRAG ORBIT CAMERA CONTROLLER
-    // ─────────────────────────────────────────────────────────────────────────
     const handleMouseDown = (e: MouseEvent) => {
       simRef.current.isMouseDown = true;
       simRef.current.mouseLastX = e.clientX;
@@ -1122,6 +1168,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     // ─────────────────────────────────────────────────────────────────────────
     let animId: number;
     let lastTime = performance.now();
+    let walkStepTimer = 0;
 
     const animate = (time: number) => {
       animId = requestAnimationFrame(animate);
@@ -1131,13 +1178,62 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       const p = simRef.current;
       const dt = rawDt * p.timeWarp;
 
-      // Rotate starfield slowly
       starPoints.rotation.y += 0.0001;
 
-      // Update Moon position in Cislunar orbit
-      p.moonTheta += 0.0002 * p.timeWarp;
-      moonMesh.position.x = 900 * Math.cos(p.moonTheta);
-      moonMesh.position.z = -1200 * Math.sin(p.moonTheta);
+      // Rotate Earth & Moon
+      earthMesh.rotation.y += 0.0003;
+      moonMesh.position.x = 680 * Math.cos(p.orbitTheta * 0.2 + 0.5);
+      moonMesh.position.z = -680 * Math.sin(p.orbitTheta * 0.2 + 0.5);
+
+      // ─── ACTIVE MOON WALKING CONTROLS (WASD / ARROWS) ───
+      if (p.missionPhase === 'SURFACE_EVA') {
+        const keys = keysDownRef.current;
+        let moveX = 0;
+        let moveZ = 0;
+        if (keys['w'] || keys['arrowup']) moveZ -= 1;
+        if (keys['s'] || keys['arrowdown']) moveZ += 1;
+        if (keys['a'] || keys['arrowleft']) moveX -= 1;
+        if (keys['d'] || keys['arrowright']) moveX += 1;
+
+        if (moveX !== 0 || moveZ !== 0) {
+          const len = Math.hypot(moveX, moveZ);
+          const normX = moveX / len;
+          const normZ = moveZ / len;
+          const walkSpeed = 3.6 * dt; // Lunar walk speed
+          p.astroX += normX * walkSpeed;
+          p.astroZ += normZ * walkSpeed;
+          p.astroRot = Math.atan2(normX, normZ);
+          walkStepTimer += dt * 7;
+          p.astroBounceY = Math.abs(Math.sin(walkStepTimer)) * 0.16; // Low lunar gravity gentle bounce
+          p.isWalking = true;
+        } else {
+          p.astroBounceY = 0;
+          p.isWalking = false;
+        }
+
+        astronautGroup.position.set(p.astroX, -1.2 + p.astroBounceY, p.astroZ);
+        astronautGroup.rotation.y = p.astroRot;
+
+        // Check proximity to mission waypoints
+        const dFlag = Math.hypot(p.astroX - 6.5, p.astroZ - (-3.0));
+        const dDrill = Math.hypot(p.astroX - (-7.0), p.astroZ - 8.0);
+        const dSeismic = Math.hypot(p.astroX - 10.0, p.astroZ - 6.0);
+        const dLm = Math.hypot(p.astroX - 2.2, p.astroZ - 2.2);
+
+        if (dFlag < 3.0 && !evaTasks.flagPlanted) {
+          setActiveEvaPrompt('🚩 NEAR FLAG SITE · PRESS [E] OR CLICK [PLANT AMERICAN FLAG]');
+        } else if (dDrill < 3.0 && !evaTasks.sampleDrilled) {
+          setActiveEvaPrompt('⛏️ NEAR BASALT ROCKS · PRESS [E] OR CLICK [DRILL REGOLITH CORE]');
+        } else if (dSeismic < 3.0 && !evaTasks.seismicDeployed) {
+          setActiveEvaPrompt('📡 NEAR SEISMIC SITE · PRESS [E] OR CLICK [DEPLOY SEISMIC STATION]');
+        } else if (dLm < 3.2 && evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) {
+          setActiveEvaPrompt('🚀 NEAR LM LADDER · PRESS [E] OR CLICK [BOARD LM & LAUNCH ASCENT]');
+        } else {
+          setActiveEvaPrompt(null);
+        }
+
+        setAstroWalkPos({ x: p.astroX, z: p.astroZ, rot: p.astroRot });
+      }
 
       // ─── FLIGHT PHYSICS SIMULATION ───
       const throttleNorm = p.throttle / 100;
@@ -1155,7 +1251,6 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         const effectiveThrustKn = p.fuelPct > 0 ? thrustKn * throttleNorm : 0;
         const aThrust = effectiveThrustKn / massTons;
 
-        // Atmospheric drag
         const density = Math.exp(-p.altM / 8500);
         const dragN = 0.5 * density * 1.225 * (p.velMs ** 2) * 0.28 * 6.0;
         const aDrag = (dragN / 1000) / massTons;
@@ -1168,19 +1263,16 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         p.velMs = Math.sqrt(p.vyMs ** 2 + p.vxMs ** 2);
         p.altM = Math.max(0, p.altM + p.vyMs * dt);
 
-        // Umbilical arms swing open at liftoff
         armPivots.forEach((arm) => {
           arm.rotation.y = THREE.MathUtils.lerp(arm.rotation.y, -Math.PI / 3, dt * 1.5);
         });
 
-        // Launchpad smoke billows
         if (p.altM < 400) {
           smokeMat.opacity = Math.max(0, 0.7 - p.altM / 500);
         } else {
           smokeMat.opacity = 0;
         }
 
-        // Booster visual separation offset
         if (p.boostersSeparated) {
           p.boosterOffset += dt * 5;
           bLeft.position.x = -2.25 - p.boosterOffset;
@@ -1189,12 +1281,6 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           bRight.position.y -= dt * 4;
         }
 
-        // Check 100 km Karman boundary for Mission 1
-        if (destination === 'SUBORBITAL' && p.altM >= 100000 && p.missionPhase === 'ASCENT') {
-          setDirectorCallout('🎉 100 KM KÁRMÁN BOUNDARY PASSED! ENTERED SPACE — PREPARE FOR RE-ENTRY');
-        }
-
-        // Check Orbit Insertion (7.75 km/s) for Mission 2, 3, 4
         if (p.velMs >= 7750 && p.altM >= 180000 && p.missionPhase === 'ASCENT') {
           p.missionPhase = 'ORBIT_COAST';
           setMissionPhase('ORBIT_COAST');
@@ -1204,23 +1290,27 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         }
       }
       else if (p.missionPhase === 'TLI_BURN') {
-        // Accelerating towards Moon
         if (p.fuelPct > 0 && throttleNorm > 0) {
           p.fuelPct = Math.max(0, p.fuelPct - throttleNorm * 0.15 * dt);
-          p.velMs += 18.0 * throttleNorm * dt;
+          p.velMs += 22.0 * throttleNorm * dt;
         }
         if (p.velMs >= 10800) {
           p.missionPhase = 'DEEP_CRUISE';
           setMissionPhase('DEEP_CRUISE');
-          setDirectorCallout('🌕 TRANS-LUNAR INJECTION (TLI) COMPLETE! ENGAGE [TIME WARP 100x] TO TRANSIT TO THE MOON');
+          setDirectorCallout('🌕 TLI BURN COMPLETE! ENGAGE [TIME WARP 100x] TO FLY ALONG 3D TRANSLUNAR TRAJECTORY');
           confetti({ particleCount: 150, spread: 90 });
           if (soundEnabled) soundFx.playVictory();
         }
       }
       else if (p.missionPhase === 'DEEP_CRUISE') {
-        // Cislunar transit countdown
-        p.lunarDistanceM = Math.max(100000, p.lunarDistanceM - p.velMs * dt * 45);
-        if (p.lunarDistanceM <= 350000) {
+        // Spacecraft flies smoothly along the 3D Keplerian translunar transfer curve!
+        p.cislunarProgress = Math.min(1.0, p.cislunarProgress + dt * 0.035);
+        p.lunarDistanceM = Math.max(80000, 384400000 * (1.0 - p.cislunarProgress));
+
+        const pt = transferCurve.getPoint(p.cislunarProgress);
+        rocketMasterGroup.position.copy(pt);
+
+        if (p.cislunarProgress >= 1.0) {
           p.missionPhase = 'LUNAR_CAPTURE';
           setMissionPhase('LUNAR_CAPTURE');
           setDirectorCallout('🌑 ENTERED MOON SOI! CSM SEPARATES FROM LUNAR MODULE EAGLE · PREPARE FOR POWERED DESCENT');
@@ -1242,14 +1332,6 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         p.vxMs = Math.max(0, p.vxMs - dt * 2.5);
         p.velMs = Math.sqrt(p.vyMs ** 2 + p.vxMs ** 2);
 
-        // Dust kick-up near surface
-        if (p.altM < 25) {
-          dustMat.opacity = Math.min(0.85, (25 - p.altM) / 25 * throttleNorm);
-        } else {
-          dustMat.opacity = 0;
-        }
-
-        // Touchdown detection
         if (p.altM <= 0) {
           p.altM = 0;
           const downwardRate = Math.abs(p.vyMs);
@@ -1274,14 +1356,13 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         }
       }
       else if (p.missionPhase === 'SURFACE_ASCENT') {
-        // Lunar ascent liftoff
         p.vyMs += (14.0 - 1.62) * dt;
         p.altM += p.vyMs * dt;
         p.velMs = p.vyMs;
         if (p.altM >= 60000) {
           p.missionPhase = 'TEI_RETURN';
           setMissionPhase('TEI_RETURN');
-          setDirectorCallout('🌍 TRANS-EARTH INJECTION (TEI) FIRED! RETURNING HOME AT 11.2 KM/S');
+          setDirectorCallout('🌍 TRANS-EARTH INJECTION (TEI) FIRED! RETURNING HOME ALONG RETURN TRAJECTORY AT 11.2 KM/S');
           if (soundEnabled) soundFx.playVictory();
         }
       }
@@ -1291,18 +1372,17 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         p.altM = Math.max(0, p.altM + p.vyMs * dt * 4);
         p.velMs = Math.abs(p.vyMs);
 
-        // Plasma heat shield fireball glow
         if (p.missionPhase === 'REENTRY_PLASMA') {
-          plasmaMat.opacity = Math.min(0.9, 0.4 + Math.random() * 0.5);
+          plasmaMesh.material.opacity = Math.min(0.9, 0.4 + Math.random() * 0.5);
         } else {
-          plasmaMat.opacity = 0;
+          plasmaMesh.material.opacity = 0;
         }
 
         if (p.altM <= 0) {
           p.altM = 0;
           p.missionPhase = 'SPLASHDOWN';
           setMissionPhase('SPLASHDOWN');
-          setDirectorCallout('🏆 PACIFIC OCEAN SPLASHDOWN NOMINAL! USS HORNET RECOVERY HELICOPTER RETRIEVAL COMPLETE');
+          setDirectorCallout('🏆 PACIFIC OCEAN SPLASHDOWN NOMINAL! USS HORNET RETRIEVAL COMPLETE · MISSION ACCOMPLISHED');
           confetti({ particleCount: 220, spread: 100 });
           if (soundEnabled) soundFx.playVictory();
           awardCadetCredits(1500);
@@ -1310,90 +1390,80 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         }
       }
 
-      // ─── 3D MESH VISUALS & ORIENTATION ───
+      // ─── 3D MESH VISUALS & STAGE VISIBILITY ───
       const visualPitch = (p.pitchDeg * Math.PI) / 180;
       rocketMasterGroup.rotation.z = -visualPitch + Math.PI / 2;
 
-      // Rocket flame
-      const isFiring = p.fuelPct > 0 && throttleNorm > 0 && !['PAD_READY', 'SURFACE_LANDED', 'SURFACE_EVA', 'SPLASHDOWN'].includes(p.missionPhase);
-      flameMat.opacity = isFiring ? 0.95 : 0;
+      const isFiring = p.fuelPct > 0 && throttleNorm > 0 && !['VAB_BUILD', 'PAD_READY', 'SURFACE_LANDED', 'SURFACE_EVA', 'SPLASHDOWN'].includes(p.missionPhase);
+      flameMesh.material.opacity = isFiring ? 0.95 : 0;
       flameMesh.scale.set(throttleNorm, throttleNorm * (1.2 + Math.random() * 0.4), throttleNorm);
       exhaustPointLight.intensity = isFiring ? 4.0 * throttleNorm : 0;
 
-      // Parachute visibility
       chuteGroup.visible = p.chutesDeployed;
 
-      // Switch between Saturn V Rocket and Apollo Lunar Module
-      const isLunarSurfaceMode = ['LUNAR_CAPTURE', 'RETRO_DESCENT', 'SURFACE_LANDED', 'SURFACE_EVA', 'SURFACE_ASCENT'].includes(p.missionPhase);
-      rocketMasterGroup.visible = !isLunarSurfaceMode;
-      apolloLmGroup.visible = isLunarSurfaceMode;
+      // Group Visibilities
+      vabHangarGroup.visible = p.missionPhase === 'VAB_BUILD';
+      groundSceneGroup.visible = ['PAD_READY', 'ASCENT'].includes(p.missionPhase) && p.altM < 45000;
+      trajectoryCurveGroup.visible = ['TLI_BURN', 'DEEP_CRUISE', 'TEI_RETURN'].includes(p.missionPhase);
 
-      // Lunar Module positioning during descent
-      if (isLunarSurfaceMode) {
+      const isLunarSurfaceMode = ['LUNAR_CAPTURE', 'RETRO_DESCENT', 'SURFACE_LANDED', 'SURFACE_EVA', 'SURFACE_ASCENT'].includes(p.missionPhase);
+      rocketMasterGroup.visible = !isLunarSurfaceMode && p.missionPhase !== 'VAB_BUILD';
+      apolloLmGroup.visible = isLunarSurfaceMode;
+      lunarSurfaceScene.visible = isLunarSurfaceMode;
+
+      if (p.missionPhase === 'VAB_BUILD') {
+        rocketMasterGroup.visible = true;
+        rocketMasterGroup.position.set(0, 8.5, 0);
+        earthMesh.visible = false;
+        moonMesh.visible = false;
+      } else if (p.missionPhase === 'PAD_READY') {
+        rocketMasterGroup.position.set(0, 10.5, 0);
+        earthMesh.visible = false;
+        moonMesh.visible = false;
+      } else if (isLunarSurfaceMode) {
+        earthMesh.visible = false;
+        moonMesh.visible = true;
         if (p.missionPhase === 'RETRO_DESCENT') {
           apolloLmGroup.position.set(0, Math.max(0, p.altM / 250), 0);
-          lunarSurfaceScene.visible = p.altM < 1500;
-        } else if (p.missionPhase === 'SURFACE_LANDED' || p.missionPhase === 'SURFACE_EVA') {
+        } else if (['SURFACE_LANDED', 'SURFACE_EVA'].includes(p.missionPhase)) {
           apolloLmGroup.position.set(0, 0, 0);
-          lunarSurfaceScene.visible = true;
-          astronautGroup.visible = p.missionPhase === 'SURFACE_EVA';
         } else if (p.missionPhase === 'SURFACE_ASCENT') {
-          // Ascent stage lifts off, descent stage remains on surface
           ascentGroup.position.y = 2.1 + (p.altM / 200);
           dStage.visible = true;
-          lunarSurfaceScene.visible = true;
         }
       }
 
-      // Earth & Moon world positioning
-      if (p.missionPhase === 'PAD_READY') {
-        rocketMasterGroup.position.set(0, 10.5, 0);
-        groundSceneGroup.visible = true;
-        earthMesh.visible = false;
-        moonMesh.visible = false;
-      } else if (p.missionPhase === 'ASCENT' || p.missionPhase === 'ORBIT_INSERTION') {
-        const normAlt = p.altM / 1000;
-        rocketMasterGroup.position.set(normAlt * 0.35, Math.min(130, 10.5 + normAlt * 0.8), -normAlt * 0.2);
-        groundSceneGroup.visible = normAlt < 45;
-        earthMesh.visible = normAlt >= 15;
-        earthMesh.position.set(0, -earthRadius - normAlt * 0.3, 0);
-      } else if (['ORBIT_COAST', 'TLI_BURN', 'DEEP_CRUISE'].includes(p.missionPhase)) {
-        groundSceneGroup.visible = false;
-        earthMesh.visible = true;
-        moonMesh.visible = true;
-        rocketMasterGroup.position.set(0, 0, 0);
-      } else if (['REENTRY_PLASMA', 'PARACHUTE_DESCENT', 'SPLASHDOWN'].includes(p.missionPhase)) {
-        groundSceneGroup.visible = false;
-        earthMesh.visible = true;
-        moonMesh.visible = false;
-        rocketMasterGroup.position.set(0, Math.min(60, p.altM / 1000), 0);
+      // ─── 3D CAMERA CONTROLLER ───
+      if (p.missionPhase === 'SURFACE_EVA') {
+        // Third-Person Follow Camera behind walking astronaut
+        const camDist = 6.2;
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, p.astroX - camDist * Math.sin(p.astroRot), dt * 6);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, -1.2 + 2.0, dt * 6);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, p.astroZ - camDist * Math.cos(p.astroRot), dt * 6);
+        camera.lookAt(p.astroX, -1.2 + 1.2, p.astroZ);
+      } else {
+        const camDist = p.viewMode === 'PAD_CAM' ? 55 : p.viewMode === 'ORBIT_MAP' ? 700 : 34;
+        const phi = p.cameraAngleY;
+        const theta = p.cameraAngleX;
+        const targetPos = isLunarSurfaceMode ? apolloLmGroup.position : rocketMasterGroup.position;
+        camera.position.x = targetPos.x + camDist * Math.cos(phi) * Math.sin(theta);
+        camera.position.y = targetPos.y + camDist * Math.sin(phi);
+        camera.position.z = targetPos.z + camDist * Math.cos(phi) * Math.cos(theta);
+        camera.lookAt(targetPos.clone().add(new THREE.Vector3(0, 2.5, 0)));
       }
 
-      // ─── 3D CAMERA RIG ───
-      const camDist = p.viewMode === 'PAD_CAM' ? 55 : p.viewMode === 'ORBIT_MAP' ? 700 : 34;
-      const phi = p.cameraAngleY;
-      const theta = p.cameraAngleX;
-
-      const targetPos = isLunarSurfaceMode ? apolloLmGroup.position : rocketMasterGroup.position;
-      camera.position.x = targetPos.x + camDist * Math.cos(phi) * Math.sin(theta);
-      camera.position.y = targetPos.y + camDist * Math.sin(phi);
-      camera.position.z = targetPos.z + camDist * Math.cos(phi) * Math.cos(theta);
-      camera.lookAt(targetPos.clone().add(new THREE.Vector3(0, 2.5, 0)));
-
-      // Sync telemetry states for React HUD (throttled to ~15 Hz)
+      // Sync React telemetry states
       setFlightAltM(p.altM);
       setFlightSpeedMs(p.velMs);
       setFlightVyMs(p.vyMs);
       setFlightVxMs(p.vxMs);
       setFlightFuelPct(p.fuelPct);
 
-      // Render 3D Scene
       renderer.render(scene, camera);
     };
 
     animId = requestAnimationFrame(animate);
 
-    // Resize Handler
     const handleResize = () => {
       const w = container.clientWidth || window.innerWidth;
       const h = container.clientHeight || window.innerHeight;
@@ -1413,7 +1483,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     };
   }, [isOpen, destination, soundEnabled, onMissionCompleted]);
 
-  // ─── ATTITUDE NAVBALL CANVAS RENDERER ──────────────────────────────────────
+  // Attitude Navball Canvas Renderer
   useEffect(() => {
     if (!isOpen || !navballCanvasRef.current) return;
     const canvas = navballCanvasRef.current;
@@ -1425,24 +1495,17 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     const cy = 48;
     const r = 42;
 
-    // Outer ring
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.clip();
 
-    // Pitch horizon calculation
     const pitchOffset = ((90 - pitchDeg) / 90) * (r * 0.9);
-
-    // Sky half (Blue)
     ctx.fillStyle = '#0284c7';
     ctx.fillRect(0, 0, 96, cy + pitchOffset);
-
-    // Ground half (Brown)
     ctx.fillStyle = '#92400e';
     ctx.fillRect(0, cy + pitchOffset, 96, 96);
 
-    // Artificial Horizon Line
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -1450,16 +1513,13 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     ctx.lineTo(90, cy + pitchOffset);
     ctx.stroke();
 
-    // Target reticle
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.arc(cx, cy, 6, 0, Math.PI * 2);
     ctx.stroke();
-
     ctx.restore();
 
-    // Glass bezel
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -1515,7 +1575,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-          {/* Mission Tabs */}
+          {/* Mission Selectors */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {(['SUBORBITAL', 'ORBITAL', 'MOON', 'MARS'] as ExpeditionDestination[]).map((dest, idx) => {
               const prof = DESTINATION_PROFILES[dest];
@@ -1537,7 +1597,6 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                     fontSize: '11px',
                     cursor: 'pointer',
                     boxShadow: isSelected ? '0 0 15px rgba(56, 189, 248, 0.4)' : 'none',
-                    transition: 'all 0.15s ease',
                   }}
                 >
                   <span>{prof.badge}</span>
@@ -1547,7 +1606,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             })}
           </div>
 
-          {/* Right Utilities */}
+          {/* Right Header Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               onClick={() => setSoundEnabled((v) => !v)}
@@ -1559,7 +1618,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 padding: '6px 10px',
                 cursor: 'pointer',
               }}
-              title="Toggle Engine Audio Synthesis"
+              title="Toggle Audio"
             >
               {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </button>
@@ -1587,13 +1646,13 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         {/* Phase Breadcrumbs */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
           {[
-            { phase: 'PAD_READY', label: '1. Pad 39A' },
-            { phase: 'ASCENT', label: '2. Ascent & Staging' },
-            { phase: 'ORBIT_COAST', label: '3. Earth Orbit' },
-            { phase: 'TLI_BURN', label: '4. TLI Burn' },
-            { phase: 'DEEP_CRUISE', label: '5. Deep Cruise' },
+            { phase: 'VAB_BUILD', label: '1. VAB Builder' },
+            { phase: 'PAD_READY', label: '2. Pad 39A Weather' },
+            { phase: 'ASCENT', label: '3. Staged Liftoff' },
+            { phase: 'ORBIT_COAST', label: '4. Earth Orbit' },
+            { phase: 'TLI_BURN', label: '5. TLI 3D Trajectory' },
             { phase: 'RETRO_DESCENT', label: '6. Lunar Descent' },
-            { phase: 'SURFACE_EVA', label: '7. Moon EVA' },
+            { phase: 'SURFACE_EVA', label: '7. Walk on Moon' },
             { phase: 'SURFACE_ASCENT', label: '8. Ascent & Return' },
             { phase: 'SPLASHDOWN', label: '9. Splashdown' },
           ].map((item) => {
@@ -1621,7 +1680,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* CENTER TOP: FLIGHT DIRECTOR GUIDANCE COMPUTER CALLOUT BANNER        */}
+      {/* CENTER TOP: FLIGHT DIRECTOR GUIDANCE CALLOUT BANNER                 */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div
         style={{
@@ -1629,7 +1688,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           top: '90px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(15, 23, 42, 0.85)',
+          background: 'rgba(15, 23, 42, 0.88)',
           border: '1.5px solid #38bdf8',
           borderRadius: '10px',
           padding: '8px 20px',
@@ -1649,111 +1708,36 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* LEFT: PRIMARY TELEMETRY & ATTITUDE INDICATOR (AEROSPACE HUD)        */}
+      {/* VAB ROCKET BUILDER & EQUIPMENT SELECTION OVERLAY (PHASE 1)          */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '140px',
-          left: '20px',
-          background: 'rgba(15, 23, 42, 0.88)',
-          border: '1px solid rgba(56, 189, 248, 0.3)',
-          borderRadius: '12px',
-          padding: '14px 16px',
-          width: '210px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-          zIndex: 80,
-          pointerEvents: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px' }}>
-          <span style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', fontFamily: 'monospace' }}>FLIGHT TELEMETRY</span>
-          <span style={{ fontSize: '9px', color: '#22c55e', fontWeight: 800 }}>LIVE 60 FPS</span>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-          <span style={{ color: '#94a3b8' }}>ALTITUDE:</span>
-          <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>
-            {flightAltM >= 1000 ? `${(flightAltM / 1000).toFixed(1)} km` : `${Math.round(flightAltM)} m`}
-          </strong>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-          <span style={{ color: '#94a3b8' }}>TOTAL VELOCITY:</span>
-          <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>
-            {flightSpeedMs >= 1000 ? `${(flightSpeedMs / 1000).toFixed(2)} km/s` : `${Math.round(flightSpeedMs)} m/s`}
-          </strong>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-          <span style={{ color: '#94a3b8' }}>VERTICAL SPEED (Vy):</span>
-          <strong style={{ color: flightVyMs < -5 ? '#ef4444' : '#4ade80', fontFamily: 'monospace' }}>
-            {flightVyMs.toFixed(1)} m/s
-          </strong>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-          <span style={{ color: '#94a3b8' }}>PITCH ANGLE:</span>
-          <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{Math.round(pitchDeg)}°</strong>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-          <span style={{ color: '#94a3b8' }}>PROPELLANT:</span>
-          <strong style={{ color: flightFuelPct < 20 ? '#ef4444' : '#38bdf8', fontFamily: 'monospace' }}>
-            {flightFuelPct.toFixed(0)}%
-          </strong>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-          <span style={{ color: '#94a3b8' }}>ACTIVE STAGE:</span>
-          <strong style={{ color: '#a855f7', fontFamily: 'monospace' }}>STAGE {rocketStage} / 3</strong>
-        </div>
-
-        {/* Attitude Navball */}
-        <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
-          <span style={{ fontSize: '9px', fontWeight: 800, color: '#94a3b8' }}>ATTITUDE NAVBALL</span>
-          <canvas ref={navballCanvasRef} width={96} height={96} style={{ width: '84px', height: '84px' }} />
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* FLOATING VAB BUILDER OVERLAY (WHEN OPEN)                            */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {isVabOpen && (
+      {missionPhase === 'VAB_BUILD' && (
         <div
           style={{
             position: 'absolute',
             top: '140px',
             right: '20px',
-            width: '380px',
-            background: 'rgba(15, 23, 42, 0.94)',
-            border: '1.5px solid #38bdf8',
-            borderRadius: '14px',
-            padding: '18px',
-            zIndex: 150,
+            width: '420px',
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '2px solid #38bdf8',
+            borderRadius: '16px',
+            padding: '20px',
+            zIndex: 120,
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',
-            boxShadow: '0 12px 48px rgba(0,0,0,0.8)',
-            maxHeight: 'calc(100vh - 260px)',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.85)',
+            maxHeight: 'calc(100vh - 240px)',
             overflowY: 'auto',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontWeight: 900, fontSize: '13px' }}>
-              <Wrench size={18} />
-              VAB VEHICLE CONFIGURATION
-            </div>
-            <button onClick={() => setIsVabOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
-              <X size={18} />
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontWeight: 900, fontSize: '14px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+            <Wrench size={18} />
+            VAB ROCKET ASSEMBLY & EQUIPMENT BUILDER
           </div>
 
+          {/* 1. Strap-on Boosters */}
           <div>
-            <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 800, marginBottom: '6px' }}>SELECT STRAP-ON BOOSTERS</div>
+            <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 800, marginBottom: '6px' }}>1. STRAP-ON BOOSTERS</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {VAB_BOOSTERS.map((b) => (
                 <button
@@ -1762,8 +1746,8 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                   style={{
                     padding: '8px 10px',
                     borderRadius: '8px',
-                    background: selectedBooster.id === b.id ? 'rgba(2, 132, 199, 0.3)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${selectedBooster.id === b.id ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                    background: selectedBooster.id === b.id ? 'rgba(2, 132, 199, 0.35)' : 'rgba(255,255,255,0.05)',
+                    border: `1.5px solid ${selectedBooster.id === b.id ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
                     color: '#ffffff',
                     textAlign: 'left',
                     fontSize: '11px',
@@ -1777,8 +1761,9 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             </div>
           </div>
 
+          {/* 2. Core Stage */}
           <div>
-            <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 800, marginBottom: '6px' }}>CORE PROPULSION STAGE</div>
+            <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 800, marginBottom: '6px' }}>2. CORE PROPULSION STAGE</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {VAB_CORE_STAGES.map((c) => (
                 <button
@@ -1787,8 +1772,8 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                   style={{
                     padding: '8px 10px',
                     borderRadius: '8px',
-                    background: selectedCore.id === c.id ? 'rgba(2, 132, 199, 0.3)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${selectedCore.id === c.id ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                    background: selectedCore.id === c.id ? 'rgba(2, 132, 199, 0.35)' : 'rgba(255,255,255,0.05)',
+                    border: `1.5px solid ${selectedCore.id === c.id ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
                     color: '#ffffff',
                     textAlign: 'left',
                     fontSize: '11px',
@@ -1802,104 +1787,189 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             </div>
           </div>
 
+          {/* 3. Science Equipment Checklist */}
+          <div>
+            <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 800, marginBottom: '6px' }}>3. MOON SURFACE MISSION EQUIPMENT</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {VAB_SCIENCE_EQUIPMENT.map((eq) => {
+                const isSelected = selectedEquip.some((e) => e.id === eq.id);
+                return (
+                  <button
+                    key={eq.id}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedEquip((prev) => prev.filter((e) => e.id !== eq.id));
+                      } else {
+                        setSelectedEquip((prev) => [...prev, eq]);
+                      }
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: isSelected ? 'rgba(34, 197, 94, 0.25)' : 'rgba(255,255,255,0.05)',
+                      border: `1.5px solid ${isSelected ? '#22c55e' : 'rgba(255,255,255,0.1)'}`,
+                      color: '#ffffff',
+                      textAlign: 'left',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800 }}>{eq.icon} {eq.name}</div>
+                      <div style={{ fontSize: '9px', color: '#94a3b8' }}>Mass: {eq.massKg} kg · {eq.description}</div>
+                    </div>
+                    <span style={{ color: isSelected ? '#22c55e' : '#64748b', fontWeight: 900 }}>
+                      {isSelected ? 'EQUIPPED ✓' : '+ EQUIP'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Rocket Physics Stats */}
+          <div style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+            <div>
+              <div style={{ color: '#94a3b8' }}>TOTAL LIFTOFF MASS</div>
+              <div style={{ fontWeight: 900, color: '#ffffff' }}>{rocketPhysics.totalLiftoffMassTons.toFixed(0)} TONS</div>
+            </div>
+            <div>
+              <div style={{ color: '#94a3b8' }}>TOTAL DELTA-V (Δv)</div>
+              <div style={{ fontWeight: 900, color: '#38bdf8' }}>{rocketPhysics.totalDeltaVmS.toFixed(0)} m/s</div>
+            </div>
+            <div>
+              <div style={{ color: '#94a3b8' }}>TWR RATIO</div>
+              <div style={{ fontWeight: 900, color: '#22c55e' }}>{rocketPhysics.liftoffTWR.toFixed(2)}</div>
+            </div>
+          </div>
+
+          {/* Action Rollout Button */}
           <button
-            onClick={() => setIsVabOpen(false)}
+            onClick={() => {
+              setMissionPhase('PAD_READY');
+              setDirectorCallout('ROCKET ROLLED OUT TO PAD 39A · CHECK WEATHER CLEARANCE AND IGNITE!');
+              if (soundEnabled) soundFx.playReactorStart();
+            }}
             style={{
-              padding: '10px',
-              borderRadius: '8px',
+              padding: '12px',
+              borderRadius: '10px',
               background: 'linear-gradient(135deg, #10b981, #059669)',
               border: 'none',
               color: '#ffffff',
               fontWeight: 900,
-              fontSize: '11px',
+              fontSize: '13px',
               cursor: 'pointer',
+              boxShadow: '0 0 25px rgba(16, 185, 129, 0.5)',
             }}
           >
-            CONFIRM CONFIGURATION & RETURN TO PAD
+            🚀 ROLL OUT TO LAUNCH PAD 39A
           </button>
         </div>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* FLOATING LAUNCH PAD WEATHER CHECK (WHEN OPEN)                       */}
+      {/* LEFT: FLIGHT TELEMETRY HUD & ATTITUDE NAVBALL                       */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {isWeatherOpen && (
+      {missionPhase !== 'VAB_BUILD' && (
         <div
           style={{
             position: 'absolute',
             top: '140px',
-            right: '20px',
-            width: '360px',
-            background: 'rgba(15, 23, 42, 0.94)',
-            border: '1.5px solid #22c55e',
-            borderRadius: '14px',
-            padding: '18px',
-            zIndex: 150,
+            left: '20px',
+            background: 'rgba(15, 23, 42, 0.88)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            width: '210px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '10px',
-            boxShadow: '0 12px 48px rgba(0,0,0,0.8)',
+            gap: '8px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            zIndex: 80,
+            pointerEvents: 'auto',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#22c55e', fontWeight: 900, fontSize: '13px' }}>
-              <Sun size={18} />
-              NASA 45TH WEATHER SQUADRON REPORT
-            </div>
-            <button onClick={() => setIsWeatherOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
-              <X size={18} />
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', fontFamily: 'monospace' }}>FLIGHT TELEMETRY</span>
+            <span style={{ fontSize: '9px', color: '#22c55e', fontWeight: 800 }}>LIVE 60 FPS</span>
           </div>
 
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#94a3b8' }}>SURFACE WINDS:</span>
-              <strong style={{ color: '#ffffff' }}>{weatherReport.windSpeedKts} kts (GUSTS {weatherReport.windGustsKts} kts)</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#94a3b8' }}>CLOUD CEILING:</span>
-              <strong style={{ color: '#ffffff' }}>{weatherReport.cloudCeilingFt.toLocaleString()} ft ({weatherReport.relativeHumidityPct}% RH)</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#94a3b8' }}>LIGHTNING PROBABILITY:</span>
-              <strong style={{ color: weatherReport.lightningProbabilityPct < 20 ? '#22c55e' : '#ef4444' }}>
-                {weatherReport.lightningProbabilityPct}%
-              </strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#94a3b8' }}>GEOMAGNETIC KP:</span>
-              <strong style={{ color: weatherReport.geomagneticKpIndex <= 4 ? '#22c55e' : '#f59e0b' }}>
-                Kp {weatherReport.geomagneticKpIndex}
-              </strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#94a3b8' }}>LAUNCH CLEARANCE:</span>
-              <strong style={{ color: weatherReport.weatherStatus === 'GO' ? '#22c55e' : '#ef4444' }}>
-                {weatherReport.weatherStatus === 'GO' ? '✅ GO FOR LAUNCH' : '❌ NO-GO (SCRUB)'}
-              </strong>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>ALTITUDE:</span>
+            <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>
+              {flightAltM >= 1000 ? `${(flightAltM / 1000).toFixed(1)} km` : `${Math.round(flightAltM)} m`}
+            </strong>
           </div>
 
-          <button
-            onClick={() => setIsWeatherOpen(false)}
-            style={{
-              padding: '10px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-              border: 'none',
-              color: '#ffffff',
-              fontWeight: 900,
-              fontSize: '11px',
-              cursor: 'pointer',
-            }}
-          >
-            ACKNOWLEDGE WEATHER & PROCEED
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>TOTAL VELOCITY:</span>
+            <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>
+              {flightSpeedMs >= 1000 ? `${(flightSpeedMs / 1000).toFixed(2)} km/s` : `${Math.round(flightSpeedMs)} m/s`}
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>VERTICAL SPEED (Vy):</span>
+            <strong style={{ color: flightVyMs < -5 ? '#ef4444' : '#4ade80', fontFamily: 'monospace' }}>
+              {flightVyMs.toFixed(1)} m/s
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>PITCH ANGLE:</span>
+            <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{Math.round(pitchDeg)}°</strong>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>PROPELLANT:</span>
+            <strong style={{ color: flightFuelPct < 20 ? '#ef4444' : '#38bdf8', fontFamily: 'monospace' }}>
+              {flightFuelPct.toFixed(0)}%
+            </strong>
+          </div>
+
+          {/* Attitude Navball */}
+          <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#94a3b8' }}>ATTITUDE NAVBALL</span>
+            <canvas ref={navballCanvasRef} width={96} height={96} style={{ width: '84px', height: '84px' }} />
+          </div>
         </div>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* BOTTOM CONTROLS DECK: INTERACTIVE ACTIONS & FLIGHT INSTRUMENTS      */}
+      {/* PROXIMITY PROMPT FOR ACTIVE ASTRONAUT EVA MISSION TASKS             */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {missionPhase === 'SURFACE_EVA' && activeEvaPrompt && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '120px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.95), rgba(15, 23, 42, 0.95))',
+            border: '2px solid #38bdf8',
+            borderRadius: '12px',
+            padding: '12px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            boxShadow: '0 0 35px rgba(56, 189, 248, 0.6)',
+            zIndex: 110,
+            cursor: 'pointer',
+          }}
+          onClick={handleEvaInteract}
+        >
+          <Sparkles size={20} color="#fde047" />
+          <span style={{ fontWeight: 900, fontSize: '13px', color: '#ffffff', letterSpacing: '0.04em' }}>
+            {activeEvaPrompt}
+          </span>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* BOTTOM CONTROL DECK: DYNAMIC ACTIONS & STEERING                     */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       <div
         style={{
@@ -1915,7 +1985,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           pointerEvents: 'none',
         }}
       >
-        {/* Left: Camera & Time Warp Buttons */}
+        {/* Left: View Switcher */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto' }}>
           {(['CHASE', 'ORBIT_MAP', 'PAD_CAM'] as FlightViewMode[]).map((mode) => (
             <button
@@ -1932,7 +2002,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 cursor: 'pointer',
               }}
             >
-              {mode === 'CHASE' ? '🎥 CHASE' : mode === 'ORBIT_MAP' ? '🌍 ORBIT MAP' : '🚀 PAD / SURFACE'}
+              {mode === 'CHASE' ? '🎥 CHASE' : mode === 'ORBIT_MAP' ? '🌍 3D TRAJECTORY' : '🚀 PAD / SURFACE'}
             </button>
           ))}
 
@@ -1961,65 +2031,25 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         {/* Center: BIG ADAPTIVE PRIMARY ACTION BUTTON */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', pointerEvents: 'auto' }}>
           {missionPhase === 'PAD_READY' && (
-            <>
-              <button
-                onClick={() => setIsVabOpen((v) => !v)}
-                style={{
-                  padding: '12px 18px',
-                  borderRadius: '10px',
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: '1.5px solid #38bdf8',
-                  color: '#ffffff',
-                  fontWeight: 900,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <Wrench size={16} /> VAB BUILDER
-              </button>
-
-              <button
-                onClick={() => setIsWeatherOpen((v) => !v)}
-                style={{
-                  padding: '12px 18px',
-                  borderRadius: '10px',
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  border: '1.5px solid #22c55e',
-                  color: '#ffffff',
-                  fontWeight: 900,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <Sun size={16} /> PAD WEATHER
-              </button>
-
-              <button
-                onClick={handleStageTrigger}
-                style={{
-                  padding: '14px 28px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                  border: '2px solid #22c55e',
-                  color: '#ffffff',
-                  fontWeight: 900,
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 0 30px rgba(34, 197, 94, 0.6)',
-                }}
-              >
-                <span>🔥</span> T-0 IGNITE & LIFTOFF [Z]
-              </button>
-            </>
+            <button
+              onClick={handleStageTrigger}
+              style={{
+                padding: '14px 28px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                border: '2px solid #22c55e',
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: '14px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 0 30px rgba(34, 197, 94, 0.6)',
+              }}
+            >
+              <span>🔥</span> T-0 IGNITE & LIFTOFF [Z]
+            </button>
           )}
 
           {missionPhase === 'ASCENT' && (
@@ -2073,7 +2103,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
               onClick={() => {
                 setMissionPhase('DEEP_CRUISE');
                 setTimeWarp(100);
-                setDirectorCallout('⏩ ENGAGING 100x TIME WARP FOR CISLUNAR TRANSIT (384,400 KM)');
+                setDirectorCallout('⏩ FLYING ALONG 3D TRANSLUNAR TRAJECTORY (100x TIME WARP)!');
               }}
               style={{
                 padding: '14px 28px',
@@ -2086,7 +2116,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 cursor: 'pointer',
               }}
             >
-              <span>⏩</span> TIME WARP TO MOON (100x)
+              <span>⏩</span> TIME WARP ALONG 3D TRAJECTORY (100x)
             </button>
           )}
 
@@ -2170,7 +2200,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             <button
               onClick={() => {
                 setMissionPhase('SURFACE_EVA');
-                setDirectorCallout('🧑‍🚀 NEIL ARMSTRONG DESCENDS LADDER: "THAT\'S ONE SMALL STEP FOR MAN, ONE GIANT LEAP FOR MANKIND"');
+                setDirectorCallout('🧑‍🚀 NEIL ARMSTRONG ON MOON! WALK WITH [W][A][S][D] / ARROWS TO OBJECTIVES');
                 confetti({ particleCount: 200, spread: 100 });
                 if (soundEnabled) soundFx.playVictory();
               }}
@@ -2186,75 +2216,62 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 boxShadow: '0 0 30px rgba(56, 189, 248, 0.6)',
               }}
             >
-              <span>🧑‍🚀</span> STEP OUT ON MOON EVA (NEIL ARMSTRONG)
+              <span>🧑‍🚀</span> STEP OUT ON MOON EVA (WALK WITH WASD)
             </button>
           )}
 
           {missionPhase === 'SURFACE_EVA' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
-                onClick={() => {
-                  setEvaTasks((t) => ({ ...t, flagPlanted: true }));
-                  setDirectorCallout('🚩 AMERICAN FLAG PLANTED AT TRANQUILITY BASE!');
-                  confetti({ particleCount: 80, spread: 60 });
-                }}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  background: evaTasks.flagPlanted ? '#16a34a' : 'rgba(15, 23, 42, 0.85)',
-                  border: '1.5px solid #22c55e',
-                  color: '#ffffff',
-                  fontWeight: 900,
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                }}
-              >
-                🚩 PLANT FLAG {evaTasks.flagPlanted ? '✓' : ''}
-              </button>
-
-              <button
-                onClick={() => {
-                  setEvaTasks((t) => ({ ...t, sampleDrilled: true }));
-                  setDirectorCallout('⛏️ LUNAR REGOLITH CORE SAMPLE EXTRACTED & STORED IN CAPSULE!');
-                  confetti({ particleCount: 80, spread: 60 });
-                }}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  background: evaTasks.sampleDrilled ? '#16a34a' : 'rgba(15, 23, 42, 0.85)',
-                  border: '1.5px solid #38bdf8',
-                  color: '#ffffff',
-                  fontWeight: 900,
-                  fontSize: '11px',
-                  cursor: 'pointer',
-                }}
-              >
-                ⛏️ SAMPLE DRILL {evaTasks.sampleDrilled ? '✓' : ''}
-              </button>
-
-              <button
-                onClick={() => {
-                  setMissionPhase('SURFACE_ASCENT');
-                  setFlightAltM(100);
-                  setFlightVyMs(80);
-                  setThrottle(100);
-                  setDirectorCallout('🚀 ASCENT STAGE LIFTOFF! SEPARATING FROM DESCENT STAGE');
-                  if (soundEnabled) soundFx.playReactorStart();
-                }}
+                onClick={handleEvaInteract}
                 style={{
                   padding: '12px 20px',
                   borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                  border: '2px solid #22c55e',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  border: '2px solid #34d399',
                   color: '#ffffff',
                   fontWeight: 900,
                   fontSize: '12px',
                   cursor: 'pointer',
-                  boxShadow: '0 0 25px rgba(34, 197, 94, 0.6)',
+                  boxShadow: '0 0 25px rgba(16, 185, 129, 0.6)',
                 }}
               >
-                <span>🚀</span> LAUNCH ASCENT STAGE & RETURN
+                <span>⚡</span> INTERACT [E]
               </button>
+
+              {/* On-screen Directional Touch/Click Walk Pads */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', background: 'rgba(0,0,0,0.5)', padding: '6px', borderRadius: '8px' }}>
+                <div />
+                <button
+                  onMouseDown={() => { keysDownRef.current['w'] = true; }}
+                  onMouseUp={() => { keysDownRef.current['w'] = false; }}
+                  style={{ padding: '6px', background: '#38bdf8', border: 'none', borderRadius: '4px', color: '#000', cursor: 'pointer' }}
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <div />
+                <button
+                  onMouseDown={() => { keysDownRef.current['a'] = true; }}
+                  onMouseUp={() => { keysDownRef.current['a'] = false; }}
+                  style={{ padding: '6px', background: '#38bdf8', border: 'none', borderRadius: '4px', color: '#000', cursor: 'pointer' }}
+                >
+                  <ArrowLeft size={14} />
+                </button>
+                <button
+                  onMouseDown={() => { keysDownRef.current['s'] = true; }}
+                  onMouseUp={() => { keysDownRef.current['s'] = false; }}
+                  style={{ padding: '6px', background: '#38bdf8', border: 'none', borderRadius: '4px', color: '#000', cursor: 'pointer' }}
+                >
+                  <ArrowDown size={14} />
+                </button>
+                <button
+                  onMouseDown={() => { keysDownRef.current['d'] = true; }}
+                  onMouseUp={() => { keysDownRef.current['d'] = false; }}
+                  style={{ padding: '6px', background: '#38bdf8', border: 'none', borderRadius: '4px', color: '#000', cursor: 'pointer' }}
+                >
+                  <ArrowRight size={14} />
+                </button>
+              </div>
             </div>
           )}
 
@@ -2370,92 +2387,92 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           )}
         </div>
 
-        {/* Right: Throttle & Pitch Steering Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(15, 23, 42, 0.88)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)', pointerEvents: 'auto' }}>
-          {/* Throttle Slider */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', width: '130px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', fontWeight: 800 }}>
-              <span>THROTTLE</span>
-              <span style={{ color: '#38bdf8' }}>{Math.round(throttle)}%</span>
+        {/* Right: Flight Controls (Throttle & Pitch) */}
+        {missionPhase !== 'VAB_BUILD' && missionPhase !== 'SURFACE_EVA' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(15, 23, 42, 0.88)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)', pointerEvents: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', width: '130px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8', fontWeight: 800 }}>
+                <span>THROTTLE</span>
+                <span style={{ color: '#38bdf8' }}>{Math.round(throttle)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={throttle}
+                onChange={(e) => setThrottle(Number(e.target.value))}
+                style={{ accentColor: '#38bdf8', cursor: 'pointer' }}
+              />
             </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={throttle}
-              onChange={(e) => setThrottle(Number(e.target.value))}
-              style={{ accentColor: '#38bdf8', cursor: 'pointer' }}
-            />
-          </div>
 
-          <button
-            onClick={() => setThrottle(0)}
-            style={{
-              padding: '6px 10px',
-              borderRadius: '6px',
-              background: '#ef4444',
-              border: 'none',
-              color: '#ffffff',
-              fontSize: '10px',
-              fontWeight: 900,
-              cursor: 'pointer',
-            }}
-          >
-            CUT [X]
-          </button>
-
-          <button
-            onClick={() => setThrottle(100)}
-            style={{
-              padding: '6px 10px',
-              borderRadius: '6px',
-              background: '#16a34a',
-              border: 'none',
-              color: '#ffffff',
-              fontSize: '10px',
-              fontWeight: 900,
-              cursor: 'pointer',
-            }}
-          >
-            MAX [Z]
-          </button>
-
-          {/* Pitch Steering */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <button
-              onClick={() => setPitchDeg((p) => Math.min(90, p + 5))}
+              onClick={() => setThrottle(0)}
               style={{
                 padding: '6px 10px',
                 borderRadius: '6px',
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
+                background: '#ef4444',
+                border: 'none',
                 color: '#ffffff',
                 fontSize: '10px',
                 fontWeight: 900,
                 cursor: 'pointer',
               }}
-              title="Steer Pitch Up [A]"
             >
-              ▲ PITCH [A]
+              CUT [X]
             </button>
+
             <button
-              onClick={() => setPitchDeg((p) => Math.max(0, p - 5))}
+              onClick={() => setThrottle(100)}
               style={{
                 padding: '6px 10px',
                 borderRadius: '6px',
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
+                background: '#16a34a',
+                border: 'none',
                 color: '#ffffff',
                 fontSize: '10px',
                 fontWeight: 900,
                 cursor: 'pointer',
               }}
-              title="Steer Pitch Down [D]"
             >
-              ▼ PITCH [D]
+              MAX [Z]
             </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                onClick={() => setPitchDeg((p) => Math.min(90, p + 5))}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#ffffff',
+                  fontSize: '10px',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                }}
+                title="Steer Pitch Up [A]"
+              >
+                ▲ PITCH [A]
+              </button>
+              <button
+                onClick={() => setPitchDeg((p) => Math.max(0, p - 5))}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#ffffff',
+                  fontSize: '10px',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                }}
+                title="Steer Pitch Down [D]"
+              >
+                ▼ PITCH [D]
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
