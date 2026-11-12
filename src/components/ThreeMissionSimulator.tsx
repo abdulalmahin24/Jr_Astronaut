@@ -113,6 +113,8 @@ class AeroAudioSynth {
   private ctx: AudioContext | null = null;
   private engineOsc: OscillatorNode | null = null;
   private engineGain: GainNode | null = null;
+  private noiseNode: AudioBufferSourceNode | null = null;
+  private noiseGain: GainNode | null = null;
   private enabled: boolean = true;
 
   init() {
@@ -127,8 +129,9 @@ class AeroAudioSynth {
 
   setEnabled(val: boolean) {
     this.enabled = val;
-    if (!val && this.engineGain) {
-      this.engineGain.gain.setValueAtTime(0, this.ctx?.currentTime || 0);
+    if (!val) {
+      if (this.engineGain) this.engineGain.gain.setValueAtTime(0, this.ctx?.currentTime || 0);
+      if (this.noiseGain) this.noiseGain.gain.setValueAtTime(0, this.ctx?.currentTime || 0);
     }
   }
 
@@ -139,6 +142,7 @@ class AeroAudioSynth {
     }
 
     if (throttle > 0.02) {
+      // 1. Sub-bass acoustic combustion roar oscillator (35 - 90 Hz)
       if (!this.engineOsc) {
         this.engineOsc = this.ctx.createOscillator();
         this.engineOsc.type = 'sawtooth';
@@ -147,20 +151,78 @@ class AeroAudioSynth {
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(120, this.ctx.currentTime);
+        filter.frequency.setValueAtTime(140, this.ctx.currentTime);
 
         this.engineOsc.connect(filter);
         filter.connect(this.engineGain);
         this.engineGain.connect(this.ctx.destination);
         this.engineOsc.start();
       }
-      const freq = 45 + throttle * 75;
+      const freq = 38 + throttle * 55;
       this.engineOsc.frequency.setValueAtTime(freq, this.ctx.currentTime);
       if (this.engineGain) {
-        this.engineGain.gain.setValueAtTime(Math.min(0.25, throttle * 0.22), this.ctx.currentTime);
+        this.engineGain.gain.setValueAtTime(Math.min(0.32, throttle * 0.28), this.ctx.currentTime);
       }
-    } else if (this.engineGain) {
-      this.engineGain.gain.setValueAtTime(0, this.ctx.currentTime);
+
+      // 2. High-speed turbulent rocket exhaust roar (procedural combustion noise)
+      if (!this.noiseNode) {
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          output[i] = (lastOut + 0.02 * white) / 1.02; // Pinkish combustion rumble
+          lastOut = output[i];
+          output[i] *= 3.5;
+        }
+
+        this.noiseNode = this.ctx.createBufferSource();
+        this.noiseNode.buffer = noiseBuffer;
+        this.noiseNode.loop = true;
+
+        const noiseFilter = this.ctx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(260, this.ctx.currentTime);
+        noiseFilter.Q.setValueAtTime(1.4, this.ctx.currentTime);
+
+        this.noiseGain = this.ctx.createGain();
+        this.noiseGain.gain.setValueAtTime(0, this.ctx.currentTime);
+
+        this.noiseNode.connect(noiseFilter);
+        noiseFilter.connect(this.noiseGain);
+        this.noiseGain.connect(this.ctx.destination);
+        this.noiseNode.start();
+      }
+      if (this.noiseGain) {
+        this.noiseGain.gain.setValueAtTime(Math.min(0.35, throttle * 0.32), this.ctx.currentTime);
+      }
+    } else {
+      if (this.engineGain) {
+        this.engineGain.gain.setValueAtTime(0, this.ctx.currentTime);
+      }
+      if (this.noiseGain) {
+        this.noiseGain.gain.setValueAtTime(0, this.ctx.currentTime);
+      }
+    }
+  }
+
+  playStageSeparationThump() {
+    if (!this.enabled || !this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(110, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(22, this.ctx.currentTime + 0.38);
+      gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.42);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.45);
+    } catch {
+      // ignore
     }
   }
 
@@ -994,6 +1056,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     state.statusColor = '#fbbf24';
     soundFx.playRadioChirp();
     audioSynthRef.current.playQuindarBeep();
+    audioSynthRef.current.playStageSeparationThump();
 
     if (playerVehicleRef.current) {
       if (boosterLeftMeshRef.current && boosterLeftMeshRef.current.parent === playerVehicleRef.current) {
@@ -1031,6 +1094,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     state.statusColor = '#38bdf8';
     soundFx.playRadioChirp();
     audioSynthRef.current.playQuindarBeep();
+    audioSynthRef.current.playStageSeparationThump();
 
     if (playerVehicleRef.current) {
       if (lasTowerMeshRef.current && lasTowerMeshRef.current.parent) {
@@ -1079,6 +1143,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     state.statusColor = '#fbbf24';
     soundFx.playRadioChirp();
     audioSynthRef.current.playQuindarBeep();
+    audioSynthRef.current.playStageSeparationThump();
 
     if (stage1MeshRef.current && playerVehicleRef.current) {
       const worldPos = new THREE.Vector3();
@@ -1765,6 +1830,45 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     sunLight.shadow.bias = -0.0001;
     scene.add(sunLight);
 
+    // 2.2 Photorealistic Radiant Sun Disc & Atmospheric Flare Halo in Florida Coast / Space Sky
+    const sunGroup = new THREE.Group();
+    const sunDir = new THREE.Vector3(280, 480, 220).normalize();
+    sunGroup.position.copy(sunDir.clone().multiplyScalar(4500));
+
+    // Blinding central solar disc
+    const sunCoreGeo = new THREE.SphereGeometry(65, 32, 32);
+    const sunCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const sunCore = new THREE.Mesh(sunCoreGeo, sunCoreMat);
+    sunGroup.add(sunCore);
+
+    // Warm golden corona glare halo
+    const sunHaloGeo = new THREE.CircleGeometry(260, 32);
+    const sunHaloMat = new THREE.MeshBasicMaterial({
+      color: 0xffea85,
+      transparent: true,
+      opacity: 0.65,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
+    const sunHalo = new THREE.Mesh(sunHaloGeo, sunHaloMat);
+    sunHalo.lookAt(new THREE.Vector3(0, 0, 0));
+    sunGroup.add(sunHalo);
+
+    // Vast atmospheric outer lens glare
+    const sunGlareGeo = new THREE.CircleGeometry(580, 32);
+    const sunGlareMat = new THREE.MeshBasicMaterial({
+      color: 0xffedd5,
+      transparent: true,
+      opacity: 0.28,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
+    const sunGlare = new THREE.Mesh(sunGlareGeo, sunGlareMat);
+    sunGlare.lookAt(new THREE.Vector3(0, 0, 0));
+    sunGroup.add(sunGlare);
+
+    scene.add(sunGroup);
+
     const ambientLight = new THREE.AmbientLight(
       isMarsRover
         ? 0x9a3412
@@ -2080,6 +2184,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     let stage2Mesh: THREE.Group | null = null;
     let machDiamondGroup: THREE.Group | null = null;
     const groundPadGroup = new THREE.Group();
+    const cloudDeckGroup = new THREE.Group();
     const gltfLoader = getSharedGLTFLoader();
 
     // Helper to center and scale loaded GLTF
@@ -2269,6 +2374,38 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       groundPadGroup.add(towerGroup);
       groundPadGroup.add(trenchSteamGroup);
       scene.add(groundPadGroup);
+
+      // Tropospheric Cumulus Cloud Deck (2.5 km - 5.5 km altitude) for high-speed ascent parallax
+      const cloudMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.95,
+        metalness: 0.05,
+        transparent: true,
+        opacity: 0.82,
+      });
+      for (let c = 0; c < 42; c++) {
+        const cluster = new THREE.Group();
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 45 + Math.random() * 380;
+        const cy = 80 + Math.random() * 95; // 2.5 - 5.5 km altitude deck
+        cluster.position.set(Math.cos(angle) * dist, cy, Math.sin(angle) * dist);
+
+        const puffCount = 6 + Math.floor(Math.random() * 4);
+        for (let p = 0; p < puffCount; p++) {
+          const pSize = 12 + Math.random() * 22;
+          const pGeo = new THREE.DodecahedronGeometry(pSize, 2);
+          const pMesh = new THREE.Mesh(pGeo, cloudMat);
+          pMesh.position.set(
+            (Math.random() - 0.5) * 35,
+            (Math.random() - 0.5) * 12,
+            (Math.random() - 0.5) * 35
+          );
+          pMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+          cluster.add(pMesh);
+        }
+        cloudDeckGroup.add(cluster);
+      }
+      scene.add(cloudDeckGroup);
 
       // Stage 1 (Booster with Ceramic White Skin & NASA Decals)
       stage1Mesh = new THREE.Group();
@@ -4812,25 +4949,6 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           }
         }
 
-        // Live Astrodynamics Calculation (Ap, Pe, Vs, Vh, Max-Q)
-        const pitchRad = (state.pitchDeg * Math.PI) / 180;
-        const vertRatio = Math.sin(pitchRad);
-        const horizRatio = Math.cos(pitchRad);
-        const vertSpeedMs = Math.round(state.velocityKms * vertRatio * 1000);
-        const horizSpeedKms = Number((state.velocityKms * horizRatio).toFixed(2));
-        const g = 0.00981;
-        const ballisticPeak = state.altitudeKm + ((state.velocityKms * vertRatio) ** 2) / (2 * g);
-        const orbitalProgress = Math.min(1.0, horizSpeedKms / 7.8);
-        const apoapsisKm = Math.round(Math.max(state.altitudeKm, ballisticPeak * (1 + orbitalProgress * 1.4)));
-        const periapsisKm = state.flightPhase === 'orbit' ? 185 : (horizSpeedKms > 5.5 ? Math.round(((horizSpeedKms - 5.5) / 2.3) * 185) : 0);
-        const atmoDensity = Math.exp(-state.altitudeKm / 8.5);
-        const dynamicPressureQ = Math.round(0.5 * atmoDensity * ((state.velocityKms * 1000) ** 2) * 0.001);
-        state.vertSpeedMs = vertSpeedMs;
-        state.horizSpeedKms = horizSpeedKms;
-        state.dynamicPressureQ = dynamicPressureQ;
-        state.apoapsisKm = apoapsisKm;
-        state.periapsisKm = periapsisKm;
-
         // Photorealistic Curved Earth Globe rising smoothly beneath the spacecraft
         if (earthMeshRef.current && atmoMeshRef.current) {
           if (state.altitudeKm > 8) {
@@ -4878,32 +4996,110 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           }
         }
 
+        // ── True Newtonian Aerospace Flight Dynamics (Variable Mass, F=m*a, Aerodynamic Drag, Gravity Turn) ──
         const effectiveThrustMult = state.pumpPressure || 1.0;
         audioSynthRef.current.setEngineThrust(state.throttle);
 
+        // 1. Variable Rocket Mass: Burn fuel -> vehicle gets lighter -> acceleration surges
+        const dryMassKg = isMercury ? 4800 : (state.stage === 1 ? 32000 : 9200);
+        const fuelCapacityKg = isMercury ? 26000 : (state.stage === 1 ? 120000 : 42000);
+        const currentMassKg = dryMassKg + fuelCapacityKg * (state.propellant / 100);
+
+        // 2. Propellant consumption
         if (state.throttle > 0.01 && state.propellant > 0) {
-          const burnRate = 0.85 * (state.stage === 1 ? 1.0 : 0.6) * effectiveThrustMult;
-          state.propellant = Math.max(0, state.propellant - state.throttle * burnRate * dt);
+          const burnDurationSec = isMercury ? 140 : (state.stage === 1 ? 155 : 320);
+          const burnRatePctPerSec = (100 / burnDurationSec) * state.throttle * effectiveThrustMult;
+          state.propellant = Math.max(0, state.propellant - burnRatePctPerSec * dt);
+        } else if (state.propellant <= 0) {
+          state.throttle = 0;
+        }
 
-          const baseThrust = state.throttle * (state.stage === 1 ? 95 : 65) * effectiveThrustMult;
-          const rad = (state.pitchDeg * Math.PI) / 180;
-          const vertThrust = baseThrust * Math.sin(rad);
-          const horizThrust = baseThrust * Math.cos(rad);
+        // 3. Rocket Thrust calculation (Liftoff TWR ~1.32 rising to ~4.5 - 5.2 Gs before MECO)
+        const liftoffMassKg = dryMassKg + fuelCapacityKg;
+        const maxThrustN = liftoffMassKg * 9.81 * 1.32;
+        const currentThrustN = state.throttle * maxThrustN * effectiveThrustMult;
 
-          state.gForce = 1.0 + (baseThrust / 95) * 2.8;
-          state.velocityKms += (horizThrust * 0.08 + (vertThrust - 9.81) * 0.04) * dt;
-          state.velocityKms = Math.max(0, state.velocityKms);
-          state.altitudeKm += (vertThrust * 0.06 + state.velocityKms * 0.8) * dt;
+        // 4. Vector Components
+        const pitchRad = (state.pitchDeg * Math.PI) / 180;
+        const thrustY = currentThrustN * Math.sin(pitchRad);
+        const thrustX = currentThrustN * Math.cos(pitchRad);
 
-          // Exhaust Plume
-          if (machDiamondGroup) {
+        // 5. Atmospheric Density, Aerodynamic Drag & Gravity
+        const localG = 9.81 * ((6371 / (6371 + state.altitudeKm)) ** 2);
+        const atmoDensity = 1.225 * Math.exp(-state.altitudeKm / 8.5);
+        const currentSpeedMs = state.velocityKms * 1000;
+        const dragN = 0.5 * atmoDensity * (currentSpeedMs ** 2) * 1.25;
+
+        // 6. Net Accelerations
+        const aThrust = currentThrustN / currentMassKg;
+        const aY = (thrustY - dragN * Math.sin(pitchRad)) / currentMassKg - localG;
+        const aX = (thrustX - dragN * Math.cos(pitchRad)) / currentMassKg;
+
+        // Dynamic G-Force
+        if (state.altitudeKm <= 0.005 && state.throttle < 0.15) {
+          state.gForce = 1.0;
+        } else {
+          state.gForce = Number((Math.max(0, aThrust / 9.81)).toFixed(2));
+        }
+
+        // 7. Integrate Velocities (m/s)
+        let vy = state.vertSpeedMs || 0;
+        let vx = (state.horizSpeedKms || 0) * 1000;
+
+        if (state.altitudeKm <= 0.001 && aY <= 0 && state.throttle < 0.15) {
+          vy = 0;
+          vx = 0;
+        } else {
+          vy += aY * dt;
+          vx += Math.max(0, aX * dt);
+          if (state.altitudeKm <= 0 && vy < 0) vy = 0;
+        }
+
+        const totalSpeedMs = Math.sqrt(vx * vx + vy * vy);
+        state.velocityKms = totalSpeedMs / 1000;
+        state.vertSpeedMs = Math.round(vy);
+        state.horizSpeedKms = Number((vx / 1000).toFixed(2));
+
+        // 8. Integrate Altitude (km)
+        const dAltKm = (vy * dt) / 1000;
+        state.altitudeKm = Math.max(0, state.altitudeKm + dAltKm);
+
+        // 9. Astrodynamics (Ap, Pe, Max-Q)
+        const ballisticPeak = state.altitudeKm + ((vy / 1000) ** 2) / (2 * (localG / 1000));
+        const orbitalProgress = Math.min(1.0, state.horizSpeedKms / 7.8);
+        const apoapsisKm = Math.round(Math.max(state.altitudeKm, ballisticPeak * (1 + orbitalProgress * 1.4)));
+        const periapsisKm = state.flightPhase === 'orbit' ? 185 : (state.horizSpeedKms > 5.5 ? Math.round(((state.horizSpeedKms - 5.5) / 2.3) * 185) : 0);
+        const dynamicPressureQ = Math.round(0.5 * atmoDensity * (totalSpeedMs ** 2) * 0.001);
+        state.dynamicPressureQ = dynamicPressureQ;
+        state.apoapsisKm = apoapsisKm;
+        state.periapsisKm = periapsisKm;
+
+        if (dynamicPressureQ > 28 && !state.maxQPassed) {
+          state.maxQPassed = true;
+          state.statusText = '⚡ VEHICLE PASSING MAX-Q (MAXIMUM DYNAMIC PRESSURE)';
+          state.statusColor = '#f59e0b';
+        }
+
+        // Dynamic Supersonic Exhaust Plume & Vacuum Underexpansion
+        if (machDiamondGroup) {
+          if (state.throttle > 0.01) {
             machDiamondGroup.visible = true;
-            const flicker = 1 + Math.random() * 0.15;
-            machDiamondGroup.scale.set(flicker, state.throttle * 1.4 * flicker * effectiveThrustMult, flicker);
+            const flicker = 1.0 + Math.random() * 0.12;
+            const vacuumExpansion = 1.0 + Math.min(2.8, Math.max(0, (state.altitudeKm - 15) / 18));
+            machDiamondGroup.scale.set(
+              vacuumExpansion * flicker,
+              state.throttle * 1.5 * flicker * effectiveThrustMult,
+              vacuumExpansion * flicker
+            );
+            plumePointLight.intensity = state.throttle * (22 + Math.random() * 6);
+            plumePointLight.position.set(0, playerVehicle.position.y - 6, 0);
+          } else {
+            machDiamondGroup.visible = false;
+            plumePointLight.intensity = 0;
           }
-          plumePointLight.intensity = state.throttle * (20 + Math.random() * 6);
-          plumePointLight.position.set(0, playerVehicle.position.y - 6, 0);
+        }
 
+        if (state.throttle > 0.01 && state.propellant > 0) {
           // Volumetric Launch Pad Smoke & Steam Deluge Generation
           const isEmittingSmoke = (countdownTime !== null && countdownTime <= 6) || state.throttle > 0.01;
           if (isEmittingSmoke && state.altitudeKm < 35) {
@@ -4932,11 +5128,6 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
             }
             smokeEmitIndex = (smokeEmitIndex + spawnCount) % smokeCount;
           }
-        } else {
-          state.throttle = 0;
-          state.gForce = Math.max(1.0, state.gForce - dt * 3);
-          if (machDiamondGroup) machDiamondGroup.visible = false;
-          plumePointLight.intensity = 0;
         }
 
         // Animate volumetric flame trench steam billows rolling across pad
@@ -4978,11 +5169,14 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         smokeGeo.attributes.position.needsUpdate = true;
         smokeGeo.attributes.size.needsUpdate = true;
 
-        // Vehicle Orientation
+        // Vehicle Orientation & Visual Displacements
         const radRoll = ((90 - state.pitchDeg) * Math.PI) / 180;
         playerVehicle.rotation.z = -radRoll;
-        playerVehicle.position.y = 4 + Math.min(state.altitudeKm * 25, 450);
-        groundPadGroup.position.y = -Math.min(state.altitudeKm * 25, 1400);
+        playerVehicle.position.y = 4 + Math.min(state.altitudeKm * 28, 480);
+        groundPadGroup.position.y = -Math.min(state.altitudeKm * 28, 1600);
+        if (cloudDeckGroup) {
+          cloudDeckGroup.position.y = -Math.min(state.altitudeKm * 28, 1600);
+        }
 
         const effectiveTargetAlt = p.targetAltitudeKm > 0 ? p.targetAltitudeKm : 185;
         const reachedSpaceOrOrbit = isMercury
@@ -5497,13 +5691,14 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           camera.lookAt(lookAtTarget);
         } else if (mission.gameType === 'launch') {
           controls.enabled = false;
-          // Trailing chase camera following behind and below the ascending rocket
+          // Trailing chase camera following behind and below the ascending rocket with aerodynamic buffeting
+          const shakeMag = (state.throttle * 0.12 + Math.min(0.2, (state.dynamicPressureQ || 0) / 15000)) * (Math.random() - 0.5);
           const chaseCamPos = new THREE.Vector3(
-            playerVehicle.position.x,
-            playerVehicle.position.y - 4.0,
-            playerVehicle.position.z + 32.0
+            playerVehicle.position.x + shakeMag,
+            playerVehicle.position.y - 4.2 + shakeMag,
+            playerVehicle.position.z + 30.0 + shakeMag
           );
-          camera.position.lerp(chaseCamPos, dt * 5.0);
+          camera.position.lerp(chaseCamPos, dt * 6.0);
           const lookAtTarget = playerVehicle.position.clone().add(new THREE.Vector3(0, 14.0, 0));
           camera.lookAt(lookAtTarget);
         } else if (mission.gameType === 'rover') {
