@@ -1198,12 +1198,12 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   };
 
   const getStageActionLabel = () => {
-    if (telemetry.throttle === 0) return 'IGNITION';
-    if (hasSideBoosters && !boosterSeparated) return 'SEPARATE BOOSTERS';
-    if (!fairingSeparated) return isMercury ? 'JETTISON LES TOWER' : 'JETTISON FAIRING';
-    if (telemetry.stage === 1) return isMercury ? 'MECO & CAPSULE SEP' : 'MECO & STAGE 2';
-    if (isLunarMission && !tliActive && telemetry.altitudeKm >= 140) return 'TLI MOON BURN';
-    return isMercury ? 'SUBORBITAL APOGEE' : 'CONFIRM ORBIT';
+    if (telemetry.throttle === 0 && telemetry.altitudeKm < 0.2) return '🔥 IGNITE & LAUNCH';
+    if (hasSideBoosters && !boosterSeparated) return '💥 SEPARATE BOOSTERS';
+    if (!fairingSeparated) return isMercury ? '🚀 JETTISON ESCAPE TOWER' : '🛡️ JETTISON FAIRING';
+    if (telemetry.stage === 1) return isMercury ? '⚡ MECO & CAPSULE SEP' : '⚡ MECO & STAGE 2';
+    if (isLunarMission && !tliActive && telemetry.altitudeKm >= 140) return '🌕 TLI MOON BURN';
+    return isMercury ? '🌌 REACHED SPACE ✓' : '🌍 CONFIRM ORBIT ✓';
   };
 
   const handleIgnite = () => {
@@ -6075,94 +6075,98 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
             <span style={{ fontSize: '9px', color: '#94a3b8' }}>[{mission.year}]</span>
           </div>
 
+          {mission.gameType !== 'launch' && (
+            <div
+              style={{
+                background: hudTheme.cardBg,
+                border: `1px solid ${hudTheme.border}`,
+                borderRadius: '8px',
+                padding: '3px 6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                backdropFilter: 'blur(12px)',
+              }}
+            >
+              <Palette size={12} style={{ color: hudTheme.amber }} />
+              {(['REALISTIC_NASA', 'CINEMATIC_GRADE', 'TACTICAL_HUD'] as VisualToneMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => {
+                    setVisualTone(mode);
+                    soundFx.playClick(900);
+                  }}
+                  style={{
+                    background: visualTone === mode ? hudTheme.primary : 'transparent',
+                    color: visualTone === mode ? '#020617' : '#94a3b8',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '3px 6px',
+                    fontSize: '9px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {mode === 'REALISTIC_NASA' ? 'NASA REAL' : mode === 'CINEMATIC_GRADE' ? 'CINEMATIC' : 'TAC-HUD'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Center: Astronaut Academy Age Tier Selector Pill (Hidden during launch to remove clutter) */}
+        {mission.gameType !== 'launch' && (
           <div
             style={{
               background: hudTheme.cardBg,
-              border: `1px solid ${hudTheme.border}`,
-              borderRadius: '8px',
+              border: `1.5px solid ${ageTier === 'cadet' ? '#38bdf8' : ageTier === 'officer' ? '#fbbf24' : '#c084fc'}`,
+              borderRadius: '10px',
               padding: '3px 6px',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
               backdropFilter: 'blur(12px)',
+              boxShadow: `0 0 16px ${ageTier === 'cadet' ? 'rgba(56, 189, 248, 0.3)' : ageTier === 'officer' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(192, 132, 252, 0.3)'}`,
+              pointerEvents: 'auto',
             }}
           >
-            <Palette size={12} style={{ color: hudTheme.amber }} />
-            {(['REALISTIC_NASA', 'CINEMATIC_GRADE', 'TACTICAL_HUD'] as VisualToneMode[]).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => {
-                  setVisualTone(mode);
-                  soundFx.playClick(900);
-                }}
-                style={{
-                  background: visualTone === mode ? hudTheme.primary : 'transparent',
-                  color: visualTone === mode ? '#020617' : '#94a3b8',
-                  border: 'none',
-                  borderRadius: '4px',
-                  padding: '3px 6px',
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {mode === 'REALISTIC_NASA' ? 'NASA REAL' : mode === 'CINEMATIC_GRADE' ? 'CINEMATIC' : 'TAC-HUD'}
-              </button>
-            ))}
+            {(['cadet', 'officer', 'commander'] as AstronautAgeTier[]).map((t) => {
+              const cfg = ASTRONAUT_TIERS[t];
+              const isSelected = ageTier === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => handleSelectAgeTier(t)}
+                  title={`${cfg.label} (${cfg.ageRange}): ${cfg.description}\nNASA Mission: ${cfg.nasaMissionContext}`}
+                  style={{
+                    background: isSelected
+                      ? (t === 'cadet' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : t === 'officer' ? 'linear-gradient(135deg, #d97706, #b45309)' : 'linear-gradient(135deg, #7c3aed, #6d28d9)')
+                      : 'transparent',
+                    color: isSelected ? '#ffffff' : '#94a3b8',
+                    border: isSelected ? '1px solid rgba(255,255,255,0.4)' : '1px solid transparent',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '9.5px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    transition: 'all 0.15s ease',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  <span>{cfg.badge}</span>
+                  <span>{cfg.label}</span>
+                  <span style={{ fontSize: '8px', opacity: 0.8, fontWeight: 700 }}>
+                    ({cfg.ageRange.replace('Ages ', '')})
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </div>
-
-        {/* Center: Astronaut Academy Age Tier Selector Pill */}
-        <div
-          style={{
-            background: hudTheme.cardBg,
-            border: `1.5px solid ${ageTier === 'cadet' ? '#38bdf8' : ageTier === 'officer' ? '#fbbf24' : '#c084fc'}`,
-            borderRadius: '10px',
-            padding: '3px 6px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            backdropFilter: 'blur(12px)',
-            boxShadow: `0 0 16px ${ageTier === 'cadet' ? 'rgba(56, 189, 248, 0.3)' : ageTier === 'officer' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(192, 132, 252, 0.3)'}`,
-            pointerEvents: 'auto',
-          }}
-        >
-          {(['cadet', 'officer', 'commander'] as AstronautAgeTier[]).map((t) => {
-            const cfg = ASTRONAUT_TIERS[t];
-            const isSelected = ageTier === t;
-            return (
-              <button
-                key={t}
-                onClick={() => handleSelectAgeTier(t)}
-                title={`${cfg.label} (${cfg.ageRange}): ${cfg.description}\nNASA Mission: ${cfg.nasaMissionContext}`}
-                style={{
-                  background: isSelected
-                    ? (t === 'cadet' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : t === 'officer' ? 'linear-gradient(135deg, #d97706, #b45309)' : 'linear-gradient(135deg, #7c3aed, #6d28d9)')
-                    : 'transparent',
-                  color: isSelected ? '#ffffff' : '#94a3b8',
-                  border: isSelected ? '1px solid rgba(255,255,255,0.4)' : '1px solid transparent',
-                  borderRadius: '6px',
-                  padding: '4px 10px',
-                  fontSize: '9.5px',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  transition: 'all 0.15s ease',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                <span>{cfg.badge}</span>
-                <span>{cfg.label}</span>
-                <span style={{ fontSize: '8px', opacity: 0.8, fontWeight: 700 }}>
-                  ({cfg.ageRange.replace('Ages ', '')})
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        )}
 
         {/* Center / Right: Camera, Sound & Briefing */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'auto' }}>
@@ -6176,10 +6180,13 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
               gap: '3px',
             }}
           >
-            {(['orbit', 'chase', 'cockpit', 'distant', 'pad'] as CameraMode[]).map((mode) => {
+            {(mission.gameType === 'launch'
+              ? (['chase', 'orbit', 'cockpit'] as CameraMode[])
+              : (['orbit', 'chase', 'cockpit', 'distant', 'pad'] as CameraMode[])
+            ).map((mode) => {
               const label =
                 mode === 'orbit'
-                  ? '🌐 360° ORBIT'
+                  ? '🌐 ORBIT'
                   : mode === 'chase'
                   ? '🚀 CHASE'
                   : mode === 'distant'
@@ -6196,7 +6203,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
                   : mode === 'distant'
                   ? 'Distant: Wide external cinematic view'
                   : mode === 'cockpit'
-                  ? 'Cockpit: First-person astronaut / driver perspective'
+                  ? 'Cockpit: First-person astronaut perspective'
                   : 'Observation: Fixed observation post';
 
               return (
@@ -6372,88 +6379,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         </div>
       )}
 
-      {/* ─── LIVE ASTRODYNAMICS TELEMETRY HUD (ELLIPSE ROCKET SIMULATOR) ─── */}
-      {mission.gameType === 'launch' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '84px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 24,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            background: 'rgba(11, 19, 43, 0.92)',
-            border: '1px solid rgba(56, 189, 248, 0.4)',
-            borderRadius: '12px',
-            padding: '6px 16px',
-            backdropFilter: 'blur(12px)',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.75)',
-            pointerEvents: 'none',
-            fontFamily: 'monospace',
-          }}
-        >
-          {/* Apoapsis */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#94a3b8', fontWeight: 800 }}>APOAPSIS (Ap)</div>
-            <div style={{ fontSize: '12px', fontWeight: 900, color: '#38bdf8' }}>
-              {(telemetry.apoapsisKm || Math.round(telemetry.altitudeKm)).toLocaleString()} <span style={{ fontSize: '8.5px' }}>KM</span>
-            </div>
-          </div>
 
-          <div style={{ width: '1px', height: '20px', background: 'rgba(255, 255, 255, 0.15)' }} />
-
-          {/* Periapsis */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#94a3b8', fontWeight: 800 }}>PERIAPSIS (Pe)</div>
-            <div style={{ fontSize: '12px', fontWeight: 900, color: (telemetry.periapsisKm || 0) > 0 ? '#34d399' : '#64748b' }}>
-              {(telemetry.periapsisKm || 0).toLocaleString()} <span style={{ fontSize: '8.5px' }}>KM</span>
-            </div>
-          </div>
-
-          <div style={{ width: '1px', height: '20px', background: 'rgba(255, 255, 255, 0.15)' }} />
-
-          {/* Vertical Speed */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#94a3b8', fontWeight: 800 }}>VERT SPEED (Vs)</div>
-            <div style={{ fontSize: '12px', fontWeight: 900, color: '#f8fafc' }}>
-              {(telemetry.vertSpeedMs || 0) >= 0 ? '+' : ''}{(telemetry.vertSpeedMs || 0).toLocaleString()} <span style={{ fontSize: '8.5px', color: '#38bdf8' }}>M/S</span>
-            </div>
-          </div>
-
-          <div style={{ width: '1px', height: '20px', background: 'rgba(255, 255, 255, 0.15)' }} />
-
-          {/* Horizontal Speed */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '8px', color: '#94a3b8', fontWeight: 800 }}>HORIZ SPEED (Vh)</div>
-            <div style={{ fontSize: '12px', fontWeight: 900, color: '#f8fafc' }}>
-              {(telemetry.horizSpeedKms || 0).toFixed(2)} <span style={{ fontSize: '8.5px', color: '#38bdf8' }}>KM/S</span>
-            </div>
-          </div>
-
-          {/* Max-Q Alert Badge */}
-          {(telemetry.dynamicPressureQ || 0) > 30 && telemetry.altitudeKm < 22 && (
-            <div
-              style={{
-                padding: '3px 8px',
-                borderRadius: '6px',
-                background: 'rgba(239, 68, 68, 0.35)',
-                border: '1px solid #ef4444',
-                color: '#fca5a5',
-                fontSize: '9px',
-                fontWeight: 900,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <span>⚠️</span>
-              <span>MAX-Q ({telemetry.dynamicPressureQ} kPa)</span>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ─── KÁRMÁN LINE SPACE CROSSING BANNER ─── */}
       {mission.gameType === 'launch' && telemetry.altitudeKm >= 100 && (
@@ -6490,8 +6416,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         <div
           style={{
             position: 'absolute',
-            left: '14px',
-            bottom: '84px',
+            left: '18px',
+            bottom: '24px',
             zIndex: 28,
             display: 'flex',
             flexDirection: 'column',
@@ -6645,8 +6571,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         <div
           style={{
             position: 'absolute',
-            right: '16px',
-            bottom: '84px',
+            right: '18px',
+            bottom: '24px',
             zIndex: 28,
             display: 'flex',
             flexDirection: 'column',
@@ -6747,8 +6673,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       <div
         style={{
           position: 'absolute',
-          left: mission.gameType === 'launch' ? '78px' : '14px',
-          bottom: '84px',
+          left: mission.gameType === 'launch' ? '84px' : '14px',
+          bottom: mission.gameType === 'launch' ? '24px' : '84px',
           background: hudTheme.cardBg,
           border: `1px solid ${hudTheme.border}`,
           borderRadius: '12px',
@@ -6861,9 +6787,21 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
           <span style={{ color: '#94a3b8', fontSize: '11px' }}>VELOCITY:</span>
           <strong style={{ color: hudTheme.amber, fontSize: '12px' }}>
-            {mission.gameType === 'lunar_landing' ? `${Math.abs(telemetry.velocityKms).toFixed(1)} m/s` : `${telemetry.velocityKms.toFixed(2)} km/s`}
+            {mission.gameType === 'lunar_landing'
+              ? `${Math.abs(telemetry.velocityKms).toFixed(1)} m/s`
+              : (telemetry.velocityKms >= 1
+                ? `${telemetry.velocityKms.toFixed(2)} km/s`
+                : `${Math.round(telemetry.velocityKms * 1000)} m/s`)}
           </strong>
         </div>
+        {mission.gameType === 'launch' && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+            <span style={{ color: '#94a3b8', fontSize: '11px' }}>MACH:</span>
+            <strong style={{ color: '#38bdf8', fontSize: '12px' }}>
+              {(telemetry.velocityKms * 1000 / 340).toFixed(1)}
+            </strong>
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
           <span style={{ color: '#94a3b8', fontSize: '11px' }}>G-FORCE:</span>
           <strong style={{ color: telemetry.gForce > 3.0 ? '#ef4444' : hudTheme.textColor, fontSize: '12px' }}>
@@ -7199,80 +7137,25 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         </div>
       )}
 
-      {/* ─── ON-SCREEN LIFTOFF READY BANNER (ELLIPSE ROCKET SIMULATOR MINIMAL STYLE) ─── */}
-      {mission.gameType === 'launch' && telemetry.altitudeKm < 0.2 && telemetry.throttle === 0 && (
+      {/* ─── BOTTOM CO-OP ROLE-SPECIFIC CONTROL BAR (Only for non-launch missions or active multiplayer) ─── */}
+      {(mission.gameType !== 'launch' || (multiplayerActive && roomState)) && (
         <div
           style={{
             position: 'absolute',
-            bottom: '84px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'rgba(2, 6, 23, 0.92)',
-            border: '1.5px solid #22c55e',
-            borderRadius: '24px',
-            padding: '6px 20px',
+            bottom: '12px',
+            left: '14px',
+            right: '14px',
+            background: hudTheme.cardBg,
+            border: `1px solid ${hudTheme.border}`,
+            borderRadius: '12px',
+            padding: '8px 14px',
             display: 'flex',
             alignItems: 'center',
-            gap: '14px',
-            zIndex: 25,
-            boxShadow: '0 0 24px rgba(34, 197, 94, 0.5)',
-            backdropFilter: 'blur(12px)',
-            pointerEvents: 'auto',
+            justifyContent: 'space-between',
+            zIndex: 30,
+            backdropFilter: 'blur(14px)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '16px' }}>🚀</span>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '11px', fontWeight: 900, color: '#f8fafc', letterSpacing: '0.04em' }}>
-                CAPE CANAVERAL LAUNCH PAD READY
-              </span>
-              <span style={{ fontSize: '9px', color: '#94a3b8' }}>
-                Drag throttle slider to 100% (Left) or Hit [SPACE] to Launch
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={handleIgnite}
-            style={{
-              background: 'linear-gradient(135deg, #16a34a, #15803d)',
-              border: '1.5px solid #22c55e',
-              color: '#fff',
-              padding: '6px 18px',
-              borderRadius: '16px',
-              fontWeight: 900,
-              fontSize: '11px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 0 16px rgba(34, 197, 94, 0.7)',
-              animation: 'pulse 1.8s infinite',
-            }}
-          >
-            <span>🔥</span>
-            <span>LAUNCH NOW [SPACE]</span>
-          </button>
-        </div>
-      )}
-
-      {/* ─── BOTTOM CO-OP ROLE-SPECIFIC CONTROL BAR ─────────────── */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '12px',
-          left: '14px',
-          right: '14px',
-          background: hudTheme.cardBg,
-          border: `1px solid ${hudTheme.border}`,
-          borderRadius: '12px',
-          padding: '8px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          zIndex: 30,
-          backdropFilter: 'blur(14px)',
-        }}
-      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div
             style={{
@@ -8107,6 +7990,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           ABORT
         </button>
       </div>
+      )}
 
       {/* ─── NO MAN'S SKY & MORPHITE GEOLOGICAL SCAN ENCYCLOPEDIA MODAL ─── */}
       {scannedLore && (
