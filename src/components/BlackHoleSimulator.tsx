@@ -199,7 +199,7 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
     const starMesh = new THREE.Mesh(starGeo, starMat);
     scene.add(starMesh);
 
-    // 2. EVENT HORIZON (THE BLACK HOLE SHADOW)
+    // 2. EVENT HORIZON (THE PITCH-BLACK RELATIVISTIC SHADOW)
     const bhRadius = 2.2;
     const shadowGeo = new THREE.SphereGeometry(bhRadius, 64, 64);
     const shadowMat = new THREE.MeshBasicMaterial({
@@ -208,8 +208,8 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
     const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
     scene.add(shadowMesh);
 
-    // 3. EINSTEIN PHOTON RING (Thin brilliant halo right at photon sphere)
-    const photonRingGeo = new THREE.RingGeometry(bhRadius * 1.01, bhRadius * 1.14, 128);
+    // 3. EINSTEIN PHOTON SPHERE RING (Infinitesimally thin brilliant incandescent filament)
+    const photonRingGeo = new THREE.RingGeometry(bhRadius * 1.01, bhRadius * 1.12, 192);
     const photonRingMat = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
       transparent: true,
@@ -225,83 +225,290 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
         varying vec2 vUv;
         void main() {
           float dist = distance(vUv, vec2(0.5));
-          float alpha = smoothstep(0.49, 0.44, dist) * smoothstep(0.25, 0.38, dist);
-          vec3 col = vec3(1.0, 0.92, 0.75) * 2.5;
-          gl_FragColor = vec4(col, alpha * 0.95);
+          float alpha = smoothstep(0.49, 0.465, dist) * smoothstep(0.38, 0.44, dist);
+          vec3 col = vec3(1.0, 0.95, 0.82) * 4.2;
+          gl_FragColor = vec4(col, alpha * 0.98);
         }
       `,
     });
     const photonRingMesh = new THREE.Mesh(photonRingGeo, photonRingMat);
     scene.add(photonRingMesh);
 
-    // 4. ACCRETION DISK (KEPLERIAN ROTATING PROCEDURAL PLASMA DISK)
-    // Create animated procedural plasma texture
-    const diskCanvas = document.createElement('canvas');
-    diskCanvas.width = 1024;
-    diskCanvas.height = 1024;
-    const dCtx = diskCanvas.getContext('2d');
-    if (dCtx) {
-      const grad = dCtx.createRadialGradient(512, 512, 140, 512, 512, 512);
-      grad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)'); // ISCO peak
-      grad.addColorStop(0.12, 'rgba(255, 220, 140, 0.95)');
-      grad.addColorStop(0.35, 'rgba(255, 140, 40, 0.85)');
-      grad.addColorStop(0.65, 'rgba(210, 60, 20, 0.5)');
-      grad.addColorStop(0.9, 'rgba(120, 20, 10, 0.15)');
-      grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-      dCtx.fillStyle = grad;
-      dCtx.fillRect(0, 0, 1024, 1024);
+    // 4. KIP THORNE / INTERSTELLAR RELATIVISTIC ACCRETION DISK SHADER
+    // Multi-octave Simplex noise, differential Keplerian shear, and exact relativistic Doppler beaming
+    const accretionVertexShader = `
+      varying vec3 vWorldPos;
+      varying vec2 vUv;
+      varying vec3 vNormal;
 
-      // Swirling spiral gas filaments
-      for (let i = 0; i < 70; i++) {
-        dCtx.strokeStyle = 'rgba(255, 240, 200, 0.15)';
-        dCtx.lineWidth = Math.random() * 6 + 2;
-        dCtx.beginPath();
-        const startR = 150 + Math.random() * 320;
-        const startA = Math.random() * Math.PI * 2;
-        for (let a = 0; a < 2.5; a += 0.1) {
-          const r = startR + a * 40;
-          const th = startA + a;
-          const x = 512 + Math.cos(th) * r;
-          const y = 512 + Math.sin(th) * r;
-          if (a === 0) dCtx.moveTo(x, y);
-          else dCtx.lineTo(x, y);
-        }
-        dCtx.stroke();
+      void main() {
+        vUv = uv;
+        vNormal = normalize(normalMatrix * normal);
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPos = worldPos.xyz;
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
       }
-    }
-    const diskTexture = new THREE.CanvasTexture(diskCanvas);
-    diskTexture.wrapS = THREE.RepeatWrapping;
-    diskTexture.wrapT = THREE.RepeatWrapping;
+    `;
 
-    // Horizontal Primary Accretion Disk
-    const diskGeo = new THREE.RingGeometry(bhRadius * 1.35, bhRadius * 4.6, 128);
-    const diskMat = new THREE.MeshBasicMaterial({
-      map: diskTexture,
+    const accretionFragmentShader = `
+      uniform float uTime;
+      uniform float uSpin;
+      uniform float uBrightness;
+      uniform float uLensing;
+      uniform vec3 uCameraPos;
+      uniform float uInnerRadius;
+      uniform float uOuterRadius;
+
+      varying vec3 vWorldPos;
+      varying vec2 vUv;
+      varying vec3 vNormal;
+
+      vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+      vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+      vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+      float snoise(vec2 v) {
+        const vec4 C = vec4(0.211324865405187,
+                            0.366025403784439,
+                           -0.577350269189626,
+                            0.024390243902439);
+        vec2 i  = floor(v + dot(v, C.yy));
+        vec2 x0 = v -   i + dot(i, C.xx);
+        vec2 i1;
+        i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+        vec4 x12 = x0.xyxy + C.xxzz;
+        x12.xy -= i1;
+        i = mod289(i);
+        vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+              + i.x + vec3(0.0, i1.x, 1.0));
+        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+        m = m*m;
+        m = m*m;
+        vec3 x = 2.0 * fract(p * C.www) - 1.0;
+        vec3 h = abs(x) - 0.5;
+        vec3 ox = floor(x + 0.5);
+        vec3 a0 = x - ox;
+        m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+        vec3 g;
+        g.x  = a0.x  * x0.x  + h.x  * x0.y;
+        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+        return 130.0 * dot(m, g);
+      }
+
+      float fbm(vec2 p) {
+        float total = 0.0;
+        float amp = 0.52;
+        for (int i = 0; i < 4; i++) {
+          total += snoise(p) * amp;
+          p *= 2.12;
+          amp *= 0.46;
+        }
+        return total;
+      }
+
+      void main() {
+        float r = length(vWorldPos.xz);
+        if (r < 0.01) r = length(vWorldPos.xy);
+
+        // Sharp ISCO inner edge, soft outer boundary
+        float innerFade = smoothstep(uInnerRadius * 0.98, uInnerRadius + 0.32, r);
+        float outerFade = smoothstep(uOuterRadius, uOuterRadius - 1.6, r);
+        float diskAlpha = innerFade * outerFade;
+        if (diskAlpha <= 0.001) discard;
+
+        // Keplerian differential shear
+        float phi = atan(vWorldPos.z, vWorldPos.x);
+        float omega = (3.2 / pow(max(0.5, r), 1.35)) * (1.0 + uSpin * 0.65);
+        float shearedAngle = phi + uTime * omega;
+
+        // Turbulent plasma filaments
+        vec2 plasmaUv = vec2(shearedAngle * 3.6, r * 2.1);
+        float turbulence = fbm(plasmaUv);
+        float density = clamp(0.42 + turbulence * 0.68, 0.0, 1.6);
+
+        // Relativistic Doppler Beaming (Special Relativity)
+        // Counter-clockwise plasma rotation in XZ plane
+        vec3 orbitVelocity = normalize(vec3(-vWorldPos.z, 0.0, vWorldPos.x));
+        vec3 toCam = normalize(uCameraPos - vWorldPos);
+        float betaParallel = dot(orbitVelocity, toCam) * clamp(1.65 / sqrt(max(1.0, r)), 0.15, 0.82) * (1.0 + uSpin * 0.25);
+        
+        float beta2 = clamp(betaParallel * betaParallel, 0.0, 0.85);
+        float gamma = 1.0 / sqrt(1.0 - beta2);
+        float doppler = 1.0 / (gamma * (1.0 - betaParallel * 0.94));
+        float beaming = pow(clamp(doppler, 0.12, 5.2), 3.8 * uLensing);
+
+        // Gravitational Redshift (General Relativity)
+        float gravRedshift = sqrt(clamp(1.0 - (uInnerRadius * 0.82) / max(0.1, r), 0.06, 1.0));
+
+        // Blackbody Color Spectrum
+        float normR = clamp((r - uInnerRadius) / max(0.1, uOuterRadius - uInnerRadius), 0.0, 1.0);
+        vec3 colorCore = vec3(1.25, 1.2, 1.1) * 4.5;   // 10^7 K ISCO incandescent white
+        vec3 colorInner = vec3(1.0, 0.9, 0.58) * 2.6;   // 10^6 K pale electric gold
+        vec3 colorMid = vec3(1.0, 0.52, 0.18) * 1.7;    // 10^5 K stellar amber
+        vec3 colorOuter = vec3(0.72, 0.14, 0.04);       // 10^4 K deep crimson outer gas
+
+        vec3 baseColor;
+        if (normR < 0.16) {
+          baseColor = mix(colorCore, colorInner, normR / 0.16);
+        } else if (normR < 0.52) {
+          baseColor = mix(colorInner, colorMid, (normR - 0.16) / 0.36);
+        } else {
+          baseColor = mix(colorMid, colorOuter, (normR - 0.52) / 0.48);
+        }
+
+        // Doppler Color Shift: Approaching side boosted white/blue; Receding side dimmed dark amber/red
+        if (beaming > 1.0) {
+          baseColor = mix(baseColor, vec3(0.85, 1.15, 1.5) * 3.0, clamp((beaming - 1.0) * 0.45, 0.0, 0.85));
+        } else {
+          baseColor = mix(baseColor, vec3(0.45, 0.08, 0.015), clamp((1.0 - beaming) * 0.75, 0.0, 0.92));
+        }
+
+        vec3 finalColor = baseColor * density * beaming * gravRedshift * uBrightness;
+        float finalAlpha = clamp(diskAlpha * (0.68 + density * 0.42) * min(2.5, beaming), 0.0, 0.96);
+
+        gl_FragColor = vec4(finalColor, finalAlpha);
+      }
+    `;
+
+    // 4.1 Horizontal Equatorial Accretion Disk
+    const innerRadius = bhRadius * 1.25;
+    const outerRadius = bhRadius * 4.8;
+    const diskGeo = new THREE.RingGeometry(innerRadius, outerRadius, 192, 32);
+    const diskShaderMat = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      uniforms: {
+        uTime: { value: 0 },
+        uSpin: { value: paramsRef.current.spinParameter },
+        uBrightness: { value: paramsRef.current.diskBrightness },
+        uLensing: { value: paramsRef.current.lensingStrength },
+        uCameraPos: { value: camera.position.clone() },
+        uInnerRadius: { value: innerRadius },
+        uOuterRadius: { value: outerRadius },
+      },
+      vertexShader: accretionVertexShader,
+      fragmentShader: accretionFragmentShader,
     });
-    const diskMesh = new THREE.Mesh(diskGeo, diskMat);
+    const diskMesh = new THREE.Mesh(diskGeo, diskShaderMat);
     diskMesh.rotation.x = Math.PI / 2;
     scene.add(diskMesh);
 
-    // 5. WARPED SECONDARY ACCRETION DISK (INTERSTELLAR GRAVITATIONAL LENSING HALO)
-    // Relativistic light deflection creates visual upper and lower halos around the shadow
-    const haloGeo = new THREE.RingGeometry(bhRadius * 1.15, bhRadius * 2.8, 128);
-    const haloMat = new THREE.MeshBasicMaterial({
-      map: diskTexture,
+    // 4.2 Helper to construct Kip Thorne Upper & Lower Lensed Accretion Arches
+    const createLensingArchGeometry = (isUpper: boolean, inR: number, outR: number) => {
+      const segs = 144;
+      const radSegs = 20;
+      const geom = new THREE.BufferGeometry();
+      const positions: number[] = [];
+      const uvs: number[] = [];
+      const indices: number[] = [];
+
+      for (let j = 0; j <= radSegs; j++) {
+        const v = j / radSegs;
+        const r = inR + v * (outR - inR);
+        for (let i = 0; i <= segs; i++) {
+          const u = i / segs;
+          const angle = Math.PI * u; // 0 to PI (sweep from left to right flank)
+          const x = -r * Math.cos(angle);
+          const archY = (isUpper ? 1.0 : -1.0) * r * Math.sin(angle) * 0.96;
+          const archZ = -Math.sin(angle) * (r * 0.38); // curved behind the black hole shadow
+          positions.push(x, archY, archZ);
+          uvs.push(u, v);
+        }
+      }
+
+      for (let j = 0; j < radSegs; j++) {
+        for (let i = 0; i < segs; i++) {
+          const a = j * (segs + 1) + i;
+          const b = (j + 1) * (segs + 1) + i;
+          const c = (j + 1) * (segs + 1) + (i + 1);
+          const d = j * (segs + 1) + (i + 1);
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+        }
+      }
+
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geom.setIndex(indices);
+      geom.computeVertexNormals();
+      return geom;
+    };
+
+    // Upper Lensed Arch (light bent over the top of the event horizon)
+    const upperArchGeo = createLensingArchGeometry(true, innerRadius * 0.98, outerRadius * 0.88);
+    const upperArchMesh = new THREE.Mesh(upperArchGeo, diskShaderMat);
+    scene.add(upperArchMesh);
+
+    // Lower Lensed Arch (light bent beneath the event horizon)
+    const lowerArchGeo = createLensingArchGeometry(false, innerRadius * 0.98, outerRadius * 0.88);
+    const lowerArchMesh = new THREE.Mesh(lowerArchGeo, diskShaderMat);
+    scene.add(lowerArchMesh);
+
+    // 5. KERR RELATIVISTIC POLAR PLASMA JETS (Blandford-Znajek Synchrotron Emission)
+    const jetGeo = new THREE.CylinderGeometry(0.35, 4.2, 24, 32, 1, true);
+    const jetMat = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
       transparent: true,
       blending: THREE.AdditiveBlending,
-      opacity: 0.75,
       depthWrite: false,
+      uniforms: {
+        uTime: { value: 0 },
+        uSpin: { value: paramsRef.current.spinParameter },
+        uBrightness: { value: paramsRef.current.diskBrightness },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vPos;
+        void main() {
+          vUv = uv;
+          vPos = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform float uSpin;
+        uniform float uBrightness;
+        varying vec2 vUv;
+        varying vec3 vPos;
+        void main() {
+          float distY = abs(vUv.y - 0.5) * 2.0;
+          float helical = sin(vUv.x * 24.0 + uTime * 6.0 + distY * 12.0) * 0.5 + 0.5;
+          float alpha = smoothstep(1.0, 0.1, distY) * smoothstep(0.0, 0.35, distY) * (0.35 + helical * 0.65);
+          vec3 jetCol = mix(vec3(0.0, 0.85, 1.0), vec3(0.7, 0.25, 1.0), distY);
+          float intensity = uSpin * uBrightness * 1.8;
+          gl_FragColor = vec4(jetCol * 2.5 * intensity, alpha * min(0.85, intensity));
+        }
+      `,
     });
-    const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-    scene.add(haloMesh);
+    const northJet = new THREE.Mesh(jetGeo, jetMat);
+    northJet.position.y = 12;
+    scene.add(northJet);
 
-    // 6. ACCRETION DISK PARTICLES (INSPIRALING HIGH ENERGY IONS)
-    const particleCount = 1200;
+    const southJet = new THREE.Mesh(jetGeo, jetMat);
+    southJet.position.y = -12;
+    southJet.rotation.x = Math.PI;
+    scene.add(southJet);
+
+    // 6. ACCRETION DISK PARTICLES (INSPIRALING HIGH ENERGY IONS WITH CIRCULAR GLOW SPRITES)
+    const pCanvas = document.createElement('canvas');
+    pCanvas.width = 64;
+    pCanvas.height = 64;
+    const pCtx = pCanvas.getContext('2d');
+    if (pCtx) {
+      const pGrad = pCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      pGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      pGrad.addColorStop(0.25, 'rgba(255, 220, 140, 0.85)');
+      pGrad.addColorStop(0.6, 'rgba(255, 120, 30, 0.35)');
+      pGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      pCtx.fillStyle = pGrad;
+      pCtx.fillRect(0, 0, 64, 64);
+    }
+    const pTexture = new THREE.CanvasTexture(pCanvas);
+
+    const particleCount = 2000;
     const pGeo = new THREE.BufferGeometry();
     const pPositions = new Float32Array(particleCount * 3);
     const pColors = new Float32Array(particleCount * 3);
@@ -309,9 +516,9 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
     const pRadii = new Float32Array(particleCount);
 
     for (let i = 0; i < particleCount; i++) {
-      const r = bhRadius * 1.3 + Math.random() * (bhRadius * 3.3);
+      const r = innerRadius + Math.random() * (outerRadius - innerRadius);
       const angle = Math.random() * Math.PI * 2;
-      const y = (Math.random() - 0.5) * 0.15 * (r / bhRadius);
+      const y = (Math.random() - 0.5) * 0.18 * (r / bhRadius);
 
       pRadii[i] = r;
       pAngles[i] = angle;
@@ -319,8 +526,7 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
       pPositions[i * 3 + 1] = y;
       pPositions[i * 3 + 2] = Math.sin(angle) * r;
 
-      // Color gradient: hot white near center, gold/red outward
-      const norm = (r - bhRadius * 1.3) / (bhRadius * 3.3);
+      const norm = (r - innerRadius) / (outerRadius - innerRadius);
       pColors[i * 3] = 1.0;
       pColors[i * 3 + 1] = Math.max(0.2, 0.95 - norm * 0.7);
       pColors[i * 3 + 2] = Math.max(0.1, 0.8 - norm * 0.8);
@@ -330,7 +536,8 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
     pGeo.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
 
     const pMat = new THREE.PointsMaterial({
-      size: 0.12,
+      size: 0.22,
+      map: pTexture,
       vertexColors: true,
       transparent: true,
       blending: THREE.AdditiveBlending,
@@ -384,12 +591,14 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
     // Animation Loop
     let animId: number;
     let lastTime = performance.now();
+    let totalElapsedSec = 0;
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const now = performance.now();
       const delta = Math.min(0.1, (now - lastTime) / 1000);
       lastTime = now;
+      totalElapsedSec += delta;
 
       const p = paramsRef.current;
 
@@ -409,29 +618,33 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
       );
       camera.lookAt(0, 0, 0);
 
-      // Rotate primary accretion disk
-      diskMesh.rotation.z += delta * 0.35 * (1.0 + p.spinParameter * 0.8);
+      // Update Relativistic Accretion Shader Uniforms
+      diskShaderMat.uniforms.uTime.value = totalElapsedSec;
+      diskShaderMat.uniforms.uCameraPos.value.copy(camera.position);
+      diskShaderMat.uniforms.uSpin.value = p.spinParameter;
+      diskShaderMat.uniforms.uBrightness.value = p.diskBrightness;
+      diskShaderMat.uniforms.uLensing.value = p.lensingStrength;
 
-      // Warped halo orientation: always points toward camera normal to simulate curved light
-      haloMesh.lookAt(camera.position);
+      // Update Polar Jets
+      jetMat.uniforms.uTime.value = totalElapsedSec;
+      jetMat.uniforms.uSpin.value = p.spinParameter;
+      jetMat.uniforms.uBrightness.value = p.diskBrightness;
+      northJet.visible = p.spinParameter > 0.25;
+      southJet.visible = p.spinParameter > 0.25;
 
-      // Photon ring always faces camera
+      // Photon ring always faces camera normal
       photonRingMesh.lookAt(camera.position);
 
-      // Animate orbiting plasma particles (Keplerian speed ~ 1/r^1.5)
+      // Animate orbiting plasma particles (Keplerian speed ~ 1/r^1.35)
       const posAttr = pGeo.attributes.position as THREE.BufferAttribute;
       for (let i = 0; i < particleCount; i++) {
         const r = pRadii[i];
-        const vOmega = (3.5 / Math.pow(r, 1.4)) * (1.0 + p.spinParameter * 0.6);
+        const vOmega = (3.5 / Math.pow(r, 1.35)) * (1.0 + p.spinParameter * 0.65);
         pAngles[i] += delta * vOmega;
         posAttr.setX(i, Math.cos(pAngles[i]) * r);
         posAttr.setZ(i, Math.sin(pAngles[i]) * r);
       }
       posAttr.needsUpdate = true;
-
-      // Doppler boosting brightness modulation
-      diskMat.opacity = Math.min(1.0, 0.85 * p.diskBrightness);
-      haloMat.opacity = Math.min(1.0, 0.7 * p.diskBrightness * p.lensingStrength);
 
       renderer.render(scene, camera);
     };
@@ -455,12 +668,14 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
       photonRingGeo.dispose();
       photonRingMat.dispose();
       diskGeo.dispose();
-      diskMat.dispose();
-      diskTexture.dispose();
-      haloGeo.dispose();
-      haloMat.dispose();
+      diskShaderMat.dispose();
+      upperArchGeo.dispose();
+      lowerArchGeo.dispose();
+      jetGeo.dispose();
+      jetMat.dispose();
       pGeo.dispose();
       pMat.dispose();
+      pTexture.dispose();
 
       if (dom.contains(renderer.domElement)) {
         dom.removeChild(renderer.domElement);

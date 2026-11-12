@@ -1322,37 +1322,55 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         state.statusColor = '#f59e0b';
       }
     } else if (action === 'focus_in') {
-      state.keys['w'] = true;
-      setTimeout(() => { state.keys['w'] = false; }, 300);
+      const state = simStateRef.current;
+      state.telescopeFocus = Math.min(100, state.telescopeFocus + 15);
       audioSynthRef.current.playRcsPuff();
+      soundFx.playClick(900);
     } else if (action === 'focus_out') {
-      state.keys['s'] = true;
-      setTimeout(() => { state.keys['s'] = false; }, 300);
+      const state = simStateRef.current;
+      state.telescopeFocus = Math.max(0, state.telescopeFocus - 15);
+      audioSynthRef.current.playRcsPuff();
+      soundFx.playClick(700);
     } else if (action === 'telescope_capture') {
-      if (state.telescopeFocus >= 88) {
+      const state = simStateRef.current;
+      if (state.telescopeFocus >= 80) {
         state.isFinished = true;
         soundFx.playRadioChirp();
         soundFx.playVictory();
-        confetti({ particleCount: 160, spread: 85 });
+        confetti({ particleCount: 180, spread: 85 });
         onSuccess(960);
       } else {
-        soundFx.playAlarm();
-        state.statusText = 'CANNOT CAPTURE: OPTICAL FOCUS MUST REACH 90%+ (USE [W] / FOCUS IN)';
-        state.statusColor = '#ef4444';
+        // Auto-align assist on first click if focus not yet at 80%
+        state.telescopeFocus = 95;
+        state.statusText = '🎯 AUTO-FOCUS ENGAGED (95% LOCKED) · PRESS [SPACE] OR CLICK CAPTURE NOW!';
+        state.statusColor = '#22c55e';
+        soundFx.playClick(950);
       }
     } else if (action === 'deep_thrust_fwd') {
-      state.keys['w'] = true;
-      setTimeout(() => { state.keys['w'] = false; }, 350);
+      const state = simStateRef.current;
+      if (playerVehicleRef.current && targetObjectRef.current) {
+        playerVehicleRef.current.position.z = Math.max(targetObjectRef.current.position.z + 15, playerVehicleRef.current.position.z - 18);
+        state.distanceM = Math.max(0, playerVehicleRef.current.position.z - (targetObjectRef.current.position.z + 10));
+      } else {
+        state.distanceM = Math.max(5, state.distanceM - 18);
+      }
       audioSynthRef.current.playRcsPuff();
+      soundFx.playReactorStart();
     } else if (action === 'deep_thrust_rev') {
-      state.keys['s'] = true;
-      setTimeout(() => { state.keys['s'] = false; }, 350);
+      const state = simStateRef.current;
+      if (playerVehicleRef.current && targetObjectRef.current) {
+        playerVehicleRef.current.position.z += 12;
+        state.distanceM = Math.max(0, playerVehicleRef.current.position.z - (targetObjectRef.current.position.z + 10));
+      } else {
+        state.distanceM += 12;
+      }
+      soundFx.playClick(750);
     } else if (action === 'deep_rcs_left') {
-      state.keys['a'] = true;
-      setTimeout(() => { state.keys['a'] = false; }, 250);
+      if (playerVehicleRef.current) playerVehicleRef.current.position.x -= 3;
+      audioSynthRef.current.playRcsPuff();
     } else if (action === 'deep_rcs_right') {
-      state.keys['d'] = true;
-      setTimeout(() => { state.keys['d'] = false; }, 250);
+      if (playerVehicleRef.current) playerVehicleRef.current.position.x += 3;
+      audioSynthRef.current.playRcsPuff();
     } else if (action === 'rover_fwd') {
       if (state.roverLandingPhase !== 'landed') {
         handleSkipToDrive();
@@ -5617,10 +5635,10 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       // 6.5 DEEP SPACE INTERPLANETARY FLYBY
       // ─────────────────────────────────────────────────────────
       else if (mission.gameType === 'deep_space') {
-        if (state.keys['w'] || state.keys['arrowup']) playerVehicle.position.z -= 15 * dt;
-        if (state.keys['s'] || state.keys['arrowdown']) playerVehicle.position.z += 10 * dt;
-        if (state.keys['a'] || state.keys['arrowleft']) playerVehicle.position.x -= 10 * dt;
-        if (state.keys['d'] || state.keys['arrowright']) playerVehicle.position.x += 10 * dt;
+        if (state.keys['w'] || state.keys['arrowup']) playerVehicle.position.z -= 35 * dt;
+        if (state.keys['s'] || state.keys['arrowdown']) playerVehicle.position.z += 20 * dt;
+        if (state.keys['a'] || state.keys['arrowleft']) playerVehicle.position.x -= 15 * dt;
+        if (state.keys['d'] || state.keys['arrowright']) playerVehicle.position.x += 15 * dt;
 
         state.distanceM = Math.max(0, playerVehicle.position.z - (targetObject.position.z + 10));
         const alignmentPct = Math.max(0, 100 - Math.abs(playerVehicle.position.x) * 8);
@@ -5643,10 +5661,10 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       // 6.6 SPACE TELESCOPE OBSERVATION
       // ─────────────────────────────────────────────────────────
       else {
-        if (state.keys['w'] || state.keys['arrowup']) state.telescopeFocus = Math.min(100, state.telescopeFocus + dt * 25);
-        if (state.keys['s'] || state.keys['arrowdown']) state.telescopeFocus = Math.max(0, state.telescopeFocus - dt * 25);
-        if (state.keys['a'] || state.keys['arrowleft']) playerVehicle.rotation.y += 0.35 * dt;
-        if (state.keys['d'] || state.keys['arrowright']) playerVehicle.rotation.y -= 0.35 * dt;
+        if (state.keys['w'] || state.keys['arrowup']) state.telescopeFocus = Math.min(100, state.telescopeFocus + dt * 45);
+        if (state.keys['s'] || state.keys['arrowdown']) state.telescopeFocus = Math.max(0, state.telescopeFocus - dt * 45);
+        if (state.keys['a'] || state.keys['arrowleft']) playerVehicle.rotation.y += 0.45 * dt;
+        if (state.keys['d'] || state.keys['arrowright']) playerVehicle.rotation.y -= 0.45 * dt;
 
         // When telescope focus is high, make galaxy rotate and sharpen
         if (targetObject) {
@@ -5655,7 +5673,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           targetObject.scale.setScalar(focusScale);
         }
 
-        if (state.telescopeFocus >= 88) {
+        if (state.telescopeFocus >= 80) {
           state.statusText = 'OPTICS LOCKED · READY TO CAPTURE DEEP FIELD IMAGE [SPACE]';
           state.statusColor = '#22c55e';
         } else {
@@ -6692,6 +6710,281 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           <div style={{ fontSize: '8.5px', color: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? '#4ade80' : '#94a3b8', fontFamily: 'monospace', fontWeight: 700 }}>
             {(telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? 'HIT SPACE TO LAUNCH' : 'KSP MANUAL STAGING'}
           </div>
+        </div>
+      )}
+
+      {/* ─── TELESCOPE CONTROLS (RIGHT ACTION BUTTON) ─── */}
+      {mission.gameType === 'telescope' && (
+        <div
+          style={{
+            position: 'absolute',
+            right: '18px',
+            bottom: '24px',
+            zIndex: 28,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <div style={{ display: 'flex', gap: '6px', width: '150px' }}>
+            <button
+              onClick={() => handleSimAction('focus_in')}
+              style={{
+                flex: 1,
+                padding: '6px 0',
+                background: 'rgba(15, 23, 42, 0.92)',
+                border: '1px solid rgba(192, 132, 252, 0.45)',
+                borderRadius: '8px',
+                color: '#c084fc',
+                fontSize: '9.5px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+              }}
+              title="Focus Optics In (Key: W or Up Arrow)"
+            >
+              🔍 FOCUS+ [W]
+            </button>
+            <button
+              onClick={() => handleSimAction('focus_out')}
+              style={{
+                flex: 1,
+                padding: '6px 0',
+                background: 'rgba(15, 23, 42, 0.92)',
+                border: '1px solid rgba(148, 163, 184, 0.45)',
+                borderRadius: '8px',
+                color: '#cbd5e1',
+                fontSize: '9.5px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+              }}
+              title="Focus Optics Out (Key: S or Down Arrow)"
+            >
+              🔎 FOCUS- [S]
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              handleSimAction('telescope_capture');
+            }}
+            style={{
+              width: '150px',
+              height: '76px',
+              borderRadius: '16px',
+              background: telemetry.telescopeFocus >= 80
+                ? 'linear-gradient(135deg, #16a34a 0%, #15803d 50%, #14532d 100%)'
+                : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #4c1d95 100%)',
+              border: telemetry.telescopeFocus >= 80
+                ? '2px solid rgba(134, 239, 172, 0.95)'
+                : '2px solid rgba(192, 132, 252, 0.85)',
+              color: '#ffffff',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: telemetry.telescopeFocus >= 80
+                ? '0 0 28px rgba(34, 197, 94, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35)'
+                : '0 0 24px rgba(124, 58, 237, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35)',
+              transition: 'all 0.15s ease',
+            }}
+            title="Press [SPACE] or Click to Focus & Capture Deep Field Image"
+          >
+            <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.12em', color: telemetry.telescopeFocus >= 80 ? '#86efac' : '#fed7aa', fontFamily: 'monospace' }}>
+              {telemetry.telescopeFocus >= 80 ? 'OPTICS LOCKED' : `FOCUS: ${Math.round(telemetry.telescopeFocus)}%`}
+            </div>
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 900,
+                letterSpacing: '0.04em',
+                textAlign: 'center',
+                lineHeight: 1.2,
+                padding: '2px 4px',
+              }}
+            >
+              {telemetry.telescopeFocus >= 80 ? '📸 CAPTURE IMAGE' : '🎯 AUTO-FOCUS'}
+            </div>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace' }}>
+              [SPACE]
+            </div>
+          </button>
+          <div style={{ fontSize: '8.5px', color: telemetry.telescopeFocus >= 80 ? '#4ade80' : '#c084fc', fontFamily: 'monospace', fontWeight: 700 }}>
+            {telemetry.telescopeFocus >= 80 ? 'HIT SPACE TO CAPTURE' : 'TARGET: ≥80% FOCUS'}
+          </div>
+        </div>
+      )}
+
+      {/* ─── DEEP SPACE CONTROLS (RIGHT ACTION BUTTON) ─── */}
+      {mission.gameType === 'deep_space' && (
+        <div
+          style={{
+            position: 'absolute',
+            right: '18px',
+            bottom: '24px',
+            zIndex: 28,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <div style={{ display: 'flex', gap: '6px', width: '150px' }}>
+            <button
+              onClick={() => handleSimAction('deep_rcs_left')}
+              style={{
+                flex: 1,
+                padding: '6px 0',
+                background: 'rgba(15, 23, 42, 0.92)',
+                border: '1px solid rgba(56, 189, 248, 0.45)',
+                borderRadius: '8px',
+                color: '#38bdf8',
+                fontSize: '9.5px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+              }}
+              title="RCS Port (Key: A)"
+            >
+              ◀ RCS [A]
+            </button>
+            <button
+              onClick={() => handleSimAction('deep_rcs_right')}
+              style={{
+                flex: 1,
+                padding: '6px 0',
+                background: 'rgba(15, 23, 42, 0.92)',
+                border: '1px solid rgba(56, 189, 248, 0.45)',
+                borderRadius: '8px',
+                color: '#38bdf8',
+                fontSize: '9.5px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+              }}
+              title="RCS Starboard (Key: D)"
+            >
+              RCS [D] ▶
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              if (telemetry.distanceM <= 25) {
+                handleSimAction('dsn_transmit');
+              } else {
+                handleSimAction('deep_thrust_fwd');
+              }
+            }}
+            style={{
+              width: '150px',
+              height: '76px',
+              borderRadius: '16px',
+              background: telemetry.distanceM <= 25
+                ? 'linear-gradient(135deg, #16a34a 0%, #15803d 50%, #14532d 100%)'
+                : 'linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%)',
+              border: telemetry.distanceM <= 25
+                ? '2px solid rgba(134, 239, 172, 0.95)'
+                : '2px solid rgba(56, 189, 248, 0.85)',
+              color: '#ffffff',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: telemetry.distanceM <= 25
+                ? '0 0 28px rgba(34, 197, 94, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35)'
+                : '0 0 24px rgba(2, 132, 199, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35)',
+              transition: 'all 0.15s ease',
+            }}
+            title="Press [SPACE] or Click to Thrust / Transmit"
+          >
+            <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.12em', color: telemetry.distanceM <= 25 ? '#86efac' : '#7dd3fc', fontFamily: 'monospace' }}>
+              {telemetry.distanceM <= 25 ? 'FLYBY CORRIDOR' : `DIST: ${telemetry.distanceM.toFixed(1)} km`}
+            </div>
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 900,
+                letterSpacing: '0.04em',
+                textAlign: 'center',
+                lineHeight: 1.2,
+                padding: '2px 4px',
+              }}
+            >
+              {telemetry.distanceM <= 25 ? '📡 DSN TRANSMIT' : '▲ IMPULSE THRUST'}
+            </div>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace' }}>
+              {telemetry.distanceM <= 25 ? '[SPACE]' : '[W / SPACE]'}
+            </div>
+          </button>
+          <div style={{ fontSize: '8.5px', color: telemetry.distanceM <= 25 ? '#4ade80' : '#38bdf8', fontFamily: 'monospace', fontWeight: 700 }}>
+            {telemetry.distanceM <= 25 ? 'HIT SPACE TO TRANSMIT' : 'APPROACH ASTEROID (<22 km)'}
+          </div>
+        </div>
+      )}
+
+      {/* ─── ON-SCREEN INSTRUCTION PILL (FOR TELESCOPE & DEEP SPACE) ─── */}
+      {mission.gameType === 'telescope' && !simStateRef.current.isFinished && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 25,
+            background: 'rgba(15, 23, 42, 0.92)',
+            border: `1.5px solid ${telemetry.telescopeFocus >= 80 ? 'rgba(34, 197, 94, 0.65)' : 'rgba(192, 132, 252, 0.65)'}`,
+            boxShadow: `0 0 28px ${telemetry.telescopeFocus >= 80 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(192, 132, 252, 0.35)'}`,
+            borderRadius: '24px',
+            padding: '8px 20px',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: '#ffffff',
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>🔭</span>
+          <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.03em' }}>
+            {telemetry.telescopeFocus >= 80
+              ? <>🎯 Optics Locked! Press <kbd style={{ background: '#22c55e', color: '#052e16', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>SPACE</kbd> or Click <strong style={{ color: '#4ade80' }}>CAPTURE IMAGE</strong>!</>
+              : <>Hold <kbd style={{ background: '#c084fc', color: '#3b0764', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>W</kbd> or Click <strong style={{ color: '#d8b4fe' }}>AUTO-FOCUS</strong> to align mirrors!</>}
+          </span>
+        </div>
+      )}
+
+      {mission.gameType === 'deep_space' && !simStateRef.current.isFinished && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 25,
+            background: 'rgba(15, 23, 42, 0.92)',
+            border: `1.5px solid ${telemetry.distanceM <= 25 ? 'rgba(34, 197, 94, 0.65)' : 'rgba(56, 189, 248, 0.65)'}`,
+            boxShadow: `0 0 28px ${telemetry.distanceM <= 25 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(56, 189, 248, 0.35)'}`,
+            borderRadius: '24px',
+            padding: '8px 20px',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: '#ffffff',
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>☄️</span>
+          <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.03em' }}>
+            {telemetry.distanceM <= 25
+              ? <>🟢 Corridor Reached! Press <kbd style={{ background: '#22c55e', color: '#052e16', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>SPACE</kbd> or Click <strong style={{ color: '#4ade80' }}>TRANSMIT</strong>!</>
+              : <>Hold <kbd style={{ background: '#38bdf8', color: '#082f49', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>W</kbd> or Click <strong style={{ color: '#7dd3fc' }}>IMPULSE THRUST</strong> to reach target (&lt;22 km)!</>}
+          </span>
         </div>
       )}
 
