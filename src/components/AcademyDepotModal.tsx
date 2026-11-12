@@ -21,6 +21,7 @@ import {
   type EquipmentItem,
 } from '../data/academyEquipment';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 interface AcademyDepotModalProps {
   isOpen: boolean;
@@ -86,6 +87,30 @@ export const AcademyDepotModal: React.FC<AcademyDepotModalProps> = ({
       console.warn('Storage save failed', e);
     }
   }, [credits, facilities, catalog]);
+
+  // Listen for real-time Cadet Credits updates across the application
+  useEffect(() => {
+    const handleCreditsEvent = (e: Event) => {
+      const custom = e as CustomEvent<{ credits: number }>;
+      if (custom.detail && typeof custom.detail.credits === 'number') {
+        setCredits(custom.detail.credits);
+      }
+    };
+    window.addEventListener('cadet-credits-updated', handleCreditsEvent);
+    return () => {
+      window.removeEventListener('cadet-credits-updated', handleCreditsEvent);
+    };
+  }, []);
+
+  // Sync on modal open
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const saved = localStorage.getItem('astro_camp_cadet_credits');
+        if (saved) setCredits(parseInt(saved, 10));
+      } catch {}
+    }
+  }, [isOpen]);
 
   // Flash feedback message
   const triggerFeedback = (msg: string) => {
@@ -280,7 +305,7 @@ export const AcademyDepotModal: React.FC<AcademyDepotModalProps> = ({
       isDisposed = true;
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
+      disposeThreeScene(renderer, scene);
     };
   }, [isOpen, activeTab, selectedItem, wireframeMode]);
 
@@ -432,9 +457,19 @@ export const AcademyDepotModal: React.FC<AcademyDepotModalProps> = ({
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
+      disposeThreeScene(renderer, scene);
     };
   }, [isOpen, activeTab]);
+
+  // Accessibility: Esc key closes modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

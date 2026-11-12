@@ -21,6 +21,7 @@ import {
   FastForward,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import type {
   NasaLevelMission,
   VehicleConfig,
@@ -835,12 +836,7 @@ export const MissionCinematicIntro: React.FC<MissionCinematicIntroProps> = ({
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
-      renderer.dispose();
-      starGeo.dispose();
-      dustGeo.dispose();
-      planetGeo.dispose();
-      bodyGeo.dispose();
-      noseGeo.dispose();
+      disposeThreeScene(renderer, scene);
     };
   }, [map]);
 

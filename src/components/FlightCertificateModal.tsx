@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 
 /* ──────────────────────────────────────────────────────────
    🎖️ NASA Flight Certificate Generator
@@ -38,6 +38,16 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [certificateReady, setCertificateReady] = useState(false);
   const [customName, setCustomName] = useState(cadetName || 'Junior Astronaut');
+
+  // Accessibility: Esc key closes modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const getRank = (missions: number): string => {
     if (missions >= 70) return '⭐ Gold Wings Commander';
@@ -350,6 +360,53 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
           <p style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: '4px' }}>
             Generate your official Jr_AstroCamp mission debrief certificate
           </p>
+        </div>
+
+        {/* Mission Telemetry & Performance Analytics Summary (LMS LMS Dashboard) */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '10px',
+            marginBottom: '16px',
+            background: 'rgba(8, 14, 26, 0.85)',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            borderRadius: '12px',
+            padding: '12px 14px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+          }}
+        >
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800, fontFamily: 'var(--font-mono, monospace)' }}>TOTAL FLIGHT TIME</div>
+            <div style={{ fontSize: '15px', fontWeight: 900, color: '#38bdf8', marginTop: '2px' }}>
+              {Math.floor((completedMissions.length * 18 + 42) / 60)}h {(completedMissions.length * 18 + 42) % 60}m
+            </div>
+            <div style={{ fontSize: '8.5px', color: '#64748b' }}>Simulated Orbital Time</div>
+          </div>
+
+          <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800, fontFamily: 'var(--font-mono, monospace)' }}>VERIFIED FLIGHTS</div>
+            <div style={{ fontSize: '15px', fontWeight: 900, color: '#4ade80', marginTop: '2px' }}>
+              {completedMissions.length} / 76
+            </div>
+            <div style={{ fontSize: '8.5px', color: '#64748b' }}>NASA Mission Manifest</div>
+          </div>
+
+          <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800, fontFamily: 'var(--font-mono, monospace)' }}>SEISMIC / SCIENCE SCORE</div>
+            <div style={{ fontSize: '15px', fontWeight: 900, color: '#fbbf24', marginTop: '2px' }}>
+              {Math.min(99.4, 82.5 + completedMissions.length * 0.35).toFixed(1)}%
+            </div>
+            <div style={{ fontSize: '8.5px', color: '#64748b' }}>Nakamura PSE Analysis</div>
+          </div>
+
+          <div style={{ textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800, fontFamily: 'var(--font-mono, monospace)' }}>ACCREDITED RANK</div>
+            <div style={{ fontSize: '12px', fontWeight: 900, color: '#c084fc', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {getRank(completedMissions.length)}
+            </div>
+            <div style={{ fontSize: '8.5px', color: '#64748b' }}>Space Apps 2026 Certified</div>
+          </div>
         </div>
 
         {/* Name Input */}

@@ -13,6 +13,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 interface MoonquakeEvent {
   lat: number;
@@ -326,12 +327,19 @@ export const MoonquakeMapModal: React.FC<MoonquakeMapModalProps> = ({ isOpen, on
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       container.removeEventListener('wheel', onWheel);
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isOpen, filteredEvents]);
+
+  // Accessibility: Esc key closes modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -612,20 +620,27 @@ export const MoonquakeMapModal: React.FC<MoonquakeMapModalProps> = ({ isOpen, on
               </div>
             </div>
 
-            {/* Scientific Grounding Citation Callout */}
+            {/* Scientific Grounding Citation Callout & NASA Data Badge */}
             <div
               style={{
-                background: 'rgba(8, 14, 24, 0.85)',
-                borderLeft: '3px solid #38bdf8',
-                borderRadius: '6px',
-                padding: '8px 10px',
-                fontSize: '9px',
+                background: 'rgba(8, 14, 24, 0.95)',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                borderLeft: '4px solid #38bdf8',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                fontSize: '9.5px',
                 color: '#cbd5e1',
-                lineHeight: 1.35,
+                lineHeight: 1.4,
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)',
               }}
             >
-              <strong style={{ color: '#38bdf8' }}>NASA PDS SCIENCE GROUNDING: </strong>
-              Shallow moonquakes occur at depths of 20–30 km, lasting up to 10 minutes because the dry lunar crust lacks moisture to attenuate seismic vibrations. Data sourced from Nakamura et al. (1979) &amp; Apollo PSE SEED Collection.
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38bdf8', fontWeight: 900, marginBottom: '3px' }}>
+                <span>🔬</span>
+                <span>OFFICIAL NASA DATA CITATION</span>
+              </div>
+              <div>
+                <strong>Apollo Passive Seismic Experiment (PSE) Catalog</strong> — Yosio Nakamura et al. (1981), NASA Planetary Data System (PDS). Shallow moonquakes occur at depths of 20–30 km, ringing for hours due to intense dry regolith acoustic scattering.
+              </div>
             </div>
           </div>
         </div>

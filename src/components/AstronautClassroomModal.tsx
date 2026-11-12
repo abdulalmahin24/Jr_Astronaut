@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { ASTRONAUT_CLASSES, type ClassroomLesson } from '../data/astronautClasses';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { NasaSpaceScienceLabModal } from './NasaSpaceScienceLabModal';
 import { ComicVideoPlayer } from './ComicVideoPlayer';
 import { ComicBookModal } from './ComicBookModal';
@@ -399,7 +400,7 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
+      disposeThreeScene(renderer, scene, canvas.parentElement);
     };
   }, [isOpen, selectedClassId]);
 

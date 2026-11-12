@@ -16,6 +16,7 @@ import type {
   MissionObjective,
   Destination,
 } from '../types/game';
+import { getActiveGearBonuses } from './gearBonusHelper';
 
 // ── DEFAULT OUTPOST CONFIGURATIONS ──────────────────────────────────────────
 
@@ -384,6 +385,7 @@ export function computeDailySimulationTurn(
   // 1. Day / Night Calculation
   // On the Moon, Sols 16-27 correspond to the deep 354-hour lunar night (-130°C to -180°C)
   const isLunarNight = isMoon && sol >= 16 && sol <= 27;
+  const gearBonuses = getActiveGearBonuses();
 
   // 2. Power Generation
   let powerGenKw = 0;
@@ -393,6 +395,11 @@ export function computeDailySimulationTurn(
   } else {
     // Foldable PV arrays
     powerGenKw += isLunarNight ? 0 : 35;
+  }
+
+  // Apply UltraFlex Solar Booster bonus (+25% power generation)
+  if (gearBonuses.powerGenMultiplier > 1.0) {
+    powerGenKw = Math.round(powerGenKw * gearBonuses.powerGenMultiplier);
   }
 
   // Kilopower reactor generates 25 kW 24/7 continuous
@@ -436,6 +443,10 @@ export function computeDailySimulationTurn(
   // 4. Life Support (Oxygen, Water, Food)
   // Oxygen:
   let oxygenDelta = config.lifeSupport === 'CLOSED_LOOP_SABATIER' ? -0.8 : -2.5;
+  if (gearBonuses.oxygenBurnReduction > 0 && oxygenDelta < 0) {
+    // 20% slower oxygen consumption from Cryogenic O2 Pressure Tank
+    oxygenDelta = oxygenDelta * (1 - gearBonuses.oxygenBurnReduction);
+  }
   if (config.greenhouse === 'FULL_CROP_BIOME') oxygenDelta += 0.8; // Plants give off O2
   if (shiftAction === 'ECLSS_MAINTENANCE') oxygenDelta += 3; // Flush and re-pressurize
 

@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import type { MissionGameConfig, LaunchParams, DockingParams, LunarLandingParams } from '../game/missionGameData';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import {
   multiplayerMissionService,
   CREW_ROLES,
@@ -45,55 +46,8 @@ export type VisualToneMode = 'REALISTIC_NASA' | 'CINEMATIC_GRADE' | 'TACTICAL_HU
 
 // ─── ASTRONAUT AGE & SKILL PROGRESSION TIERS ─────────────────────────
 // Authentic NASA Aerospace Missions: Project Mercury, Apollo, Artemis, SLS & Gateway
-export type AstronautAgeTier = 'cadet' | 'officer' | 'commander';
-
-export interface TierConfig {
-  id: AstronautAgeTier;
-  label: string;
-  ageRange: string;
-  badge: string;
-  tagline: string;
-  description: string;
-  nasaMissionContext: string;
-  assistLevel: string;
-  landingSpeedMax: number;
-}
-
-export const ASTRONAUT_TIERS: Record<AstronautAgeTier, TierConfig> = {
-  cadet: {
-    id: 'cadet',
-    label: 'JUNIOR CADET',
-    ageRange: 'Ages 6–10',
-    badge: '🐣',
-    tagline: 'NASA Artemis Discovery, Surface Exploration & Safe Guidance',
-    description: 'Auto-Stabilized Flight Assist · Safe Fuel Reserve · Visual Trajectory Gates · Scientific Mineral Core Discovery',
-    nasaMissionContext: 'NASA Artemis Lunar Base & xEMU Surface EVA',
-    assistLevel: 'HIGH_ASSIST',
-    landingSpeedMax: 8.5,
-  },
-  officer: {
-    id: 'officer',
-    label: 'FLIGHT OFFICER',
-    ageRange: 'Ages 11–15',
-    badge: '🚀',
-    tagline: 'NASA SLS Multi-Stage Orbital Mechanics & Systems Integration',
-    description: 'Tsiolkovsky Delta-V & Staging · Orion Power Bus & ECLSS O2 · Lunar Orbital Insertion Radar · Mineralogy',
-    nasaMissionContext: 'NASA Space Launch System (SLS) & Orion Orbital Ascent',
-    assistLevel: 'BALANCED_REALISM',
-    landingSpeedMax: 5.0,
-  },
-  commander: {
-    id: 'commander',
-    label: 'MASTER COMMANDER',
-    ageRange: 'Ages 16+ / STEM',
-    badge: '⭐',
-    tagline: 'Hardcore Newtonian Aerospace Physics & Planetary Defense',
-    description: '6-DOF Newtonian Flight (Decoupled FA-OFF) · Atmospheric Thermal Ablation Corridor · AGC P66 Codes · Deep Space Anomaly Radar',
-    nasaMissionContext: 'NASA Deep Space Gateway & Planetary Defense Interception',
-    assistLevel: 'HARDCORE_NEWTONIAN',
-    landingSpeedMax: 3.2,
-  },
-};
+import { ASTRONAUT_TIERS, type AstronautAgeTier, type TierConfig } from '../data/astronautTiers';
+export { ASTRONAUT_TIERS, type AstronautAgeTier, type TierConfig };
 
 interface ThreeMissionSimulatorProps {
   mission: MissionGameConfig;
@@ -5944,10 +5898,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       renderer.domElement.removeEventListener('dblclick', handleDoubleClick);
       audioSynthRef.current.dispose();
       controls.dispose();
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      disposeThreeScene(renderer, scene, container);
     };
   }, [mission]);
 
@@ -8446,6 +8397,30 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           </div>
         </div>
       )}
+
+      {/* Official Scientific Grounding Badge (NASA Data Citation) */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '8px',
+          right: '16px',
+          zIndex: 35,
+          background: 'rgba(2, 6, 18, 0.85)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          borderRadius: '6px',
+          padding: '3px 10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '9px',
+          color: '#cbd5e1',
+          fontFamily: 'var(--font-mono)',
+          pointerEvents: 'none',
+        }}
+      >
+        <span style={{ color: '#38bdf8', fontWeight: 800 }}>🔬 NASA DATA CITATION:</span>
+        <span>NASA Space Science Data Coordinated Archive (NSSDCA) &amp; JPL Horizons Ephemerides</span>
+      </div>
     </div>
   );
 };

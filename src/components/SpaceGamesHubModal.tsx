@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import {
   NASA_MAPS,
   NASA_VEHICLES,
@@ -2435,11 +2436,7 @@ const JuniorCadetNmsGame: React.FC<CadetGameProps> = ({ isMuted, onBack, onUpdat
       cancelAnimationFrame(animId);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
-      renderer.dispose();
-      renderer.forceContextLoss();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isMuted, map, vehicle, mission]);
 
@@ -3866,11 +3863,7 @@ const FlightOfficerKspGame: React.FC<OfficerGameProps> = ({ isMuted, onBack, onU
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       container.removeEventListener('wheel', onWheel);
-      renderer.dispose();
-      renderer.forceContextLoss();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isMuted, orbitAchieved]);
 
@@ -5343,11 +5336,7 @@ const MasterCommanderScGame: React.FC<CommanderGameProps> = ({ isMuted, onBack, 
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
-      renderer.forceContextLoss();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isMuted]);
 

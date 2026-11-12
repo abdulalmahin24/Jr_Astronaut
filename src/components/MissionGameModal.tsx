@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense, lazy } from 'react';
 import confetti from 'canvas-confetti';
 import {
   X,
@@ -24,7 +24,10 @@ import {
 } from 'lucide-react';
 import { MISSION_GAME_DATA, type MissionGameConfig } from '../game/missionGameData';
 import { startPhaserMissionGame, destroyPhaserGame } from '../game/PhaserGameManager';
-import { ThreeMissionSimulator, type AstronautAgeTier, ASTRONAUT_TIERS } from './ThreeMissionSimulator';
+import { type AstronautAgeTier, ASTRONAUT_TIERS } from '../data/astronautTiers';
+const ThreeMissionSimulator = lazy(() =>
+  import('./ThreeMissionSimulator').then((m) => ({ default: m.ThreeMissionSimulator }))
+);
 import { MissionCinematicIntro } from './MissionCinematicIntro';
 import {
   NASA_MAPS,
@@ -719,30 +722,39 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
           {/* 2. PLAYING STATE */}
           {missionState === 'playing' && engineMode === '3d' && (
             <div style={{ width: '100%', height: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <ThreeMissionSimulator
-                key={`${mission.id}-attempt-${attemptKey}`}
-                mission={mission}
-                multiplayerActive={isCoopMode}
-                assignedRole={coopRole}
-                initialAgeTier={selectedAgeTier}
-                onOpenMoonquakeMap={onOpenMoonquakeMap}
-                onSuccess={(finalScore) => {
-                  setScore(finalScore);
-                  setMissionState('success');
-                  onCompleteMission(mission.id, finalScore);
-                }}
-                onFailure={(reason) => {
-                  setFailureReason(reason);
-                  setMissionState('failure');
-                }}
-                onExit={() => {
-                  if (isCoopMode && onExitToLobby) {
-                    onExitToLobby();
-                  } else {
-                    setMissionState('briefing');
-                  }
-                }}
-              />
+              <Suspense
+                fallback={
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#38bdf8', gap: '12px' }}>
+                    <div style={{ fontSize: '32px' }}>🚀</div>
+                    <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'monospace' }}>INITIALIZING 3D THREE.JS AEROSPACE ENGINE...</div>
+                  </div>
+                }
+              >
+                <ThreeMissionSimulator
+                  key={`${mission.id}-attempt-${attemptKey}`}
+                  mission={mission}
+                  multiplayerActive={isCoopMode}
+                  assignedRole={coopRole}
+                  initialAgeTier={selectedAgeTier}
+                  onOpenMoonquakeMap={onOpenMoonquakeMap}
+                  onSuccess={(finalScore) => {
+                    setScore(finalScore);
+                    setMissionState('success');
+                    onCompleteMission(mission.id, finalScore);
+                  }}
+                  onFailure={(reason) => {
+                    setFailureReason(reason);
+                    setMissionState('failure');
+                  }}
+                  onExit={() => {
+                    if (isCoopMode && onExitToLobby) {
+                      onExitToLobby();
+                    } else {
+                      setMissionState('briefing');
+                    }
+                  }}
+                />
+              </Suspense>
             </div>
           )}
 

@@ -33,6 +33,7 @@ import {
   Tv,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { speechEngine } from '../utils/speechEngine';
 import { CadetAnimationVideoStage } from './CadetAnimationVideoStage';
 
@@ -832,7 +833,7 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
     return () => {
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isOpen, activePillar, activeSuitLayer, nblLeadWeightKg, sleepFanRunning, zeroGFireActive, fireExtinguished]);
 

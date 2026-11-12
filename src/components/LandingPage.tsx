@@ -5,6 +5,7 @@ import { getCadetProgression } from '../utils/simulationEngine';
 import { MovableCharacter } from './MovableCharacter';
 import { LobbyAstronaut3D } from './LobbyAstronaut3D';
 import { ASTRONAUT_CHARACTERS } from '../data/astronautCharacters';
+import { GuidedCadetJourney } from './GuidedCadetJourney';
 
 import { spaceMusicEngine } from '../utils/spaceMusicEngine';
 import { authService } from '../utils/authService';
@@ -856,6 +857,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           </div>
         </div>
+
+        {/* Guided 5-Step Cadet Journey Progression Banner */}
+        {!isInspectionMode && (
+          <div style={{ width: '100%', padding: '0 24px', margin: '4px 0 8px 0', zIndex: 30 }}>
+            <GuidedCadetJourney
+              completedMissionsCount={currentUser?.completedMissions?.length || (hasSavedGame ? 1 : 0)}
+              onOpenStep={(step) => {
+                if (step === 1) (onOpenClassroom || onOpenAcademy)?.();
+                else if (step === 2) (onOpenDepot || onOpenTrainingCenter)?.();
+                else if (step === 3) onOpenExpedition?.();
+                else if (step === 4) onOpenRover?.();
+                else if (step === 5) onOpenCertificate?.();
+              }}
+            />
+          </div>
+        )}
 
         {/* ── PANORAMIC MID-SECTION (PUBG MOBILE HUD OVERLAYS) ── */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', width: '100%', minHeight: 0, overflow: 'hidden' }}>

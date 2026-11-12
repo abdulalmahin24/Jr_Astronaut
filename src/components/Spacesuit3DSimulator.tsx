@@ -20,6 +20,7 @@ import {
   Crosshair,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 export interface SpacesuitHotspot {
   id: string;
@@ -684,11 +685,7 @@ export const Spacesuit3DSimulator: React.FC<Spacesuit3DSimulatorProps> = ({ onBa
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
-      renderer.forceContextLoss();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isAutoRotate, isVisorOpen, walkMode, thrustersFiring]);
 

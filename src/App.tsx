@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import type { GameState, ChoiceOption, SolHistoryEntry, DifficultyMode } from './types/game';
 import type { DifficultyTier } from './data/difficultyTiers';
 import { getMissionScenarioDeck } from './utils/missionScenarioEngine';
@@ -36,7 +36,7 @@ import { AstronautClassroomModal } from './components/AstronautClassroomModal';
 import { AuthModal } from './components/AuthModal';
 import { authService } from './utils/authService';
 import type { User } from './types/auth';
-import { JudgePreviewBadge, JudgePreviewModal } from './components/JudgePreviewMode';
+import { JudgePreviewBadge, JudgePreviewModal, JudgeTourFloatingController } from './components/JudgePreviewMode';
 import { NasaTelemetryPanel } from './components/NasaTelemetryPanel';
 import { FlightCertificateModal } from './components/FlightCertificateModal';
 import { SolarSystemOrreryModal } from './components/SolarSystemOrreryModal';
@@ -45,9 +45,13 @@ import { AstronautCharacterModal } from './components/AstronautCharacterModal';
 import { LiveMissionActivityModal } from './components/LiveMissionActivityModal';
 import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
 import { MoonbaseAlphaSimulator } from './components/MoonbaseAlphaSimulator';
-import { BlackHoleSimulator } from './components/BlackHoleSimulator';
+const BlackHoleSimulator = lazy(() =>
+  import('./components/BlackHoleSimulator').then((m) => ({ default: m.BlackHoleSimulator }))
+);
 import { MoonquakeMapModal } from './components/MoonquakeMapModal';
-import { EarthToMoonExpeditionModal } from './components/EarthToMoonExpeditionModal';
+const EarthToMoonExpeditionModal = lazy(() =>
+  import('./components/EarthToMoonExpeditionModal').then((m) => ({ default: m.EarthToMoonExpeditionModal }))
+);
 import { SpaceGamesHubModal } from './components/SpaceGamesHubModal';
 import { spaceMusicEngine } from './utils/spaceMusicEngine';
 import { studentActivityService } from './utils/studentActivityService';
@@ -60,6 +64,7 @@ import {
 } from './utils/simulationEngine';
 import type { OutpostConfiguration } from './types/game';
 import { soundFx } from './utils/audioEffects';
+import { awardCadetCredits } from './utils/gearBonusHelper';
 import { speechEngine } from './utils/speechEngine';
 import {
   Rocket,
@@ -200,6 +205,8 @@ export const App: React.FC = () => {
   const [isMoonquakeMapOpen, setIsMoonquakeMapOpen] = useState(false);
   const [isExpeditionOpen, setIsExpeditionOpen] = useState(false);
   const [isSpaceGamesHubOpen, setIsSpaceGamesHubOpen] = useState(false);
+  const [isJudgeTourActive, setIsJudgeTourActive] = useState(false);
+  const [judgeTourHighlight, setJudgeTourHighlight] = useState(1);
   const [isMusicMuted, setIsMusicMuted] = useState(() => spaceMusicEngine.getIsMuted());
   const [isHubDropdownOpen, setIsHubDropdownOpen] = useState(false);
   const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
@@ -274,6 +281,8 @@ export const App: React.FC = () => {
       const updatedUser = authService.recordMissionComplete(currentUser.id, missionId, 200);
       if (updatedUser) setCurrentUser(updatedUser);
     }
+    // Award unified Cadet Credits to Academy Depot & Player Profile
+    awardCadetCredits(200);
     soundFx.playTelemetryChirp();
   };
 
@@ -482,7 +491,43 @@ export const App: React.FC = () => {
 
   const handleDeactivateJudgeMode = () => {
     setIsJudgeMode(false);
+    setIsJudgeTourActive(false);
     try { localStorage.removeItem('astro_camp_judge_mode'); } catch {}
+  };
+
+  const handleSelectJudgeTourHighlight = (h: number) => {
+    setJudgeTourHighlight(h);
+    setIsDepotOpen(false);
+    setIsMoonquakeMapOpen(false);
+    setIsExpeditionOpen(false);
+    setIsBlackHoleOpen(false);
+    setActiveMissionGameId(null);
+    soundFx.playClick(900);
+
+    if (h === 1) {
+      setIsDepotOpen(true);
+    } else if (h === 2) {
+      setIsMoonquakeMapOpen(true);
+    } else if (h === 3) {
+      setIsExpeditionOpen(true);
+    } else if (h === 4) {
+      setIsBlackHoleOpen(true);
+    }
+  };
+
+  const handleStartJudgeTour = () => {
+    setIsJudgeTourActive(true);
+    handleSelectJudgeTourHighlight(1);
+    soundFx.playReactorStart();
+  };
+
+  const handleExitJudgeTour = () => {
+    setIsJudgeTourActive(false);
+    setIsDepotOpen(false);
+    setIsMoonquakeMapOpen(false);
+    setIsExpeditionOpen(false);
+    setIsBlackHoleOpen(false);
+    soundFx.playClick(750);
   };
 
   const closeAllModals = () => {
@@ -956,7 +1001,15 @@ export const App: React.FC = () => {
           onActivate={handleActivateJudgeMode}
           isJudgeMode={isJudgeMode}
           onDeactivate={handleDeactivateJudgeMode}
+          onStartTour={handleStartJudgeTour}
         />
+        {isJudgeTourActive && (
+          <JudgeTourFloatingController
+            activeHighlight={judgeTourHighlight}
+            onSelectHighlight={handleSelectJudgeTourHighlight}
+            onExitTour={handleExitJudgeTour}
+          />
+        )}
         <NasaTelemetryPanel
           isOpen={isTelemetryOpen}
           onClose={() => setIsTelemetryOpen(false)}
@@ -980,22 +1033,26 @@ export const App: React.FC = () => {
           isOpen={isMoonbaseAlphaOpen}
           onClose={() => setIsMoonbaseAlphaOpen(false)}
         />
-        <BlackHoleSimulator
-          isOpen={isBlackHoleOpen}
-          onClose={() => setIsBlackHoleOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <BlackHoleSimulator
+            isOpen={isBlackHoleOpen}
+            onClose={() => setIsBlackHoleOpen(false)}
+          />
+        </Suspense>
         <MoonquakeMapModal
           isOpen={isMoonquakeMapOpen}
           onClose={() => setIsMoonquakeMapOpen(false)}
         />
-        <EarthToMoonExpeditionModal
-          isOpen={isExpeditionOpen}
-          onClose={() => setIsExpeditionOpen(false)}
-          onOpenMoonquakeMap={() => {
-            setIsExpeditionOpen(false);
-            setIsMoonquakeMapOpen(true);
-          }}
-        />
+        <Suspense fallback={null}>
+          <EarthToMoonExpeditionModal
+            isOpen={isExpeditionOpen}
+            onClose={() => setIsExpeditionOpen(false)}
+            onOpenMoonquakeMap={() => {
+              setIsExpeditionOpen(false);
+              setIsMoonquakeMapOpen(true);
+            }}
+          />
+        </Suspense>
         <SpaceGamesHubModal
           isOpen={isSpaceGamesHubOpen}
           onClose={() => setIsSpaceGamesHubOpen(false)}
@@ -2213,7 +2270,15 @@ export const App: React.FC = () => {
         onActivate={handleActivateJudgeMode}
         isJudgeMode={isJudgeMode}
         onDeactivate={handleDeactivateJudgeMode}
+        onStartTour={handleStartJudgeTour}
       />
+      {isJudgeTourActive && (
+        <JudgeTourFloatingController
+          activeHighlight={judgeTourHighlight}
+          onSelectHighlight={handleSelectJudgeTourHighlight}
+          onExitTour={handleExitJudgeTour}
+        />
+      )}
       <NasaTelemetryPanel
         isOpen={isTelemetryOpen}
         onClose={() => setIsTelemetryOpen(false)}
@@ -2237,22 +2302,26 @@ export const App: React.FC = () => {
         isOpen={isMoonbaseAlphaOpen}
         onClose={() => setIsMoonbaseAlphaOpen(false)}
       />
-      <BlackHoleSimulator
-        isOpen={isBlackHoleOpen}
-        onClose={() => setIsBlackHoleOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <BlackHoleSimulator
+          isOpen={isBlackHoleOpen}
+          onClose={() => setIsBlackHoleOpen(false)}
+        />
+      </Suspense>
       <MoonquakeMapModal
         isOpen={isMoonquakeMapOpen}
         onClose={() => setIsMoonquakeMapOpen(false)}
       />
-      <EarthToMoonExpeditionModal
-        isOpen={isExpeditionOpen}
-        onClose={() => setIsExpeditionOpen(false)}
-        onOpenMoonquakeMap={() => {
-          setIsExpeditionOpen(false);
-          setIsMoonquakeMapOpen(true);
-        }}
-      />
+      <Suspense fallback={null}>
+        <EarthToMoonExpeditionModal
+          isOpen={isExpeditionOpen}
+          onClose={() => setIsExpeditionOpen(false)}
+          onOpenMoonquakeMap={() => {
+            setIsExpeditionOpen(false);
+            setIsMoonquakeMapOpen(true);
+          }}
+        />
+      </Suspense>
       <SpaceGamesHubModal
         isOpen={isSpaceGamesHubOpen}
         onClose={() => setIsSpaceGamesHubOpen(false)}

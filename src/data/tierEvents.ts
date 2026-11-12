@@ -1012,7 +1012,7 @@ export function getEventDeck(tier: DifficultyTier): MissionEvent[] {
           CADET: 'Every meter reads green! Outpost Shackleton stands proud on the rim of the Moon, an unbreakable home among the stars!',
           ENGINEER: 'Final station audit complete. Zero anomalies. Crew vitals at 100%. Expedition concludes with full honors.',
           SCIENTIST: 'All primary and secondary mission criteria exceeded. Station handed over in certified Class-A condition. Mission complete.',
-          COMMANDER: 'Flight Director logs Outpost Command 30-Sol Expedition as a historic triumph. Artemis Program gold standard established.',
+          COMMANDER: 'Flight Director logs Jr_AstroCamp 30-Sol Expedition as a historic triumph. Artemis Program gold standard established.',
         }),
         educationalInsight: tierText(tier, {
           EXPLORER: 'When you take care of your home and your friends, you can do anything in the whole galaxy!',

@@ -18,6 +18,7 @@ import {
   Search,
 } from 'lucide-react';
 import { MISSION_GAME_DATA, type MissionGameConfig, type GameType } from '../game/missionGameData';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 interface MissionCampaignMapProps {
   completedMissions: string[];
@@ -111,16 +112,7 @@ const CampaignGlobePreview: React.FC = () => {
 
     return () => {
       cancelAnimationFrame(animId);
-      renderer.dispose();
-      earthGeo.dispose();
-      earthMat.dispose();
-      ringGeo.dispose();
-      ringMat.dispose();
-      satGeo.dispose();
-      satMat.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
+      disposeThreeScene(renderer, scene, container);
     };
   }, []);
 

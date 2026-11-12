@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import type { ResourceState, OutpostModules, ChoiceOption } from '../types/game';
 import type { NasaMission } from '../data/nasaMissions';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { OutpostMap } from './OutpostMap';
 
 interface Outpost3DViewProps {
@@ -1296,7 +1297,7 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
+      disposeThreeScene(renderer, sceneRef.current, containerRef.current);
     };
   }, [currentSol, isNight, isSolarStorm, isShieldActive, resources.power, resources.oxygen, getTerrainHeight]);
 

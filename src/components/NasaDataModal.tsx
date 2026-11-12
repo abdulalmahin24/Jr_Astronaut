@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NASA_DATASETS } from '../data/nasaDatasets';
 import { Database, ExternalLink, X } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
@@ -10,6 +10,15 @@ interface NasaDataModalProps {
 
 export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

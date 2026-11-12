@@ -31,6 +31,7 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 // ── PLANET DATA (Enhanced scientific parameters & high visual clarity) ──────
 export interface PlanetData {
@@ -1911,10 +1912,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
       window.removeEventListener('mouseup', onMouseUp);
       renderer.domElement.removeEventListener('wheel', onWheel);
       renderer.domElement.removeEventListener('click', onClick);
-      if (renderer.domElement.parentElement) {
-        renderer.domElement.parentElement.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isOpen, isPlaying, simSpeed, cameraTarget, handleCanvasClick]);
 

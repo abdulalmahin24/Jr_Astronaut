@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 export type SuitOption = 'EMU' | 'ARTEMIS' | 'ACES';
 
@@ -394,11 +395,8 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('resize', handleResize);
-      if (renderer.domElement.parentNode) {
-        renderer.domElement.parentNode.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
       dracoLoader.dispose();
+      disposeThreeScene(renderer, scene, container);
     };
   }, [activeSuit]);
 

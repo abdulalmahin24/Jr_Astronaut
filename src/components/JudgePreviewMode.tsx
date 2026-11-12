@@ -52,6 +52,7 @@ interface JudgePreviewModalProps {
   onActivate: () => void;
   isJudgeMode: boolean;
   onDeactivate: () => void;
+  onStartTour?: () => void;
 }
 
 export const JudgePreviewModal: React.FC<JudgePreviewModalProps> = ({
@@ -60,6 +61,7 @@ export const JudgePreviewModal: React.FC<JudgePreviewModalProps> = ({
   onActivate,
   isJudgeMode,
   onDeactivate,
+  onStartTour,
 }) => {
   const [code, setCode] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -93,8 +95,14 @@ export const JudgePreviewModal: React.FC<JudgePreviewModalProps> = ({
       setShowSuccess(false);
       setShowError(false);
       setActivatingStage(0);
+      return;
     }
-  }, [isOpen]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -187,7 +195,39 @@ export const JudgePreviewModal: React.FC<JudgePreviewModalProps> = ({
         {/* Activation */}
         {!isJudgeMode && !showSuccess && (
           <>
-            {/* What gets unlocked */}
+            {/* 2-Minute Interactive Highlights Tour Button */}
+        <button
+          onClick={() => {
+            onActivate();
+            onClose();
+            onStartTour?.();
+          }}
+          style={{
+            width: '100%',
+            padding: '13px',
+            marginBottom: '16px',
+            background: 'linear-gradient(135deg, #0284c7 0%, #3b82f6 50%, #8b5cf6 100%)',
+            border: '1px solid rgba(147, 197, 253, 0.5)',
+            borderRadius: '12px',
+            color: '#fff',
+            fontSize: '0.95rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)',
+            transition: 'transform 0.2s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          <span>⏱️</span>
+          <span>START 2-MINUTE JUDGE HIGHLIGHTS TOUR</span>
+        </button>
+
+        {/* What gets unlocked */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
@@ -377,7 +417,162 @@ export const JudgePreviewModal: React.FC<JudgePreviewModalProps> = ({
   );
 };
 
-/* ── Helper: Judge preview CSS keyframes ── */
+/* ── 2-Minute Interactive Demo Tour Floating Controller ── */
+export interface JudgeTourFloatingControllerProps {
+  activeHighlight: number; // 1 to 4
+  onSelectHighlight: (h: number) => void;
+  onExitTour: () => void;
+}
+
+export const JudgeTourFloatingController: React.FC<JudgeTourFloatingControllerProps> = ({
+  activeHighlight,
+  onSelectHighlight,
+  onExitTour,
+}) => {
+  const [secondsRemaining, setSecondsRemaining] = useState(120);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const highlights = [
+    { id: 1, label: '1. 🛰️ 3D EMU Spacesuit', desc: 'Spacesuit & Life Support Telemetry' },
+    { id: 2, label: '2. 🌕 Moonquakes 3D Globe', desc: 'Apollo 11-16 Seismic Visualization' },
+    { id: 3, label: '3. 🚀 Multi-Stage Rocket', desc: 'Three.js Orbital Staging Flight' },
+    { id: 4, label: '4. 🕳️ Black Hole Lensing', desc: 'Relativistic Doppler & Einstein Ring' },
+  ];
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 999999,
+        background: 'rgba(8, 14, 26, 0.95)',
+        border: '1.5px solid rgba(245, 158, 11, 0.75)',
+        borderRadius: '16px',
+        padding: '10px 18px',
+        boxShadow: '0 16px 48px rgba(0,0,0,0.85), 0 0 35px rgba(245, 158, 11, 0.3)',
+        backdropFilter: 'blur(20px)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        animation: 'judgeGlow 2s ease-in-out infinite alternate',
+      }}
+    >
+      {/* Timer badge */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          background: 'rgba(245, 158, 11, 0.15)',
+          border: '1px solid #f59e0b',
+          padding: '5px 12px',
+          borderRadius: '8px',
+        }}
+      >
+        <span style={{ fontSize: '13px' }}>⏱️</span>
+        <span style={{ fontSize: '12px', fontWeight: 900, color: '#fbbf24', fontFamily: 'monospace' }}>
+          TOUR: {formatTime(secondsRemaining)}
+        </span>
+      </div>
+
+      {/* 4 Highlight buttons */}
+      <div style={{ display: 'flex', gap: '6px' }}>
+        {highlights.map((h) => {
+          const isActive = activeHighlight === h.id;
+          return (
+            <button
+              key={h.id}
+              onClick={() => onSelectHighlight(h.id)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: isActive ? 'linear-gradient(135deg, #f59e0b, #ef4444)' : 'rgba(255, 255, 255, 0.05)',
+                border: isActive ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.12)',
+                color: isActive ? '#fff' : '#cbd5e1',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: isActive ? '0 0 16px rgba(245, 158, 11, 0.4)' : 'none',
+              }}
+              title={h.desc}
+            >
+              {h.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Prev / Next controls */}
+      <div style={{ display: 'flex', gap: '4px' }}>
+        <button
+          onClick={() => onSelectHighlight(Math.max(1, activeHighlight - 1))}
+          disabled={activeHighlight <= 1}
+          style={{
+            padding: '6px 10px',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: '6px',
+            color: activeHighlight <= 1 ? '#64748b' : '#fff',
+            cursor: activeHighlight <= 1 ? 'not-allowed' : 'pointer',
+            fontSize: '11px',
+            fontWeight: 800,
+          }}
+        >
+          ◀ PREV
+        </button>
+        <button
+          onClick={() => onSelectHighlight(Math.min(4, activeHighlight + 1))}
+          disabled={activeHighlight >= 4}
+          style={{
+            padding: '6px 10px',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: '6px',
+            color: activeHighlight >= 4 ? '#64748b' : '#fff',
+            cursor: activeHighlight >= 4 ? 'not-allowed' : 'pointer',
+            fontSize: '11px',
+            fontWeight: 800,
+          }}
+        >
+          NEXT ▶
+        </button>
+      </div>
+
+      {/* Exit */}
+      <button
+        onClick={onExitTour}
+        style={{
+          background: 'rgba(239, 68, 68, 0.2)',
+          border: '1px solid rgba(239, 68, 68, 0.4)',
+          borderRadius: '6px',
+          color: '#f87171',
+          cursor: 'pointer',
+          fontSize: '12px',
+          fontWeight: 800,
+          padding: '5px 8px',
+        }}
+        title="Exit Judge Tour"
+      >
+        ✕ EXIT
+      </button>
+    </div>
+  );
+};
 const judgeStyles = document.createElement('style');
 judgeStyles.textContent = `
   @keyframes judgeGlow {

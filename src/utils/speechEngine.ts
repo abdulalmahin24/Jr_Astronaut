@@ -1,6 +1,6 @@
 /**
  * speechEngine.ts
- * Professional, rock-solid Speech Synthesis Engine for Space Outpost Command.
+ * Professional, rock-solid Speech Synthesis Engine for Jr_AstroCamp.
  * Resolves Chrome/Safari autoplay policies, async voice loading, Chrome GC cutoff,
  * and includes Apollo Quindar radio comms audio synthesis.
  */

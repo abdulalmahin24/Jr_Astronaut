@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Bot, ShieldCheck, X } from 'lucide-react';
 
 interface AIDisclosureModalProps {
@@ -7,6 +7,15 @@ interface AIDisclosureModalProps {
 }
 
 export const AIDisclosureModal: React.FC<AIDisclosureModalProps> = ({ isOpen, onClose }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -24,7 +33,7 @@ export const AIDisclosureModal: React.FC<AIDisclosureModalProps> = ({ isOpen, on
 
         <div className="curriculum-body">
           <p className="modal-intro">
-            In compliance with NASA Space Apps Challenge participant guidelines and AI transparency requirements, the breakdown below documents how generative AI and human engineering were combined to build <strong>Outpost Command</strong>:
+            In compliance with NASA Space Apps Challenge participant guidelines and AI transparency requirements, the breakdown below documents how generative AI and human engineering were combined to build <strong>Jr_AstroCamp</strong>:
           </p>
 
           <table className="disclosure-table">

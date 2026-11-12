@@ -21,6 +21,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 interface BlackHoleSimulatorProps {
   isOpen: boolean;
@@ -677,9 +678,7 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
       pMat.dispose();
       pTexture.dispose();
 
-      if (dom.contains(renderer.domElement)) {
-        dom.removeChild(renderer.domElement);
-      }
+      disposeThreeScene(renderer, scene, dom);
     };
   }, [isOpen]);
 

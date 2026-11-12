@@ -26,6 +26,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 interface MarsEDLSimulatorModalProps {
   isOpen: boolean;
@@ -389,10 +390,7 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
 
     return () => {
       cancelAnimationFrame(animId);
-      if (renderer.domElement.parentElement) {
-        renderer.domElement.parentElement.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
+      disposeThreeScene(renderer, scene, mountRef.current);
     };
   }, [isOpen]);
 

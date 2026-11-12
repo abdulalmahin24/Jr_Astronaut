@@ -28,6 +28,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { spaceMusicEngine } from '../utils/spaceMusicEngine';
 import { speechEngine } from '../utils/speechEngine';
 import { AuthenticCockpitOverlay } from './AuthenticCockpitOverlay';
@@ -2026,10 +2027,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', onResize);
       controls.dispose();
-      if (renderer.domElement && container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isOpen, selectedProfileId]);
 

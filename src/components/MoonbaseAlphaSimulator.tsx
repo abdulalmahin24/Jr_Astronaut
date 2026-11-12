@@ -25,6 +25,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
+import { disposeThreeScene } from '../utils/threeDisposeHelper';
 
 interface MoonbaseAlphaSimulatorProps {
   isOpen: boolean;
@@ -670,10 +671,7 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', onResize);
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
+      disposeThreeScene(renderer, scene, container);
     };
   }, [isOpen, soundEnabled, selectedTool, headlightOn, cameraView, missionOutcome, addRadioLog, onComplete]);
 

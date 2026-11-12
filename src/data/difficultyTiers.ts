@@ -1,6 +1,6 @@
 /**
  * Progressive Difficulty System
- * "Outpost Command: 30 Sols to Science"
+ * "Jr_AstroCamp: 30 Sols to Science"
  * NASA Space Apps Challenge 2026
  *
  * Design philosophy: Universal accessibility from age 3 to age 80+.
