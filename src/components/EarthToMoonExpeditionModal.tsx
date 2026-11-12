@@ -5,7 +5,7 @@
 // Multi-Stage: Pad 39B Liftoff -> SRB Sep -> TLI Burn -> Deep Space -> Lunar Descent -> Touchdown
 // ============================================================
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { getSharedGLTFLoader } from '../utils/modelLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -30,6 +30,8 @@ import {
 import { soundFx } from '../utils/audioEffects';
 import { spaceMusicEngine } from '../utils/spaceMusicEngine';
 import { speechEngine } from '../utils/speechEngine';
+import { AuthenticCockpitOverlay } from './AuthenticCockpitOverlay';
+import type { MissionGameConfig } from '../game/missionGameData';
 
 interface EarthToMoonExpeditionModalProps {
   isOpen: boolean;
@@ -218,6 +220,10 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
   const mountRef = useRef<HTMLDivElement>(null);
   const navballCanvasRef = useRef<HTMLCanvasElement>(null);
   const audioSynthRef = useRef<ExpeditionAudioSynth>(new ExpeditionAudioSynth());
+  const cockpitLookRef = useRef({ yaw: 0, pitch: 0 });
+  const doBoosterSeparationRef = useRef<() => void>(() => {});
+  const doFairingSeparationRef = useRef<() => void>(() => {});
+  const doCoreStageSeparationRef = useRef<() => void>(() => {});
 
   // Flight Phase & Controls State
   const [phase, setPhase] = useState<ExpeditionPhase>('PAD_LAUNCH');
@@ -231,6 +237,31 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
 
   const currentProfile = ADVANCED_PROFILES.find((p) => p.id === selectedProfileId) || ADVANCED_PROFILES[0];
 
+  // Active mission config for era-authentic cockpit overlay
+  const activeMission: MissionGameConfig = useMemo(() => {
+    const p = ADVANCED_PROFILES.find((x) => x.id === selectedProfileId) || ADVANCED_PROFILES[1];
+    return {
+      id: p.id,
+      missionName: p.title,
+      programName: p.id === 'APOLLO_11' ? 'Apollo Program' : p.id === 'STS_31' ? 'Space Shuttle' : p.id === 'NEW_SHEPARD' ? 'Mercury Program' : 'Artemis Program',
+      gameType: 'launch' as const,
+      difficulty: 2,
+      year: p.id === 'APOLLO_11' ? '1969' : p.id === 'STS_31' ? '1990' : '2025',
+      briefing: p.description,
+      objective: 'Launch from pad, execute multi-stage separation, and achieve stable Low Earth Orbit (LEO) insertion.',
+      funFact: p.description,
+      params: {
+        targetAltitudeKm: p.apogeeKm || 185,
+        targetVelocityKms: p.id === 'NEW_SHEPARD' ? 1.1 : 7.8,
+        fuelCapacity: 100,
+        windEnabled: false,
+        hasStageSeparation: true,
+        trajectoryWindowDeg: 6,
+        timeWindowSec: 180,
+      },
+    };
+  }, [selectedProfileId]);
+
   // Telemetry HUD State
   const [telemetry, setTelemetry] = useState({
     altitudeKm: 0,
@@ -241,7 +272,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     rollDeg: 0,
     gForce: 1.0,
     stage: 1,
-    statusText: 'PAD 39B ARMED · SLS ARTEMIS V READY FOR LIFTOFF',
+    statusText: 'PAD 39B ARMED · READY FOR LIFTOFF',
     statusColor: '#38bdf8',
   });
 
@@ -259,9 +290,12 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     isFinished: false,
     keys: {} as Record<string, boolean>,
     lunarDistancePct: 0, // 0 = Earth, 1 = Moon
-    statusText: 'PAD 39B ARMED · SLS ARTEMIS V READY FOR LIFTOFF',
+    statusText: 'PAD 39B ARMED · READY FOR LIFTOFF',
     statusColor: '#38bdf8',
     srbSeparated: false,
+    fairingSeparated: false,
+    stage1Separated: false,
+    orbitConfirmed: false,
     srbSeparationProgress: 0,
     lasJettisoned: false,
     solarArrayDeployed: false,
@@ -328,49 +362,50 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     };
   }, [isOpen]);
 
+  // Confirm Stable Low Earth Orbit (LEO) Insertion
+  const confirmOrbitInsertion = () => {
+    const state = flightStateRef.current;
+    if (state.orbitConfirmed) return;
+    state.isFinished = true;
+    state.orbitConfirmed = true;
+    state.altitudeKm = Math.max(185, state.altitudeKm);
+    state.velocityKms = Math.max(7.8, state.velocityKms);
+    state.statusText = '🌍 ORBITAL INSERTION ACHIEVED · 185 KM × 185 KM STABLE EARTH ORBIT · MISSION COMPLETE!';
+    state.statusColor = '#22c55e';
+    setTelemetry((prev) => ({
+      ...prev,
+      altitudeKm: state.altitudeKm,
+      velocityKms: state.velocityKms,
+      statusText: '🌍 ORBITAL INSERTION ACHIEVED · 185 KM × 185 KM STABLE EARTH ORBIT · MISSION COMPLETE!',
+      statusColor: '#22c55e',
+    }));
+    soundFx.playVictory();
+    confetti({ particleCount: 220, spread: 90 });
+    announceCapcom('Houston Capcom: Orbital insertion confirmed! All systems nominal. 185 km stable circular orbit achieved!');
+  };
+
   // Primary Action triggered via Spacebar or big button
   const handlePrimaryAction = () => {
     const state = flightStateRef.current;
 
-    if (state.phase === 'PAD_LAUNCH') {
-      if (state.throttle === 0) {
-        state.throttle = 1.0;
-        state.statusText = selectedProfileId === 'NEW_SHEPARD'
-          ? 'BE-3PM IGNITION & LIFTOFF · WEST TEXAS LAUNCH SITE ONE'
-          : 'IGNITION & LIFTOFF · ALL ENGINES RUNNING AT 100%';
-        state.statusColor = '#22c55e';
-        soundFx.playReactorStart();
-        announceCapcom(selectedProfileId === 'NEW_SHEPARD'
-          ? 'We have ignition and liftoff of New Shepard! Cleared the tower in West Texas!'
-          : 'Ignition, and liftoff of Artemis 5! We have cleared the launch tower!');
-      } else if (state.stage === 1 && !state.srbSeparated && state.altitudeKm >= 15) {
-        // Trigger Separation
-        state.srbSeparated = true;
-        state.stage = 2;
-        state.statusText = selectedProfileId === 'NEW_SHEPARD'
-          ? 'MECO & CREW CAPSULE SEPARATION · COASTING TO 100 KM KÁRMÁN LINE'
-          : 'SRB BOOSTER SEPARATION CONFIRMED · CORE STAGE BURN NOMINAL';
-        state.statusColor = '#fbbf24';
-        soundFx.playRadioChirp();
-        announceCapcom(selectedProfileId === 'NEW_SHEPARD'
-          ? 'MECO confirmed! Crew capsule separation complete. Climbing on momentum to the Kármán line!'
-          : 'Booster separation confirmed. Core stage operating at nominal thrust.');
-      }
-    } else if (state.phase === 'TLI_INJECTION') {
-      if (selectedProfileId === 'NEW_SHEPARD' || state.velocityKms >= 10.5) {
-        transitionToPhase('CISLUNAR_COAST');
-      } else {
-        state.throttle = Math.min(1.0, state.throttle + 0.25);
-        soundFx.playTelemetryChirp();
-      }
-    } else if (state.phase === 'CISLUNAR_COAST') {
-      transitionToPhase('LUNAR_DESCENT');
-    } else if (state.phase === 'LUNAR_DESCENT') {
-      if (selectedProfileId === 'NEW_SHEPARD') {
-        transitionToPhase('SURFACE_TOUCHDOWN');
-      } else {
-        state.throttle = Math.min(1.0, state.throttle + 0.2);
-      }
+    if (state.throttle === 0) {
+      state.throttle = 1.0;
+      state.statusText = selectedProfileId === 'NEW_SHEPARD'
+        ? 'BE-3PM IGNITION & LIFTOFF · WEST TEXAS LAUNCH SITE ONE'
+        : 'IGNITION & LIFTOFF · ALL ENGINES RUNNING AT 100%';
+      state.statusColor = '#22c55e';
+      soundFx.playReactorStart();
+      announceCapcom(selectedProfileId === 'NEW_SHEPARD'
+        ? 'We have ignition and liftoff of New Shepard! Cleared the tower in West Texas!'
+        : 'Ignition, and liftoff! We have cleared the launch tower!');
+    } else if (!state.srbSeparated && state.altitudeKm >= 15) {
+      doBoosterSeparationRef.current();
+    } else if (!state.fairingSeparated && state.altitudeKm >= 45) {
+      doFairingSeparationRef.current();
+    } else if (state.stage === 2 && state.altitudeKm >= 90) {
+      doCoreStageSeparationRef.current();
+    } else if (state.altitudeKm >= 135 && !state.orbitConfirmed) {
+      confirmOrbitInsertion();
     }
   };
 
@@ -388,200 +423,73 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       state.propellant = 100;
       state.pitchDeg = 90;
       state.srbSeparated = false;
-      state.srbSeparationProgress = 0;
+      state.fairingSeparated = false;
+      state.stage1Separated = false;
+      state.orbitConfirmed = false;
+      state.isFinished = false;
       state.stage = 1;
       if (prof === 'NEW_SHEPARD') {
         state.statusText = 'LAUNCH SITE ONE (WEST TEXAS) · NEW SHEPARD ARMED FOR 10-MIN FLIGHT';
       } else if (prof === 'APOLLO_11') {
-        state.statusText = 'PAD 39A ARMED · SATURN V (SA-506) READY FOR LUNAR LIFTOFF';
+        state.statusText = 'PAD 39A ARMED · SATURN V (SA-506) READY FOR LIFTOFF';
       } else if (prof === 'STS_31') {
         state.statusText = 'PAD 39B ARMED · SHUTTLE DISCOVERY OV-103 COUNTDOWN AT T-0';
       } else if (prof === 'ISS_DRAGON') {
         state.statusText = 'SLC-40 ARMED · FALCON 9 & CREW DRAGON READY FOR ISS RENDEZVOUS';
       } else if (prof === 'MARS_PERSEV') {
-        state.statusText = 'SLC-41 ARMED · ATLAS V 541 ARMED FOR MARS 2020 PERSEVERANCE LAUNCH';
+        state.statusText = 'SLC-41 ARMED · ATLAS V 541 ARMED FOR LAUNCH';
       } else {
-        state.statusText = 'PAD 39B ARMED · SLS ARTEMIS V READY FOR LIFTOFF';
+        state.statusText = 'PAD 39B ARMED · SLS ARTEMIS READY FOR LIFTOFF';
       }
       state.statusColor = '#38bdf8';
       spaceMusicEngine.setTheme('LAUNCH');
     } else if (nextPhase === 'TLI_INJECTION') {
-      state.srbSeparated = true;
-      state.stage = 2;
-      if (prof === 'NEW_SHEPARD') {
-        state.altitudeKm = 42;
-        state.velocityKms = 1.1;
-        state.throttle = 0;
-        state.propellant = 15;
-        state.pitchDeg = 85;
-        state.statusText = 'MECO & CAPSULE SEPARATION · COASTING TO 100 KM KÁRMÁN LINE';
-        announceCapcom('MECO confirmed! Crew capsule separation complete. Climbing on momentum to the Kármán line!');
-      } else if (prof === 'APOLLO_11') {
-        state.altitudeKm = 185;
-        state.velocityKms = 10.8;
-        state.throttle = 0.9;
-        state.propellant = 70;
-        state.pitchDeg = 20;
-        state.statusText = 'S-IVB THIRD STAGE TLI BURN · ACCELERATING TO 11.2 KM/S';
-        announceCapcom('Apollo 11, Houston Capcom. You are go for Translunar Injection!');
-      } else if (prof === 'STS_31') {
-        state.altitudeKm = 600;
-        state.velocityKms = 7.6;
-        state.throttle = 0;
-        state.propellant = 60;
-        state.pitchDeg = 0;
-        state.statusText = 'ORBITAL INSERTION CONFIRMED (600 KM) · 28.5° INCLINATION';
-        announceCapcom('Discovery, Houston Capcom. Main Engine Cut-Off confirmed. You are in orbit for Hubble deployment.');
-      } else if (prof === 'ISS_DRAGON') {
-        state.altitudeKm = 400;
-        state.velocityKms = 7.7;
-        state.throttle = 0;
-        state.propellant = 65;
-        state.pitchDeg = 0;
-        state.statusText = 'DRAGON SEPARATION NOMINAL · PHASING BURNS TOWARD ISS';
-        announceCapcom('Dragon, Houston. Spacecraft separation confirmed. Commencing autonomous rendezvous burns.');
-      } else if (prof === 'MARS_PERSEV') {
-        state.altitudeKm = 850;
-        state.velocityKms = 11.5;
-        state.throttle = 0.95;
-        state.propellant = 50;
-        state.pitchDeg = 15;
-        state.statusText = 'CENTAUR TRANS-MARS INJECTION · ESCAPING EARTH GRAVITY';
-        announceCapcom('Perseverance, JPL Capcom. Trans-Mars Injection burn nominal. Setting sail for the Red Planet.');
-      } else {
-        state.altitudeKm = 185;
-        state.velocityKms = 7.8;
-        state.throttle = 0.8;
-        state.propellant = 75;
-        state.pitchDeg = 25;
-        state.statusText = 'TLI BURN COMMENCED · ACCELERATING TO 11.2 KM/S';
-        announceCapcom('Trans-Lunar Injection burn initiated. Accelerating out of Earth orbit.');
-      }
-      state.statusColor = '#38bdf8';
-      spaceMusicEngine.setTheme('LAUNCH');
-    } else if (nextPhase === 'CISLUNAR_COAST') {
-      state.solarArrayDeployed = true;
-      state.throttle = 0;
-      state.pitchDeg = 0;
-      if (prof === 'NEW_SHEPARD') {
-        state.lunarDistancePct = 0.01;
-        state.altitudeKm = 106;
-        state.velocityKms = 0.05;
-        state.statusText = '100 KM KÁRMÁN LINE CROSSED (106 KM APOGEE) · ZERO-G WEIGHTLESSNESS';
-        announceCapcom('Welcome to space, astronauts! You have officially crossed the Kármán line into zero-gravity.');
-      } else if (prof === 'APOLLO_11') {
-        state.lunarDistancePct = 0.5;
-        state.altitudeKm = 192000;
-        state.velocityKms = 2.4;
-        state.statusText = 'FREE-RETURN CISLUNAR ARC · CSM & LM DOCKED';
-        announceCapcom('Apollo 11, translunar coast nominal. Entering lunar sphere of gravitational influence.');
-      } else if (prof === 'STS_31') {
-        state.lunarDistancePct = 0.01;
-        state.altitudeKm = 600;
-        state.velocityKms = 7.6;
-        state.statusText = 'PAYLOAD CARGO BAY DOORS OPEN · SUNLIGHT ON HUBBLE OPTICS';
-        announceCapcom('Discovery, payload bay doors are open. Canadarm robotic arm energized.');
-      } else if (prof === 'ISS_DRAGON') {
-        state.lunarDistancePct = 0.01;
-        state.altitudeKm = 400;
-        state.velocityKms = 7.7;
-        state.statusText = 'ISS SIGHTING · RANGE 1,000 METERS · OPTICAL LIDAR LOCKED';
-        announceCapcom('Dragon, ISS crew visual contact confirmed. Entering approach ellipsoid.');
-      } else if (prof === 'MARS_PERSEV') {
-        state.lunarDistancePct = 0.7;
-        state.altitudeKm = 48000000;
-        state.velocityKms = 22.0;
-        state.statusText = 'INTERPLANETARY HELIOCENTRIC CRUISE · TRAJECTORY CORRECTION TCM-3';
-        announceCapcom('Perseverance, cruise stage healthy. 7-month interplanetary cruise trajectory dead-center.');
-      } else {
-        state.lunarDistancePct = 0.15;
-        state.altitudeKm = 58000;
-        state.velocityKms = 3.2;
-        state.statusText = 'CISLUNAR DEEP SPACE TRANSIT · SOLAR WINGS DEPLOYED';
-        announceCapcom('Orion has completed the TLI burn. Solar array wings deployed. Welcome to deep space.');
-      }
-      state.statusColor = '#38bdf8';
-      spaceMusicEngine.setTheme('COAST_SPACE');
-    } else if (nextPhase === 'LUNAR_DESCENT') {
-      if (prof === 'NEW_SHEPARD') {
-        state.altitudeKm = 1.8;
-        state.velocityKms = 0.35;
-        state.throttle = 0.85;
-        state.propellant = 8;
-        state.pitchDeg = 90;
-        state.statusText = 'BOOSTER DESCENT · WEDGE FINS ACTIVE · BE-3 RESTART FOR VTVL LANDING';
-        announceCapcom('Booster BE-3 engine restart confirmed! Vertical landing sequence initiated on the West Texas pad.');
-      } else if (prof === 'APOLLO_11') {
-        state.altitudeKm = 15;
-        state.velocityKms = 1.4;
-        state.throttle = 0.6;
-        state.propellant = 35;
-        state.pitchDeg = 80;
-        state.statusText = 'EAGLE POWERED DESCENT INITIATION (PDI) · 1202 PROGRAM ALARM BYPASSED';
-        announceCapcom('Eagle, Houston. We are GO on that alarm! Continue powered descent to Tranquility.');
-      } else if (prof === 'STS_31') {
-        state.altitudeKm = 600;
-        state.velocityKms = 7.6;
-        state.throttle = 0;
-        state.propellant = 55;
-        state.pitchDeg = 0;
-        state.statusText = 'CANADARM UNBERTHING HUBBLE SPACE TELESCOPE FROM CARGO BAY';
-        announceCapcom('Discovery, Canadarm has unberthed the Hubble Space Telescope. Solar arrays swinging clear.');
-      } else if (prof === 'ISS_DRAGON') {
-        state.altitudeKm = 400;
-        state.velocityKms = 0.05;
-        state.throttle = 0.1;
-        state.propellant = 50;
-        state.pitchDeg = 0;
-        state.statusText = 'FINAL APPROACH · 20M KEEP-OUT CORRIDOR · IDA ALIGNED';
-        announceCapcom('Dragon, inside 20 meters. Alignment within 1 degree. Autopilot capture ready.');
-      } else if (prof === 'MARS_PERSEV') {
-        state.altitudeKm = 12;
-        state.velocityKms = 0.4;
-        state.throttle = 0.7;
-        state.propellant = 25;
-        state.pitchDeg = 88;
-        state.statusText = 'HYPERSONIC ENTRY HEATSHIELD JETTISON · SKY CRANE POWERED DESCENT';
-        announceCapcom('Perseverance, supersonic parachute deployed! Sky crane descent engines running.');
-      } else {
-        state.altitudeKm = 25;
-        state.velocityKms = 1.6;
-        state.throttle = 0.5;
-        state.propellant = 45;
-        state.pitchDeg = 85;
-        state.statusText = 'LUNAR POWERED DESCENT · BRAKING THRUST ACTIVE';
-        announceCapcom('HLS lander powered descent initiated. Targeting Shackleton Crater South Pole.');
-      }
+      // Phase 2: Boosters Jettison (36-75 km)
+      state.altitudeKm = 38;
+      state.velocityKms = 2.4;
+      state.throttle = 1.0;
+      state.pitchDeg = 75;
+      state.stage = 1;
+      state.statusText = '🚀 BOOSTER SEPARATION · PUSHER JETS ACTIVE · TWIN SRBS JETTISONED';
       state.statusColor = '#f59e0b';
-      spaceMusicEngine.setTheme('LUNAR_DESCENT');
+      doBoosterSeparationRef.current();
+      announceCapcom('Booster burnout and separation confirmed! Continuing nominal ascent trajectory.');
+    } else if (nextPhase === 'CISLUNAR_COAST') {
+      // Phase 3: Fairings Jettison (75-125 km)
+      state.altitudeKm = 78;
+      state.velocityKms = 4.8;
+      state.throttle = 1.0;
+      state.pitchDeg = 55;
+      state.stage = 1;
+      state.statusText = '🛡️ PAYLOAD FAIRINGS JETTISONED · SPACECRAFT EXPOSED TO SPACE';
+      state.statusColor = '#38bdf8';
+      doBoosterSeparationRef.current();
+      doFairingSeparationRef.current();
+      announceCapcom('Payload fairings jettison confirmed! Vehicle is in vacuum.');
+    } else if (nextPhase === 'LUNAR_DESCENT') {
+      // Phase 4: Core MECO & S2 Ignition (125-185 km)
+      state.altitudeKm = 128;
+      state.velocityKms = 6.9;
+      state.throttle = 1.0;
+      state.pitchDeg = 25;
+      state.stage = 2;
+      state.statusText = '🔥 MAIN ENGINE CUTOFF (MECO) · CORE STAGE SEPARATED · STAGE 2 IGNITION';
+      state.statusColor = '#a855f7';
+      doBoosterSeparationRef.current();
+      doFairingSeparationRef.current();
+      doCoreStageSeparationRef.current();
+      announceCapcom('MECO confirmed! Stage 1 separation confirmed, upper stage engine start.');
     } else if (nextPhase === 'SURFACE_TOUCHDOWN') {
-      state.altitudeKm = 0;
-      state.velocityKms = 0;
-      state.throttle = 0;
-      state.pitchDeg = 90;
-      if (prof === 'NEW_SHEPARD') {
-        state.statusText = 'TOUCHDOWN CONFIRMED · 3 MAIN CHUTES & RETRO-THRUST · 10 MINUTE PROFILE COMPLETE';
-        announceCapcom('Capsule touchdown in the West Texas desert! Space and back in 10 minutes. Welcome home, astronauts!');
-      } else if (prof === 'APOLLO_11') {
-        state.statusText = 'TOUCHDOWN CONFIRMED · TRANQUILITY BASE (0.67°N, 23.47°E)';
-        announceCapcom('Houston, Tranquility Base here. The Eagle has landed!');
-      } else if (prof === 'STS_31') {
-        state.statusText = 'HUBBLE SPACE TELESCOPE DEPLOYED · SOLAR WINGS EXTENDED';
-        announceCapcom('Discovery, Hubble is released into free flight! Humanity has a new window into the universe.');
-      } else if (prof === 'ISS_DRAGON') {
-        state.statusText = 'IDA DOCKING SEAL CONFIRMED · HARD CAPTURE COMPLETE';
-        announceCapcom('Dragon, capture confirmed! Welcome aboard the International Space Station.');
-      } else if (prof === 'MARS_PERSEV') {
-        state.statusText = 'TOUCHDOWN CONFIRMED · JEZERO CRATER, MARS · SKY CRANE FLYAWAY';
-        announceCapcom('Touchdown confirmed! Perseverance is safe on Mars, ready to begin the search for ancient life.');
-      } else {
-        state.statusText = 'TOUCHDOWN CONFIRMED · SHACKLETON RIM OUTPOST (-89.9°S)';
-        announceCapcom('Contact light! Shutdown. Shackleton Base, the Eagle has landed.');
-      }
-      state.statusColor = '#10b981';
-      spaceMusicEngine.setTheme('SURFACE_CALM');
-      soundFx.playVictory();
-      confetti({ particleCount: 90, spread: 85, origin: { y: 0.6 } });
+      // Phase 5: LEO Orbit Insertion Complete (185 km)
+      state.altitudeKm = 185;
+      state.velocityKms = 7.8;
+      state.throttle = 0.0;
+      state.pitchDeg = 0;
+      state.stage = 2;
+      doBoosterSeparationRef.current();
+      doFairingSeparationRef.current();
+      doCoreStageSeparationRef.current();
+      confirmOrbitInsertion();
     }
   };
 
@@ -706,6 +614,9 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       statusText: 'PAD 39B ARMED · SLS ARTEMIS V READY FOR LIFTOFF',
       statusColor: '#38bdf8',
       srbSeparated: false,
+      fairingSeparated: false,
+      stage1Separated: false,
+      orbitConfirmed: false,
       srbSeparationProgress: 0,
       lasJettisoned: false,
       solarArrayDeployed: false,
@@ -798,9 +709,9 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     const starMat = new THREE.PointsMaterial({ vertexColors: true, size: 2.2, sizeAttenuation: false });
     scene.add(new THREE.Points(starGeo, starMat));
 
-    // 4. Photorealistic NASA Earth Globe
+    // 4. Photorealistic NASA Earth Globe & Atmosphere
     const textureLoader = new THREE.TextureLoader();
-    const earthRadius = 6371;
+    const earthRadius = 620;
     const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
     const earthTexture = textureLoader.load('/assets/earth_orbit.jpg');
     earthTexture.colorSpace = THREE.SRGBColorSpace;
@@ -811,8 +722,9 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       metalness: 0.1,
     });
     const earthMesh = new THREE.Mesh(earthGeo, earthMat);
-    earthMesh.position.set(0, -earthRadius, 0);
+    earthMesh.position.set(0, -earthRadius - 120, 0);
     earthMesh.receiveShadow = true;
+    earthMesh.visible = false;
     scene.add(earthMesh);
 
     // Cyan Atmospheric Glow Shell
@@ -825,10 +737,11 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       blending: THREE.AdditiveBlending,
     });
     const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
-    atmoMesh.position.set(0, -earthRadius, 0);
+    atmoMesh.position.set(0, -earthRadius - 120, 0);
+    atmoMesh.visible = false;
     scene.add(atmoMesh);
 
-    // 5. Photorealistic NASA 3D Moon Surface & South Pole Base
+    // 5. NASA Moon Surface (Hidden during launch-to-orbit missions)
     const moonRadius = 1737;
     const moonGeo = new THREE.SphereGeometry(moonRadius, 64, 64);
     const moonTexture = textureLoader.load('/assets/moon_texture.jpg');
@@ -847,9 +760,10 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     const moonMesh = new THREE.Mesh(moonGeo, moonMat);
     moonMesh.position.set(0, -moonRadius - 100, -8000);
     moonMesh.receiveShadow = true;
+    moonMesh.visible = false; // Strictly hidden in orbital ascent launch missions!
     scene.add(moonMesh);
 
-    // Lunar South Pole Landing Terrain (Shackleton Crater Rim)
+    // Lunar South Pole Landing Terrain (Hidden)
     const lunarGroundGroup = new THREE.Group();
     const lunarTerrainGeo = new THREE.PlaneGeometry(800, 800, 64, 64);
     const lunarTerrainMat = new THREE.MeshStandardMaterial({
@@ -886,7 +800,8 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     padBeacon.position.y = 0.1;
     lunarGroundGroup.add(padBeacon);
 
-    lunarGroundGroup.position.set(0, -5000, 0); // hidden until Phase 4
+    lunarGroundGroup.position.set(0, -5000, 0); // hidden
+    lunarGroundGroup.visible = false;
     scene.add(lunarGroundGroup);
 
     // 5.1 Photorealistic Earth visible in the Lunar Sky during Descent & Landing (Earthrise)
@@ -913,34 +828,49 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     const lunarSkyAtmoMesh = new THREE.Mesh(lunarSkyAtmoGeo, lunarSkyAtmoMat);
     lunarSkyEarthGroup.add(lunarSkyAtmoMesh);
 
-    // Positioned majestically above the lunar horizon (Shackleton crater sky)
+    // Positioned majestically above the lunar horizon
     lunarSkyEarthGroup.position.set(160, 180, -260);
     lunarSkyEarthGroup.visible = false;
     scene.add(lunarSkyEarthGroup);
 
-    // 5.2 Authentic 3D Trans-Lunar Injection (TLI) Trajectory Route Arc
-    const trajectoryPoints = [
-      new THREE.Vector3(0, 0, 0),         // KSC Pad 39B
-      new THREE.Vector3(15, 35, -20),     // LEO Parking Orbit (185 km)
-      new THREE.Vector3(45, 80, -90),     // TLI Burn Point (11.2 km/s)
-      new THREE.Vector3(95, 140, -320),   // Outbound Cislunar Arc (100,000 km)
-      new THREE.Vector3(120, 150, -800),  // Mid-Course Correction (MCC-1)
-      new THREE.Vector3(110, 120, -1800), // Lunar Transfer Boundary (280,000 km)
-      new THREE.Vector3(60, 70, -3800),   // Lunar Gravity Capture
-      new THREE.Vector3(15, 25, -6500),   // LOI Burn (Lunar Orbit Insertion)
-      new THREE.Vector3(0, 5, -7800),     // Low Lunar Orbit (100 km)
-      new THREE.Vector3(0, 0.2, -8000),   // Powered Descent to Shackleton Rim
-    ];
-    const trajectoryCurve = new THREE.CatmullRomCurve3(trajectoryPoints);
-    const trajectoryGeo = new THREE.TubeGeometry(trajectoryCurve, 128, 0.45, 8, false);
-    const trajectoryMat = new THREE.MeshBasicMaterial({
-      color: 0xfbbf24, // Gold orbital trajectory line
+    // 5.2 Glowing 3D Low Earth Orbit (LEO) Ascent & Insertion Trajectory Corridor around Earth
+    const trajCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 4, 0),         // Pad at Cape Canaveral / KSC LC-39B
+      new THREE.Vector3(18, 55, -15),     // Waypoint 1: Booster Separation Corridor (36 km)
+      new THREE.Vector3(55, 120, -45),    // Waypoint 2: Fairing Separation Corridor (75 km)
+      new THREE.Vector3(120, 200, -95),   // Waypoint 3: Core MECO & S-II Ignition (125 km)
+      new THREE.Vector3(220, 280, -165),  // Waypoint 4: Upper Stage Orbital Insertion Burn (160 km)
+      new THREE.Vector3(380, 330, -250),  // Target 185 km Circular LEO Flight Path around Earth
+      new THREE.Vector3(560, 350, -360),
+      new THREE.Vector3(760, 355, -490),
+    ]);
+    const trajPoints = trajCurve.getPoints(120);
+    const trajGeo = new THREE.BufferGeometry().setFromPoints(trajPoints);
+    const trajMat = new THREE.LineBasicMaterial({
+      color: 0x00e5ff,
+      linewidth: 3,
       transparent: true,
       opacity: 0.85,
     });
-    const trajectoryMesh = new THREE.Mesh(trajectoryGeo, trajectoryMat);
-    trajectoryMesh.visible = false;
+    const trajectoryMesh = new THREE.Line(trajGeo, trajMat);
+    trajectoryMesh.visible = true; // Always visible as orbital insertion flight corridor guidance!
     scene.add(trajectoryMesh);
+
+    // Holographic Waypoint Corridor Rings along the ascent flight path
+    const waypointRings = [
+      { pos: new THREE.Vector3(18, 55, -15), radius: 8, color: 0xfbbf24 },   // Booster Sep (36 km)
+      { pos: new THREE.Vector3(55, 120, -45), radius: 10, color: 0x38bdf8 },  // Fairing Sep (75 km)
+      { pos: new THREE.Vector3(120, 200, -95), radius: 12, color: 0xa855f7 }, // MECO (125 km)
+      { pos: new THREE.Vector3(380, 330, -250), radius: 16, color: 0x22c55e }, // LEO Orbit Target (185 km)
+    ];
+    waypointRings.forEach((wp) => {
+      const ringGeo = new THREE.TorusGeometry(wp.radius, 0.35, 16, 48);
+      const ringMat = new THREE.MeshBasicMaterial({ color: wp.color, transparent: true, opacity: 0.65 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.copy(wp.pos);
+      ring.lookAt(wp.pos.clone().add(new THREE.Vector3(1, 0.4, -0.7)));
+      scene.add(ring);
+    });
 
     // ─────────────────────────────────────────────────────────────
     // 6. KENNEDY SPACE CENTER PAD 39B & MOBILE LAUNCHER TOWER
@@ -1412,6 +1342,130 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     spacecraftGroup.position.set(0, 4, 0);
     scene.add(spacecraftGroup);
 
+    // Bipartite Clamshell Payload Fairings (Left & Right Halves)
+    const fairingMat = new THREE.MeshStandardMaterial({
+      color: 0xf1f5f9,
+      roughness: 0.35,
+      metalness: 0.2,
+      side: THREE.DoubleSide,
+    });
+    const fairingLeft = new THREE.Group();
+    const fairingRight = new THREE.Group();
+    const fairingBaseY = selectedProfileId === 'APOLLO_11' ? 48 : (selectedProfileId === 'NEW_SHEPARD' ? 25 : 30);
+    fairingLeft.position.set(0, fairingBaseY, 0);
+    fairingRight.position.set(0, fairingBaseY, 0);
+
+    const fCylLeft = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.35, 2.35, 9.5, 32, 1, true, 0, Math.PI),
+      fairingMat
+    );
+    fairingLeft.add(fCylLeft);
+    const fConeLeft = new THREE.Mesh(
+      new THREE.ConeGeometry(2.35, 4.5, 32, 1, true, 0, Math.PI),
+      fairingMat
+    );
+    fConeLeft.position.y = 7.0;
+    fairingLeft.add(fConeLeft);
+    spacecraftGroup.add(fairingLeft);
+
+    const fCylRight = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.35, 2.35, 9.5, 32, 1, true, Math.PI, Math.PI),
+      fairingMat
+    );
+    fairingRight.add(fCylRight);
+    const fConeRight = new THREE.Mesh(
+      new THREE.ConeGeometry(2.35, 4.5, 32, 1, true, Math.PI, Math.PI),
+      fairingMat
+    );
+    fConeRight.position.y = 7.0;
+    fairingRight.add(fConeRight);
+    spacecraftGroup.add(fairingRight);
+
+    // Staging callbacks connecting to component refs
+    const doBoosterSeparation = () => {
+      const state = flightStateRef.current;
+      if (state.srbSeparated) return;
+      state.srbSeparated = true;
+      state.srbSeparationProgress = 0;
+      soundFx.playExplosion();
+      announceCapcom('SRB burnout! Booster separation confirmed.');
+
+      const tempPos = new THREE.Vector3();
+      const tempQuat = new THREE.Quaternion();
+      if (srbGroupLeft.parent) {
+        srbGroupLeft.getWorldPosition(tempPos);
+        srbGroupLeft.getWorldQuaternion(tempQuat);
+        srbGroupLeft.parent.remove(srbGroupLeft);
+        srbGroupLeft.position.copy(tempPos);
+        srbGroupLeft.quaternion.copy(tempQuat);
+        scene.add(srbGroupLeft);
+      }
+      if (srbGroupRight.parent) {
+        srbGroupRight.getWorldPosition(tempPos);
+        srbGroupRight.getWorldQuaternion(tempQuat);
+        srbGroupRight.parent.remove(srbGroupRight);
+        srbGroupRight.position.copy(tempPos);
+        srbGroupRight.quaternion.copy(tempQuat);
+        scene.add(srbGroupRight);
+      }
+      state.statusText = '🚀 BOOSTER SEPARATION · KOROLEV CROSS JETTISON NOMINAL';
+      state.statusColor = '#f59e0b';
+    };
+    doBoosterSeparationRef.current = doBoosterSeparation;
+
+    const doFairingSeparation = () => {
+      const state = flightStateRef.current;
+      if (state.fairingSeparated) return;
+      state.fairingSeparated = true;
+      soundFx.playExplosion();
+      announceCapcom('Payload fairings jettison confirmed! Spacecraft exposed to vacuum.');
+
+      const tempPos = new THREE.Vector3();
+      const tempQuat = new THREE.Quaternion();
+      if (fairingLeft.parent) {
+        fairingLeft.getWorldPosition(tempPos);
+        fairingLeft.getWorldQuaternion(tempQuat);
+        fairingLeft.parent.remove(fairingLeft);
+        fairingLeft.position.copy(tempPos);
+        fairingLeft.quaternion.copy(tempQuat);
+        scene.add(fairingLeft);
+      }
+      if (fairingRight.parent) {
+        fairingRight.getWorldPosition(tempPos);
+        fairingRight.getWorldQuaternion(tempQuat);
+        fairingRight.parent.remove(fairingRight);
+        fairingRight.position.copy(tempPos);
+        fairingRight.quaternion.copy(tempQuat);
+        scene.add(fairingRight);
+      }
+      state.statusText = '🛡️ FAIRING JETTISON · PAYLOAD SHIELD SEPARATED INTO SPACE';
+      state.statusColor = '#38bdf8';
+    };
+    doFairingSeparationRef.current = doFairingSeparation;
+
+    const doCoreStageSeparation = () => {
+      const state = flightStateRef.current;
+      if (state.stage1Separated) return;
+      state.stage1Separated = true;
+      state.stage = 2;
+      soundFx.playExplosion();
+      announceCapcom('Main Engine Cutoff (MECO). Core stage separation confirmed! Upper stage ignition nominal.');
+
+      const tempPos = new THREE.Vector3();
+      const tempQuat = new THREE.Quaternion();
+      if (coreStage.parent) {
+        coreStage.getWorldPosition(tempPos);
+        coreStage.getWorldQuaternion(tempQuat);
+        coreStage.parent.remove(coreStage);
+        coreStage.position.copy(tempPos);
+        coreStage.quaternion.copy(tempQuat);
+        scene.add(coreStage);
+      }
+      state.statusText = '🔥 CORE STAGE SEPARATED (MECO) · UPPER STAGE IGNITION NOMINAL';
+      state.statusColor = '#a855f7';
+    };
+    doCoreStageSeparationRef.current = doCoreStageSeparation;
+
     // ─────────────────────────────────────────────────────────────
     // 8. ROCKET PLUMES, MACH SHOCK DIAMONDS & VOLUMETRIC SMOKE
     // ─────────────────────────────────────────────────────────────
@@ -1532,37 +1586,41 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       earthMesh.rotation.y += 0.0003;
       moonMesh.rotation.y += 0.00015;
 
-      // ── PHASE 1: PAD 39B LIFTOFF & ASCENT ──
-      if (state.phase === 'PAD_LAUNCH') {
-        padGroup.visible = true;
-        lunarGroundGroup.visible = false;
-        spacecraftGroup.visible = true;
-        lunarLanderGroup.visible = false;
+      // ── REALISTIC ASCENT & ORBITAL INSERTION PHYSICS ──
+      const isBurning = state.throttle > 0.02;
+      coreFlame.visible = isBurning;
+      machDiamondsGroup.visible = isBurning && state.throttle > 0.6;
+      srbFlameLeft.visible = isBurning && !state.srbSeparated;
+      srbFlameRight.visible = isBurning && !state.srbSeparated;
+      plumeLight.intensity = isBurning ? 4.5 + Math.random() * 2.0 : 0;
 
-        const isBurning = state.throttle > 0.02;
-        coreFlame.visible = isBurning;
-        machDiamondsGroup.visible = isBurning && state.throttle > 0.6;
-        srbFlameLeft.visible = isBurning && !state.srbSeparated;
-        srbFlameRight.visible = isBurning && !state.srbSeparated;
-        plumeLight.intensity = isBurning ? 4.5 + Math.random() * 2.0 : 0;
+      if (isBurning && !state.orbitConfirmed) {
+        state.propellant = Math.max(0, state.propellant - state.throttle * dt * 0.55);
+        state.velocityKms = Math.min(7.85, state.velocityKms + state.throttle * dt * 0.26);
+        state.altitudeKm += state.velocityKms * dt * 11.5;
+        state.gForce = 1.0 + state.throttle * 2.5;
 
-        if (isBurning) {
-          state.propellant = Math.max(0, state.propellant - state.throttle * dt * 0.85);
-          state.velocityKms = Math.min(7.8, state.velocityKms + state.throttle * dt * 0.28);
-          state.altitudeKm += state.velocityKms * dt * 12;
-          state.gForce = 1.0 + state.throttle * 2.6;
+        // Camera shake on high throttle
+        if (cameraMode === 'cockpit' || cameraMode === 'chase') {
+          camera.position.x += (Math.random() - 0.5) * 0.1 * state.throttle;
+          camera.position.y += (Math.random() - 0.5) * 0.1 * state.throttle;
+        }
 
-          // Camera shake on high throttle
-          if (cameraMode === 'cockpit' || cameraMode === 'chase') {
-            camera.position.x += (Math.random() - 0.5) * 0.12 * state.throttle;
-            camera.position.y += (Math.random() - 0.5) * 0.12 * state.throttle;
-          }
+        // Ascend along 3D LEO Orbital Insertion Corridor around Earth
+        const altRatio = Math.min(1.0, state.altitudeKm / 185);
+        spacecraftGroup.position.x = THREE.MathUtils.lerp(0, 380, Math.pow(altRatio, 1.35));
+        spacecraftGroup.position.y = 4 + THREE.MathUtils.lerp(0, 330, altRatio);
+        spacecraftGroup.position.z = THREE.MathUtils.lerp(0, -250, Math.pow(altRatio, 1.35));
 
-          // Move rocket relative to pad
-          spacecraftGroup.position.y = 4 + Math.min(state.altitudeKm * 25, 450);
-          padGroup.position.y = -Math.min(state.altitudeKm * 25, 2000);
+        // Pitch Over (Gravity Turn) into orbital inclination
+        state.pitchDeg = Math.max(0, 90 - altRatio * 90);
+        const radPitch = ((90 - state.pitchDeg) * Math.PI) / 180;
+        spacecraftGroup.rotation.z = -radPitch * 0.95;
 
-          // Billow launch smoke
+        padGroup.position.y = -Math.min(state.altitudeKm * 25, 3000);
+
+        // Billow launch smoke at pad
+        if (state.altitudeKm < 15) {
           const pos = smokeGeo.attributes.position.array as Float32Array;
           for (let i = 0; i < smokeCount; i++) {
             if (pos[i * 3 + 1] < -100) {
@@ -1579,170 +1637,77 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
             }
           }
           smokeGeo.attributes.position.needsUpdate = true;
-
-          // Automatic Pitch Over (Gravity Turn)
-          if (state.altitudeKm > 8) {
-            state.pitchDeg = Math.max(35, 90 - (state.altitudeKm - 8) * 1.2);
-            const radPitch = ((90 - state.pitchDeg) * Math.PI) / 180;
-            spacecraftGroup.rotation.z = -radPitch;
-          }
-
-          // Handle SRB separation drift & pusher motor ignition
-          if (state.srbSeparated) {
-            state.srbSeparationProgress += dt;
-            sepFlareLeft.visible = state.srbSeparationProgress < 1.6;
-            sepFlareRight.visible = state.srbSeparationProgress < 1.6;
-
-            srbGroupLeft.position.x = -3.7 - state.srbSeparationProgress * 12;
-            srbGroupLeft.position.y = -state.srbSeparationProgress * 8;
-            srbGroupRight.rotation.z = -state.srbSeparationProgress * 0.8;
-            srbGroupRight.position.x = 3.7 + state.srbSeparationProgress * 12;
-            srbGroupRight.position.y = -state.srbSeparationProgress * 8;
-          } else {
-            sepFlareLeft.visible = false;
-            sepFlareRight.visible = false;
-          }
-
-          if (state.altitudeKm >= 70) {
-            transitionToPhase('TLI_INJECTION');
-          }
         }
       }
 
-      // ── PHASE 2: TLI INJECTION (TRANS-LUNAR INJECTION BURN) ──
-      else if (state.phase === 'TLI_INJECTION') {
-        padGroup.visible = false;
-        srbGroupLeft.visible = false;
-        srbGroupRight.visible = false;
-        coreFlame.visible = state.throttle > 0.05;
-        machDiamondsGroup.visible = state.throttle > 0.5;
-        plumeLight.intensity = state.throttle > 0.05 ? 3.5 : 0;
+      // ── PHYSICAL DRIFT OF SEPARATED ROCKET STAGES ──
+      // 1. SRB Boosters Drift & Pusher Flares
+      if (state.srbSeparated) {
+        state.srbSeparationProgress += dt;
+        sepFlareLeft.visible = state.srbSeparationProgress < 1.8;
+        sepFlareRight.visible = state.srbSeparationProgress < 1.8;
 
-        if (state.throttle > 0.05) {
-          state.propellant = Math.max(0, state.propellant - state.throttle * dt * 1.1);
-          state.velocityKms = Math.min(11.2, state.velocityKms + state.throttle * dt * 0.45);
-          state.altitudeKm += state.velocityKms * dt * 25;
+        if (srbGroupLeft.parent === scene) {
+          srbGroupLeft.position.x -= 16 * dt;
+          srbGroupLeft.position.y -= 22 * dt;
+          srbGroupLeft.position.z -= 8 * dt;
+          srbGroupLeft.rotation.z += 0.45 * dt;
+        }
+        if (srbGroupRight.parent === scene) {
+          srbGroupRight.position.x += 16 * dt;
+          srbGroupRight.position.y -= 22 * dt;
+          srbGroupRight.position.z -= 8 * dt;
+          srbGroupRight.rotation.z -= 0.45 * dt;
+        }
+      } else {
+        sepFlareLeft.visible = false;
+        sepFlareRight.visible = false;
+      }
 
-          const radPitch = ((90 - state.pitchDeg) * Math.PI) / 180;
-          spacecraftGroup.rotation.z = -radPitch;
-
-          if (state.velocityKms >= 11.1) {
-            state.statusText = 'TLI BURN COMPLETE (11.2 KM/S) · CISLUNAR TRANSIT READY [PRESS SPACE]';
-            state.statusColor = '#22c55e';
-          }
+      // 2. Bipartite Payload Fairing Drift
+      if (state.fairingSeparated) {
+        if (fairingLeft.parent === scene) {
+          fairingLeft.position.x -= 18 * dt;
+          fairingLeft.position.y -= 26 * dt;
+          fairingLeft.position.z -= 14 * dt;
+          fairingLeft.rotation.z += 0.55 * dt;
+        }
+        if (fairingRight.parent === scene) {
+          fairingRight.position.x += 18 * dt;
+          fairingRight.position.y -= 26 * dt;
+          fairingRight.position.z -= 14 * dt;
+          fairingRight.rotation.z -= 0.55 * dt;
         }
       }
 
-      // ── PHASE 3: CISLUNAR DEEP SPACE TRANSIT ──
-      else if (state.phase === 'CISLUNAR_COAST') {
-        coreFlame.visible = false;
-        machDiamondsGroup.visible = false;
-        solarWingsGroup.visible = true;
-        plumeLight.intensity = 0;
-        lunarSkyEarthGroup.visible = false;
-        trajectoryMesh.visible = true;
-
-        state.lunarDistancePct = Math.min(1.0, state.lunarDistancePct + dt * 0.035);
-
-        // Receding Earth & Approaching Moon
-        earthMesh.position.z = -earthRadius - state.lunarDistancePct * 9000;
-        atmoMesh.position.z = earthMesh.position.z;
-
-        moonMesh.position.z = THREE.MathUtils.lerp(-7000, -90, state.lunarDistancePct);
-        moonMesh.position.y = THREE.MathUtils.lerp(1800, 0, state.lunarDistancePct);
-
-        state.altitudeKm = Math.round(state.lunarDistancePct * 384400);
-
-        if (state.lunarDistancePct >= 0.9) {
-          state.statusText = 'LUNAR GRAVITY CAPTURE · INITIATE POWERED DESCENT [PRESS SPACE]';
-          state.statusColor = '#38bdf8';
+      // 3. Stage 1 Core MECO Drift
+      if (state.stage1Separated) {
+        if (coreStage.parent === scene) {
+          coreStage.position.y -= 38 * dt;
+          coreStage.position.z -= 10 * dt;
+          coreStage.rotation.x += 0.2 * dt;
         }
       }
 
-      // ── PHASE 4: LUNAR POWERED DESCENT OR BOOSTER VTVL ──
-      else if (state.phase === 'LUNAR_DESCENT') {
-        if (selectedProfileId === 'NEW_SHEPARD') {
-          // New Shepard Booster VTVL Vertical Landing back at Launch Site One
-          lunarGroundGroup.visible = false;
-          padGroup.visible = true;
-          padGroup.position.y = 0;
-          spacecraftGroup.visible = true;
-          coreStage.visible = true;
-          orionGroup.visible = false;
-          coreFlame.visible = true;
-          coreFlame.scale.set(0.65, 0.65, 0.65);
-          machDiamondsGroup.visible = true;
-          lunarLanderGroup.visible = false;
-          lunarSkyEarthGroup.visible = false;
-          trajectoryMesh.visible = false;
-
-          state.altitudeKm = Math.max(0.08, state.altitudeKm - dt * (state.velocityKms * 0.9));
-          coreStage.position.y = Math.max(0.4, state.altitudeKm * 20);
-
-          if (state.altitudeKm <= 0.12) {
-            transitionToPhase('SURFACE_TOUCHDOWN');
-          }
-        } else {
-          // Lunar powered descent (Apollo 11 / Artemis V)
-          spacecraftGroup.visible = false;
-          lunarGroundGroup.visible = true;
-          lunarGroundGroup.position.set(0, 0, 0);
-          lunarLanderGroup.visible = true;
-          lunarSkyEarthGroup.visible = true;
-          trajectoryMesh.visible = false;
-
-          if (state.throttle > 0.05) {
-            state.velocityKms = Math.max(0.05, state.velocityKms - dt * 0.5 * state.throttle);
-            state.propellant = Math.max(0, state.propellant - state.throttle * dt * 0.8);
-          }
-
-          // Descend toward lunar surface
-          state.altitudeKm = Math.max(0, state.altitudeKm - dt * (state.velocityKms * 1.5));
-          lunarLanderGroup.position.y = Math.max(0.1, state.altitudeKm * 3.5);
-
-          if (state.altitudeKm <= 0.2) {
-            transitionToPhase('SURFACE_TOUCHDOWN');
-          }
-        }
+      // ── AUTOMATIC ALTITUDE MILESTONES (Korolev Cross, Fairing, MECO, LEO Insertion) ──
+      if (state.altitudeKm >= 36 && !state.srbSeparated) {
+        doBoosterSeparation();
+      }
+      if (state.altitudeKm >= 75 && !state.fairingSeparated) {
+        doFairingSeparation();
+      }
+      if (state.altitudeKm >= 125 && !state.stage1Separated) {
+        doCoreStageSeparation();
+      }
+      if (state.altitudeKm >= 185 && !state.orbitConfirmed) {
+        confirmOrbitInsertion();
       }
 
-      // ── PHASE 5: SURFACE TOUCHDOWN / CAPSULE CHUTE LANDING ──
-      else if (state.phase === 'SURFACE_TOUCHDOWN') {
-        if (selectedProfileId === 'NEW_SHEPARD') {
-          // Capsule soft landing under 3 parachutes in West Texas desert
-          lunarGroundGroup.visible = false;
-          padGroup.visible = true;
-          padGroup.position.y = 0;
-          spacecraftGroup.visible = true;
-          coreStage.visible = false;
-          orionGroup.visible = true;
-          orionGroup.position.set(0, 1.2, 0);
-          nsParachuteGroup.visible = true;
-          coreFlame.visible = false;
-          machDiamondsGroup.visible = false;
-          lunarLanderGroup.visible = false;
-          lunarSkyEarthGroup.visible = false;
-          trajectoryMesh.visible = false;
-        } else {
-          lunarLanderGroup.position.y = 0.2;
-          astronautEVA.visible = true;
-          lunarSkyEarthGroup.visible = true;
-          trajectoryMesh.visible = false;
-        }
-      }
-
-      // ── CAMERA MODES WITH 360 ORBIT CONTROLS & CONTINUOUS VEHICLE TRACKING ──
-      const activeVehicle = (state.phase === 'LUNAR_DESCENT' || state.phase === 'SURFACE_TOUCHDOWN')
-        ? (selectedProfileId === 'NEW_SHEPARD'
-            ? (state.phase === 'LUNAR_DESCENT' ? coreStage : orionGroup)
-            : lunarLanderGroup)
-        : spacecraftGroup;
-      const targetY = (state.phase === 'LUNAR_DESCENT' || state.phase === 'SURFACE_TOUCHDOWN') ? 4 : 16;
-      const vehicleTarget = new THREE.Vector3(activeVehicle.position.x, activeVehicle.position.y + targetY, activeVehicle.position.z);
+      // ── CAMERA MODES WITH CONTINUOUS VEHICLE TRACKING ──
+      const vehicleTarget = new THREE.Vector3(spacecraftGroup.position.x, spacecraftGroup.position.y + 16, spacecraftGroup.position.z);
 
       if (cameraMode === 'orbit') {
         controls.enabled = true;
-        // Shift camera along with the vehicle displacement so camera maintains chosen distance/angle during flight
         const delta = vehicleTarget.clone().sub(prevExpeditionTarget);
         camera.position.add(delta);
         controls.target.copy(vehicleTarget);
@@ -1751,10 +1716,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
         controls.enabled = true;
         const delta = vehicleTarget.clone().sub(prevExpeditionTarget);
         controls.target.copy(vehicleTarget);
-        const offset = (state.phase === 'LUNAR_DESCENT' || state.phase === 'SURFACE_TOUCHDOWN')
-          ? new THREE.Vector3(0, 10, 42)
-          : new THREE.Vector3(0, 16, 54);
-        camera.position.lerp(activeVehicle.position.clone().add(offset), 0.12);
+        camera.position.lerp(spacecraftGroup.position.clone().add(new THREE.Vector3(0, 16, 54)), 0.12);
         controls.update();
       } else if (cameraMode === 'tower') {
         controls.enabled = false;
@@ -1762,14 +1724,14 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
         camera.lookAt(spacecraftGroup.position.x, spacecraftGroup.position.y + 16, spacecraftGroup.position.z);
       } else if (cameraMode === 'cockpit') {
         controls.enabled = false;
-        // Cockpit window camera looking out
-        if (state.phase === 'LUNAR_DESCENT' || state.phase === 'SURFACE_TOUCHDOWN') {
-          camera.position.set(0, lunarLanderGroup.position.y + 4.5, 2.2);
-          camera.lookAt(0, 0, -80);
-        } else {
-          camera.position.set(0, spacecraftGroup.position.y + 34, 2.2);
-          camera.lookAt(0, spacecraftGroup.position.y + 38, -50);
-        }
+        const cabinPos = spacecraftGroup.position.clone().add(new THREE.Vector3(0, 32, 2.2));
+        camera.position.copy(cabinPos);
+        const lookDir = new THREE.Vector3(
+          Math.sin((cockpitLookRef.current.yaw * Math.PI) / 180),
+          Math.sin((cockpitLookRef.current.pitch * Math.PI) / 180) + 0.15,
+          -1
+        ).normalize();
+        camera.lookAt(cabinPos.clone().add(lookDir.multiplyScalar(60)));
       }
       prevExpeditionTarget.copy(vehicleTarget);
 
@@ -1816,86 +1778,30 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
   }, [isOpen, selectedProfileId]);
 
   const getPhaseLabels = (profId: AdvancedMissionProfile): { id: ExpeditionPhase; label: string }[] => {
-    if (profId === 'NEW_SHEPARD') {
-      return [
-        { id: 'PAD_LAUNCH', label: '1. TEXAS LIFTOFF' },
-        { id: 'TLI_INJECTION', label: '2. CAPSULE SEP' },
-        { id: 'CISLUNAR_COAST', label: '3. 106KM ZERO-G' },
-        { id: 'LUNAR_DESCENT', label: '4. BOOSTER VTVL' },
-        { id: 'SURFACE_TOUCHDOWN', label: '5. 3-CHUTE LANDING' },
-      ];
-    }
-    if (profId === 'APOLLO_11') {
-      return [
-        { id: 'PAD_LAUNCH', label: '1. SATURN V LAUNCH' },
-        { id: 'TLI_INJECTION', label: '2. S-IVB TLI BURN' },
-        { id: 'CISLUNAR_COAST', label: '3. TRANSLUNAR COAST' },
-        { id: 'LUNAR_DESCENT', label: '4. EAGLE PDI DESCENT' },
-        { id: 'SURFACE_TOUCHDOWN', label: '5. TRANQUILITY BASE' },
-      ];
-    }
-    if (profId === 'STS_31') {
-      return [
-        { id: 'PAD_LAUNCH', label: '1. SHUTTLE LIFTOFF' },
-        { id: 'TLI_INJECTION', label: '2. ORBITAL INSERTION' },
-        { id: 'CISLUNAR_COAST', label: '3. CARGO DOORS OPEN' },
-        { id: 'LUNAR_DESCENT', label: '4. RMS UNBERTHING' },
-        { id: 'SURFACE_TOUCHDOWN', label: '5. HUBBLE DEPLOYMENT' },
-      ];
-    }
-    if (profId === 'ISS_DRAGON') {
-      return [
-        { id: 'PAD_LAUNCH', label: '1. FALCON 9 LIFTOFF' },
-        { id: 'TLI_INJECTION', label: '2. STAGE 2 SEP' },
-        { id: 'CISLUNAR_COAST', label: '3. ISS RENDEZVOUS' },
-        { id: 'LUNAR_DESCENT', label: '4. 20M CORRIDOR' },
-        { id: 'SURFACE_TOUCHDOWN', label: '5. IDA DOCKING SEAL' },
-      ];
-    }
-    if (profId === 'MARS_PERSEV') {
-      return [
-        { id: 'PAD_LAUNCH', label: '1. ATLAS V LAUNCH' },
-        { id: 'TLI_INJECTION', label: '2. TRANS-MARS INJECTION' },
-        { id: 'CISLUNAR_COAST', label: '3. INTERPLANETARY CRUISE' },
-        { id: 'LUNAR_DESCENT', label: '4. HYPERSONIC ENTRY & SKY CRANE' },
-        { id: 'SURFACE_TOUCHDOWN', label: '5. JEZERO TOUCHDOWN' },
-      ];
-    }
     return [
-      { id: 'PAD_LAUNCH', label: '1. PAD 39B LIFTOFF' },
-      { id: 'TLI_INJECTION', label: '2. TLI INJECTION' },
-      { id: 'CISLUNAR_COAST', label: '3. CISLUNAR TRANSIT' },
-      { id: 'LUNAR_DESCENT', label: '4. SHACKLETON DESCENT' },
-      { id: 'SURFACE_TOUCHDOWN', label: '5. SOUTH POLE BASE' },
+      { id: 'PAD_LAUNCH', label: '1. PAD LIFTOFF' },
+      { id: 'TLI_INJECTION', label: '2. BOOSTERS SEP' },
+      { id: 'CISLUNAR_COAST', label: '3. FAIRINGS' },
+      { id: 'LUNAR_DESCENT', label: '4. CORE MECO' },
+      { id: 'SURFACE_TOUCHDOWN', label: '5. LEO INSERTION' },
     ];
   };
 
   const getActionLabel = (profId: AdvancedMissionProfile, ph: ExpeditionPhase, thr: number): string => {
-    if (ph === 'PAD_LAUNCH') {
-      if (thr === 0) {
-        if (profId === 'NEW_SHEPARD') return 'BE-3PM IGNITION & LIFTOFF [SPACE]';
-        if (profId === 'APOLLO_11') return 'SATURN V IGNITION & LIFTOFF [SPACE]';
-        if (profId === 'STS_31') return 'SSME IGNITION & LIFTOFF [SPACE]';
-        if (profId === 'ISS_DRAGON') return 'MERLIN 1D IGNITION & LIFTOFF [SPACE]';
-        if (profId === 'MARS_PERSEV') return 'ATLAS V IGNITION & LIFTOFF [SPACE]';
-        return 'SLS IGNITION & LIFTOFF [SPACE]';
-      }
-      if (profId === 'NEW_SHEPARD') return 'CAPSULE SEPARATION [SPACE]';
-      return 'STAGE SEPARATION [SPACE]';
+    const state = flightStateRef.current;
+    if (thr === 0) {
+      if (profId === 'NEW_SHEPARD') return 'BE-3PM IGNITION & LIFTOFF [SPACE]';
+      if (profId === 'APOLLO_11') return 'SATURN V IGNITION & LIFTOFF [SPACE]';
+      if (profId === 'STS_31') return 'SSME IGNITION & LIFTOFF [SPACE]';
+      if (profId === 'ISS_DRAGON') return 'MERLIN 1D IGNITION & LIFTOFF [SPACE]';
+      if (profId === 'MARS_PERSEV') return 'ATLAS V IGNITION & LIFTOFF [SPACE]';
+      return 'SLS IGNITION & LIFTOFF [SPACE]';
     }
-    if (ph === 'TLI_INJECTION') {
-      if (profId === 'NEW_SHEPARD') return 'COAST TO KÁRMÁN LINE [SPACE]';
-      return 'ACCELERATE TLI BURN [SPACE]';
-    }
-    if (ph === 'CISLUNAR_COAST') {
-      if (profId === 'NEW_SHEPARD') return 'COMMENCE BOOSTER VTVL [SPACE]';
-      return 'INITIATE DESCENT [SPACE]';
-    }
-    if (ph === 'LUNAR_DESCENT') {
-      if (profId === 'NEW_SHEPARD') return 'DEPLOY 3 PARACHUTES [SPACE]';
-      return 'THROTTLE BRAKE [SPACE]';
-    }
-    return 'MISSION DEBRIEF';
+    if (!state.srbSeparated) return '🚀 JETTISON BOOSTERS (SRB) [SPACE]';
+    if (!state.fairingSeparated) return '🛡️ JETTISON PAYLOAD FAIRING [SPACE]';
+    if (state.stage === 1) return '🔥 CORE STAGE SEPARATION (MECO) [SPACE]';
+    if (!state.orbitConfirmed) return '🌍 CONFIRM LEO ORBIT INSERTION [SPACE]';
+    return '✅ LEO ORBIT INSERTION COMPLETE';
   };
 
   if (!isOpen) return null;
@@ -2179,33 +2085,35 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
 
-        {/* ── COCKPIT HUD OVERLAY (When in Cockpit View) ── */}
+        {/* ── AUTHENTIC NASA ERA COCKPIT OVERLAY (When in Cockpit View) ── */}
         {cameraMode === 'cockpit' && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              pointerEvents: 'none',
-              border: '28px solid rgba(15, 23, 42, 0.85)',
-              boxShadow: 'inset 0 0 120px rgba(0, 0, 0, 0.8)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              padding: '16px',
+          <AuthenticCockpitOverlay
+            mission={activeMission}
+            telemetry={{
+              altitudeKm: telemetry.altitudeKm,
+              velocityKms: telemetry.velocityKms,
+              throttle: telemetry.throttle,
+              propellantPct: telemetry.propellant,
+              pitchDeg: telemetry.pitchDeg,
+              rollDeg: telemetry.rollDeg,
+              gForce: telemetry.gForce,
+              flightPhase: telemetry.stage === 2 ? 'STAGE 2 ASCENT' : 'BOOSTER ASCENT',
+              targetAltitudeKm: 185,
+              targetVelocityKms: 7.8,
+              isLunarMission: false,
+              isMarsMission: false,
+              destinationName: 'Low Earth Orbit (185 km)',
             }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ color: '#38bdf8', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 800 }}>
-                [ ORION MPCV COCKPIT VIEWPORT · GLASS COATED DOUBLE PANE ]
-              </div>
-              <div style={{ color: '#10b981', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 800 }}>
-                OXYGEN: 99.8% · CABIN: 14.7 PSI
-              </div>
-            </div>
-            <div style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.4)', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
-              + RETICLE BORESIGHT LOCKED +
-            </div>
-          </div>
+            cockpitLookYaw={cockpitLookRef.current.yaw}
+            cockpitLookPitch={cockpitLookRef.current.pitch}
+            onSetCockpitLook={(yaw, pitch) => {
+              cockpitLookRef.current = { yaw, pitch };
+            }}
+            onThrottleChange={(delta) => {
+              flightStateRef.current.throttle = Math.max(0, Math.min(1, flightStateRef.current.throttle + delta));
+            }}
+            onStageTrigger={handlePrimaryAction}
+          />
         )}
 
         {/* ── TOP-LEFT: STATUS & PRIMARY FLIGHT TELEMETRY HUD ── */}
@@ -2315,20 +2223,18 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
                   <span>AUTHENTIC FLIGHT TRAJECTORY</span>
                 </div>
                 <span style={{ fontSize: '9px', color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                  FREE RETURN
+                  LEO 185 KM
                 </span>
               </div>
 
               {/* Waypoints timeline */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '9px', fontFamily: 'var(--font-mono)' }}>
                 {[
-                  { label: '1. KSC Pad 39B Launch', note: 'Cape Canaveral (28.5° Inc)', active: phase === 'PAD_LAUNCH' },
-                  { label: '2. LEO Parking Orbit', note: 'Alt 185 km · v=7.79 km/s', active: phase === 'TLI_INJECTION' && telemetry.velocityKms < 10 },
-                  { label: '3. Trans-Lunar Injection (TLI)', note: 'Δv +3,050 m/s · v=11.2 km/s', active: phase === 'TLI_INJECTION' && telemetry.velocityKms >= 10 },
-                  { label: '4. Cislunar Free-Return Arc', note: '384,400 km · 72.4 hr transit', active: phase === 'CISLUNAR_COAST' },
-                  { label: '5. Lunar Orbit Insertion (LOI)', note: 'Retrograde Δv -850 m/s', active: phase === 'LUNAR_DESCENT' && telemetry.altitudeKm > 15 },
-                  { label: '6. Powered Descent Initiation (PDI)', note: 'Terminal braking to surface', active: phase === 'LUNAR_DESCENT' && telemetry.altitudeKm <= 15 },
-                  { label: '7. Shackleton South Pole Touchdown', note: 'Base Camp Target (-89.9°S)', active: phase === 'SURFACE_TOUCHDOWN' },
+                  { label: '1. Pad 39B Liftoff', note: 'Alt 0 km · v=0 km/s · 100% Thrust', active: telemetry.altitudeKm < 36 },
+                  { label: '2. Booster Separation (SRB)', note: 'Alt 36 km · v=2.4 km/s · Korolev Cross', active: telemetry.altitudeKm >= 36 && telemetry.altitudeKm < 75 },
+                  { label: '3. Fairing Jettison', note: 'Alt 75 km · v=4.8 km/s · Space Vacuum', active: telemetry.altitudeKm >= 75 && telemetry.altitudeKm < 125 },
+                  { label: '4. Core MECO & S2 Ignition', note: 'Alt 125 km · v=6.9 km/s · Stage 2 Burn', active: telemetry.altitudeKm >= 125 && telemetry.altitudeKm < 185 },
+                  { label: '5. LEO Orbit Insertion Complete', note: 'Alt 185 km · v=7.8 km/s · Stable Orbit', active: telemetry.altitudeKm >= 185 || flightStateRef.current.orbitConfirmed },
                 ].map((wp, idx) => (
                   <div
                     key={idx}
@@ -2512,6 +2418,87 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
             <Flame size={16} />
             <span>{getActionLabel(selectedProfileId, phase, telemetry.throttle)}</span>
           </button>
+
+          {/* Explicit Multi-Stage Action Buttons */}
+          {telemetry.throttle > 0 && !flightStateRef.current.srbSeparated && telemetry.altitudeKm >= 15 && (
+            <button
+              onClick={() => doBoosterSeparationRef.current()}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #f59e0b',
+                cursor: 'pointer',
+                background: 'rgba(245, 158, 11, 0.25)',
+                color: '#fbbf24',
+                fontSize: '11px',
+                fontWeight: 900,
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              🚀 SEPARATE BOOSTERS
+            </button>
+          )}
+
+          {flightStateRef.current.srbSeparated && !flightStateRef.current.fairingSeparated && telemetry.altitudeKm >= 45 && (
+            <button
+              onClick={() => doFairingSeparationRef.current()}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #38bdf8',
+                cursor: 'pointer',
+                background: 'rgba(56, 189, 248, 0.25)',
+                color: '#38bdf8',
+                fontSize: '11px',
+                fontWeight: 900,
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              🛡️ JETTISON FAIRINGS
+            </button>
+          )}
+
+          {flightStateRef.current.fairingSeparated && telemetry.stage === 1 && telemetry.altitudeKm >= 90 && (
+            <button
+              onClick={() => doCoreStageSeparationRef.current()}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #a855f7',
+                cursor: 'pointer',
+                background: 'rgba(168, 85, 247, 0.25)',
+                color: '#c084fc',
+                fontSize: '11px',
+                fontWeight: 900,
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              🔥 SEPARATE CORE STAGE (MECO)
+            </button>
+          )}
+
+          {telemetry.altitudeKm >= 135 && !flightStateRef.current.orbitConfirmed && (
+            <button
+              onClick={confirmOrbitInsertion}
+              style={{
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: '1px solid #22c55e',
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                color: '#ffffff',
+                fontSize: '12px',
+                fontWeight: 900,
+                fontFamily: 'var(--font-mono)',
+                boxShadow: '0 0 16px rgba(34, 197, 94, 0.6)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span>🌍 CONFIRM LEO ORBIT INSERTION</span>
+            </button>
+          )}
 
           {/* Throttle Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
