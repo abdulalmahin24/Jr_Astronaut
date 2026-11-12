@@ -661,6 +661,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     vertSpeedMs: 0,
     horizSpeedKms: 0,
     dynamicPressureQ: 0,
+    realVy: 0,
+    realVx: 0,
   });
 
   const cameraModeRef = useRef<CameraMode>(cameraMode);
@@ -1183,7 +1185,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const handleTouchStaging = () => {
     const state = simStateRef.current;
     if (mission.gameType === 'launch') {
-      if (state.throttle === 0) {
+      if (state.throttle === 0 || state.altitudeKm < 0.05) {
         handleIgnite();
       } else if (hasSideBoosters && !state.boosterSeparated) {
         handleBoosterSeparation();
@@ -1198,7 +1200,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   };
 
   const getStageActionLabel = () => {
-    if (telemetry.throttle === 0 && telemetry.altitudeKm < 0.2) return '🔥 IGNITE & LAUNCH';
+    if (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) return '🚀 LAUNCH ROCKET';
     if (hasSideBoosters && !boosterSeparated) return '💥 SEPARATE BOOSTERS';
     if (!fairingSeparated) return isMercury ? '🚀 JETTISON ESCAPE TOWER' : '🛡️ JETTISON FAIRING';
     if (telemetry.stage === 1) return isMercury ? '⚡ MECO & CAPSULE SEP' : '⚡ MECO & STAGE 2';
@@ -1217,6 +1219,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     setCountdownTime(null);
     const state = simStateRef.current;
     state.throttle = 1.0;
+    (state as any).realVy = 14.0;
     state.statusText = '🚀 LIFTOFF CONFIRMED! ALL ENGINES AT 100% THRUST';
     state.statusColor = '#22c55e';
     soundFx.playReactorStart();
@@ -1688,6 +1691,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       vertSpeedMs: 0,
       horizSpeedKms: 0,
       dynamicPressureQ: 0,
+      realVy: 0,
+      realVx: 0,
     };
     setBoosterSeparated(!hasSideBoosters);
     setModelLoading(true);
@@ -5007,16 +5012,17 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
         // 2. Propellant consumption
         if (state.throttle > 0.01 && state.propellant > 0) {
-          const burnDurationSec = isMercury ? 140 : (state.stage === 1 ? 155 : 320);
+          const burnDurationSec = isMercury ? 120 : (state.stage === 1 ? 140 : 280);
           const burnRatePctPerSec = (100 / burnDurationSec) * state.throttle * effectiveThrustMult;
           state.propellant = Math.max(0, state.propellant - burnRatePctPerSec * dt);
         } else if (state.propellant <= 0) {
           state.throttle = 0;
         }
 
-        // 3. Rocket Thrust calculation (Liftoff TWR ~1.32 rising to ~4.5 - 5.2 Gs before MECO)
+        // 3. Rocket Thrust calculation (Liftoff TWR ~2.5 - 2.8 for exciting, responsive Ellipse flight)
         const liftoffMassKg = dryMassKg + fuelCapacityKg;
-        const maxThrustN = liftoffMassKg * 9.81 * 1.32;
+        const twrMult = isMercury ? 2.6 : (state.stage === 1 ? 2.4 : 2.8);
+        const maxThrustN = liftoffMassKg * 9.81 * twrMult;
         const currentThrustN = state.throttle * maxThrustN * effectiveThrustMult;
 
         // 4. Vector Components
@@ -5027,8 +5033,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         // 5. Atmospheric Density, Aerodynamic Drag & Gravity
         const localG = 9.81 * ((6371 / (6371 + state.altitudeKm)) ** 2);
         const atmoDensity = 1.225 * Math.exp(-state.altitudeKm / 8.5);
-        const currentSpeedMs = state.velocityKms * 1000;
-        const dragN = 0.5 * atmoDensity * (currentSpeedMs ** 2) * 1.25;
+        const currentSpeedMs = Math.sqrt(((state as any).realVx || 0) ** 2 + ((state as any).realVy || 0) ** 2);
+        const dragN = 0.5 * atmoDensity * (currentSpeedMs ** 2) * 0.45;
 
         // 6. Net Accelerations
         const aThrust = currentThrustN / currentMassKg;
@@ -5042,30 +5048,34 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           state.gForce = Number((Math.max(0, aThrust / 9.81)).toFixed(2));
         }
 
-        // 7. Integrate Velocities (m/s)
-        let vy = state.vertSpeedMs || 0;
-        let vx = (state.horizSpeedKms || 0) * 1000;
+        // 7. Integrate Continuous High-Precision Floating Velocities (m/s)
+        if (typeof (state as any).realVy !== 'number') (state as any).realVy = 0;
+        if (typeof (state as any).realVx !== 'number') (state as any).realVx = 0;
 
-        if (state.altitudeKm <= 0.001 && aY <= 0 && state.throttle < 0.15) {
-          vy = 0;
-          vx = 0;
-        } else {
-          vy += aY * dt;
-          vx += Math.max(0, aX * dt);
-          if (state.altitudeKm <= 0 && vy < 0) vy = 0;
+        // Immediate responsive liftoff boost if throttle is applied on the pad
+        if (state.altitudeKm <= 0.002 && state.throttle > 0.05 && (state as any).realVy <= 0.5) {
+          (state as any).realVy = 12.0 * state.throttle;
         }
 
-        const totalSpeedMs = Math.sqrt(vx * vx + vy * vy);
+        if (state.altitudeKm <= 0.001 && state.throttle < 0.05) {
+          (state as any).realVy = 0;
+          (state as any).realVx = 0;
+        } else {
+          (state as any).realVy = Math.max(0, (state as any).realVy + aY * dt);
+          (state as any).realVx = Math.max(0, (state as any).realVx + aX * dt);
+        }
+
+        const totalSpeedMs = Math.sqrt((state as any).realVx ** 2 + (state as any).realVy ** 2);
         state.velocityKms = totalSpeedMs / 1000;
-        state.vertSpeedMs = Math.round(vy);
-        state.horizSpeedKms = Number((vx / 1000).toFixed(2));
+        state.vertSpeedMs = Math.round((state as any).realVy);
+        state.horizSpeedKms = Number(((state as any).realVx / 1000).toFixed(2));
 
         // 8. Integrate Altitude (km)
-        const dAltKm = (vy * dt) / 1000;
+        const dAltKm = ((state as any).realVy * dt) / 1000;
         state.altitudeKm = Math.max(0, state.altitudeKm + dAltKm);
 
         // 9. Astrodynamics (Ap, Pe, Max-Q)
-        const ballisticPeak = state.altitudeKm + ((vy / 1000) ** 2) / (2 * (localG / 1000));
+        const ballisticPeak = state.altitudeKm + ((((state as any).realVy) / 1000) ** 2) / (2 * (localG / 1000));
         const orbitalProgress = Math.min(1.0, state.horizSpeedKms / 7.8);
         const apoapsisKm = Math.round(Math.max(state.altitudeKm, ballisticPeak * (1 + orbitalProgress * 1.4)));
         const periapsisKm = state.flightPhase === 'orbit' ? 185 : (state.horizSpeedKms > 5.5 ? Math.round(((state.horizSpeedKms - 5.5) / 2.3) * 185) : 0);
@@ -5172,10 +5182,10 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         // Vehicle Orientation & Visual Displacements
         const radRoll = ((90 - state.pitchDeg) * Math.PI) / 180;
         playerVehicle.rotation.z = -radRoll;
-        playerVehicle.position.y = 4 + Math.min(state.altitudeKm * 28, 480);
-        groundPadGroup.position.y = -Math.min(state.altitudeKm * 28, 1600);
+        playerVehicle.position.y = 4 + Math.min(state.altitudeKm * 60, 480);
+        groundPadGroup.position.y = -Math.min(state.altitudeKm * 60, 1800);
         if (cloudDeckGroup) {
-          cloudDeckGroup.position.y = -Math.min(state.altitudeKm * 28, 1600);
+          cloudDeckGroup.position.y = -Math.min(state.altitudeKm * 60, 1800);
         }
 
         const effectiveTargetAlt = p.targetAltitudeKm > 0 ? p.targetAltitudeKm : 185;
@@ -6435,7 +6445,11 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           {/* MAX Button */}
           <button
             onClick={() => {
-              simStateRef.current.throttle = 1.0;
+              const state = simStateRef.current;
+              state.throttle = 1.0;
+              if (state.altitudeKm < 0.05) {
+                (state as any).realVy = 14.0;
+              }
               setPreflightChecklist({
                 internalPower: true,
                 cryoPressurization: true,
@@ -6444,6 +6458,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
               });
               setCountdownTime(null);
               soundFx.playClick(950);
+              soundFx.playReactorStart();
             }}
             style={{
               width: '100%',
@@ -6457,7 +6472,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
               cursor: 'pointer',
               fontFamily: 'monospace',
             }}
-            title="Set Throttle to 100% (or press W)"
+            title="Set Throttle to 100% & Launch (or press W)"
           >
             MAX
           </button>
@@ -6468,7 +6483,12 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
               const rect = e.currentTarget.getBoundingClientRect();
               const clickY = e.clientY - rect.top;
               const newThr = Math.max(0, Math.min(1, 1 - clickY / rect.height));
-              simStateRef.current.throttle = newThr;
+              const state = simStateRef.current;
+              state.throttle = newThr;
+              if (state.altitudeKm < 0.05 && newThr > 0.05 && (state as any).realVy <= 0.5) {
+                (state as any).realVy = 12.0 * newThr;
+                soundFx.playReactorStart();
+              }
               soundFx.playClick(800 + newThr * 300);
             }}
             style={{
@@ -6629,23 +6649,29 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
               width: '142px',
               height: '76px',
               borderRadius: '16px',
-              background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #991b1b 100%)',
-              border: '2px solid rgba(254, 215, 170, 0.85)',
+              background: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05)
+                ? 'linear-gradient(135deg, #16a34a 0%, #15803d 50%, #14532d 100%)'
+                : 'linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #991b1b 100%)',
+              border: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05)
+                ? '2px solid rgba(134, 239, 172, 0.95)'
+                : '2px solid rgba(254, 215, 170, 0.85)',
               color: '#ffffff',
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 24px rgba(234, 88, 12, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35)',
-              transition: 'transform 0.1s, box-shadow 0.1s',
+              boxShadow: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05)
+                ? '0 0 28px rgba(34, 197, 94, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35)'
+                : '0 0 24px rgba(234, 88, 12, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35)',
+              transition: 'all 0.15s ease',
             }}
             onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
             onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             title="Press [SPACE] or Click to Execute Next Flight Stage"
           >
-            <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.12em', color: '#fed7aa', fontFamily: 'monospace' }}>
-              STAGE {telemetry.stage}
+            <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.12em', color: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? '#86efac' : '#fed7aa', fontFamily: 'monospace' }}>
+              {(telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? 'READY FOR LAUNCH' : `STAGE ${telemetry.stage}`}
             </div>
             <div
               style={{
@@ -6659,13 +6685,42 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
             >
               {getStageActionLabel()}
             </div>
-            <div style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.75)', fontFamily: 'monospace' }}>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace' }}>
               [SPACE]
             </div>
           </button>
-          <div style={{ fontSize: '8.5px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 700 }}>
-            KSP MANUAL STAGING
+          <div style={{ fontSize: '8.5px', color: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? '#4ade80' : '#94a3b8', fontFamily: 'monospace', fontWeight: 700 }}>
+            {(telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? 'HIT SPACE TO LAUNCH' : 'KSP MANUAL STAGING'}
           </div>
+        </div>
+      )}
+
+      {/* ─── ON-PAD FLIGHT INSTRUCTION PILL (Only visible on pad before liftoff) ─── */}
+      {mission.gameType === 'launch' && telemetry.altitudeKm < 0.05 && telemetry.throttle === 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 25,
+            background: 'rgba(15, 23, 42, 0.92)',
+            border: '1.5px solid rgba(34, 197, 94, 0.65)',
+            boxShadow: '0 0 28px rgba(34, 197, 94, 0.4)',
+            borderRadius: '24px',
+            padding: '8px 20px',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: '#ffffff',
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>🚀</span>
+          <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.03em' }}>
+            Press <kbd style={{ background: '#22c55e', color: '#052e16', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>SPACE</kbd> or Click <strong style={{ color: '#4ade80' }}>LAUNCH ROCKET</strong> (or Hold <kbd style={{ background: '#38bdf8', color: '#082f49', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>W</kbd>) to Liftoff!
+          </span>
         </div>
       )}
 
