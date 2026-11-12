@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import {
   X,
@@ -48,36 +48,13 @@ import type {
   NasaLevelMission,
 } from '../data/nasaInteractiveMissions';
 import { MissionCinematicIntro } from './MissionCinematicIntro';
-import type { DonkiDataResult } from '../utils/donkiMapper';
-import {
-  INITIAL_SHACKLETON_PROGRESS,
-  type ShackletonProgress,
-} from '../utils/shackletonProgress';
-import type {
-  ShackletonRunRecordedResult,
-  ShackletonRunReward,
-} from '../game3d/ShackletonIceRun';
 
-const ShackletonIceRun = lazy(() =>
-  import('../game3d/ShackletonIceRun').then((module) => ({ default: module.ShackletonIceRun }))
-);
-const RoverExplorationModal = lazy(() =>
-  import('./RoverExplorationModal').then((module) => ({ default: module.RoverExplorationModal }))
-);
+export type GameSuiteMode = 'HUB' | 'MISSION_INTRO' | 'CADET_NMS' | 'OFFICER_KSP' | 'COMMANDER_SC';
 
-export type GameSuiteMode = 'HUB' | 'MISSION_INTRO' | 'CADET_NMS' | 'OFFICER_KSP' | 'COMMANDER_SC' | 'SHAKLETON_ICE_RUN';
-
-export interface SpaceGamesHubModalProps {
+interface SpaceGamesHubModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialGame?: GameSuiteMode;
-  isFullPage?: boolean;
-  shackletonProgress?: ShackletonProgress;
-  donkiData?: DonkiDataResult;
-  onCompleteShackleton?: (reward: ShackletonRunReward) => void;
-  onRecordShackletonAttempt?: (result: ShackletonRunRecordedResult) => void;
-  onReviewShackletonLesson?: () => void;
-  onCompleteRoverMission?: (earnedScience: number, earnedXp: number, summary: string) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,19 +119,11 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
   isOpen,
   onClose,
   initialGame = 'HUB',
-  isFullPage = false,
-  shackletonProgress = INITIAL_SHACKLETON_PROGRESS,
-  donkiData = { source: 'UNAVAILABLE' },
-  onCompleteShackleton,
-  onRecordShackletonAttempt,
-  onReviewShackletonLesson,
-  onCompleteRoverMission,
 }) => {
   const [activeGame, setActiveGame] = useState<GameSuiteMode>(initialGame);
   const [selectedMission, setSelectedMission] = useState<NasaLevelMission>(NASA_30_MISSIONS[0]);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleConfig>(NASA_VEHICLES[0]);
   const [isHangarOpen, setIsHangarOpen] = useState(false);
-  const [is2DRoverFallbackOpen, setIs2DRoverFallbackOpen] = useState(false);
 
   const handleSelectMission = (mission: NasaLevelMission, directLaunch: boolean = false) => {
     setSelectedMission(mission);
@@ -198,16 +167,7 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
 
   return (
     <div
-      style={isFullPage ? {
-        position: 'relative',
-        width: '100%',
-        minHeight: '760px',
-        background: 'rgba(2, 6, 23, 0.96)',
-        display: 'flex',
-        flexDirection: 'column',
-        color: '#f8fafc',
-        fontFamily: 'Inter, system-ui, sans-serif',
-      } : {
+      style={{
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
@@ -389,23 +349,21 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
 
-          {!isFullPage && (
-            <button
-              onClick={onClose}
-              style={{
-                background: 'rgba(239, 68, 68, 0.2)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                color: '#fca5a5',
-                borderRadius: '8px',
-                padding: '7px 14px',
-                cursor: 'pointer',
-                fontWeight: 800,
-                fontSize: '12px',
-              }}
-            >
-              ✕ CLOSE
-            </button>
-          )}
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(239, 68, 68, 0.2)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              color: '#fca5a5',
+              borderRadius: '8px',
+              padding: '7px 14px',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '12px',
+            }}
+          >
+            ✕ CLOSE
+          </button>
         </div>
       </div>
 
@@ -414,11 +372,9 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
         {activeGame === 'HUB' && (
           <GameHubMenu
             onSelectMission={handleSelectMission}
-            onLaunchShackleton={() => handleSelectGame('SHAKLETON_ICE_RUN')}
             selectedVehicle={selectedVehicle}
             onSelectVehicle={setSelectedVehicle}
             scores={scores}
-            shackletonProgress={shackletonProgress}
           />
         )}
         {activeGame === 'MISSION_INTRO' && (
@@ -471,35 +427,6 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
             map={NASA_MAPS[selectedMission.mapId] || NASA_MAPS['map-psyche-belt']}
           />
         )}
-        {activeGame === 'SHAKLETON_ICE_RUN' && (
-          <Suspense fallback={<div role="status" style={{ padding: 32, color: '#cbd5e1' }}>Loading the lunar rover simulator…</div>}>
-            <ShackletonIceRun
-              onClose={handleReturnToHub}
-              onFinish={onCompleteShackleton}
-              onRunRecorded={onRecordShackletonAttempt}
-              onReviewLesson={onReviewShackletonLesson}
-              onUse2DFallback={() => setIs2DRoverFallbackOpen(true)}
-              stormWarningHours={donkiData.summary?.warningHours}
-              stormSource={
-                donkiData.source === 'LIVE' || donkiData.source === 'ARCHIVED'
-                  ? donkiData.source
-                  : 'GAME SIMULATION'
-              }
-              stormRecordId={donkiData.summary?.recordId}
-            />
-          </Suspense>
-        )}
-        {is2DRoverFallbackOpen && (
-          <Suspense fallback={null}>
-            <RoverExplorationModal
-              isOpen
-              destinationName="Shackleton Crater Rim"
-              isMoon
-              onClose={() => setIs2DRoverFallbackOpen(false)}
-              onCompleteRoverMission={onCompleteRoverMission}
-            />
-          </Suspense>
-        )}
       </div>
     </div>
   );
@@ -536,20 +463,16 @@ export interface NasaMissionLevel {
 // ─────────────────────────────────────────────────────────────────────────────
 interface GameHubMenuProps {
   onSelectMission: (mission: NasaLevelMission, directLaunch?: boolean) => void;
-  onLaunchShackleton: () => void;
   selectedVehicle: VehicleConfig;
   onSelectVehicle: (vehicle: VehicleConfig) => void;
   scores: any;
-  shackletonProgress: ShackletonProgress;
 }
 
 const GameHubMenu: React.FC<GameHubMenuProps> = ({
   onSelectMission,
-  onLaunchShackleton,
   selectedVehicle,
   onSelectVehicle,
   scores,
-  shackletonProgress,
 }) => {
   const [activeTier, setActiveTier] = useState<
     'ALL' | 'RANK_1' | 'RANK_2' | 'RANK_3' | 'RANK_4' | 'RANK_5' | 'RANK_6' | 'CADET' | 'OFFICER' | 'COMMANDER'
@@ -632,53 +555,6 @@ const GameHubMenu: React.FC<GameHubMenuProps> = ({
         <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', margin: '0 auto 18px auto', maxWidth: '820px' }}>
           Select your spacecraft, venture across 8 real planetary destinations (Moon, Mars, Europa, Titan, LC-39B, Psyche Belt, Lunar Gateway &amp; Deep Space), and progress through 30 top-notch missions from novice cadet to master flight commander.
         </p>
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '14px',
-            flexWrap: 'wrap',
-            padding: '14px 18px',
-            marginBottom: '18px',
-            border: '1px solid rgba(125, 211, 252, 0.4)',
-            borderRadius: '12px',
-            background: 'linear-gradient(110deg, rgba(8, 47, 73, 0.8), rgba(15, 23, 42, 0.96))',
-            textAlign: 'left',
-          }}
-        >
-          <div>
-            <div style={{ color: '#7dd3fc', fontSize: '10px', fontWeight: 900, letterSpacing: '0.08em' }}>
-              ARTEMIS LUNAR ICE MISSION · GAME SIMULATION
-            </div>
-            <div style={{ color: '#f8fafc', fontSize: '17px', fontWeight: 900, marginTop: '3px' }}>
-              Shackleton Ice Run
-            </div>
-            <div style={{ color: '#cbd5e1', fontSize: '11px', marginTop: '3px' }}>
-              {shackletonProgress.iceFinderBadgeEarned ? '🏅 Ice Finder badge earned' : 'Find ice readings and bring them back to the outpost.'}
-              {' · '}Outpost stocks: {shackletonProgress.waterStockUnits} water units, {shackletonProgress.fuelStockUnits} fuel units
-              {' · GAME SIMULATION VALUES'}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onLaunchShackleton}
-            style={{
-              minHeight: '44px',
-              border: '1px solid #7dd3fc',
-              borderRadius: '9px',
-              padding: '10px 16px',
-              color: '#082f49',
-              background: '#7dd3fc',
-              fontSize: '12px',
-              fontWeight: 900,
-              cursor: 'pointer',
-            }}
-          >
-            Start lunar rover run
-          </button>
-        </div>
 
         {/* ── VEHICLE HANGAR BANNER (QUICK SELECTOR) ── */}
         <div

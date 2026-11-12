@@ -1,66 +1,19 @@
-// ============================================================
-// LandingPage.tsx — NASA Eyes on the Solar System (eyes.nasa.gov)
-// Exact Fullscreen 3D Solar System Orrery, Real-time JPL Ephemeris,
-// Spacecraft Fleet Tracker & Jr_AstroCamp Aerospace Command Hub
-// Built for NASA Space Apps Challenge 2026
-// ============================================================
-
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import * as THREE from 'three';
-import '../nasa-eyes.css';
-import {
-  Play,
-  Pause,
-  FastForward,
-  Rewind,
-  RotateCcw,
-  Maximize2,
-  Minimize2,
-  Compass,
-  Search,
-  Volume2,
-  VolumeX,
-  Music,
-  Globe,
-  Satellite,
-  Sun,
-  Layers,
-  Sparkles,
-  Info,
-  Clock,
-  Zap,
-  CheckCircle2,
-  Rocket,
-  Gamepad2,
-  GraduationCap,
-  BookOpen,
-  Users,
-  Award,
-  Activity,
-  Flame,
-  X,
-  ChevronRight,
-  ExternalLink,
-  Crosshair,
-  Shield,
-  Eye,
-  Sliders,
-  Menu,
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 import { soundFx } from '../utils/audioEffects';
-import { speechEngine } from '../utils/speechEngine';
+import { getCurrentRank, getRankProgress } from '../data/astronautRanks';
+import { getCadetProgression } from '../utils/simulationEngine';
+import { MovableCharacter } from './MovableCharacter';
+import { LobbyAstronaut3D } from './LobbyAstronaut3D';
+import { ASTRONAUT_CHARACTERS } from '../data/astronautCharacters';
+
 import { spaceMusicEngine } from '../utils/spaceMusicEngine';
 import { authService } from '../utils/authService';
 import { studentActivityService } from '../utils/studentActivityService';
-import { ASTRONAUT_CHARACTERS } from '../data/astronautCharacters';
-import { ALL_76_NASA_MISSIONS, type PlayableNasaMission } from '../data/allNasaMissions';
-import { getCadetProgression } from '../utils/simulationEngine';
-import { getRankProgress } from '../data/astronautRanks';
 import type { User } from '../types/auth';
 
 type LearningHubTab = 'NOTEBOOK' | 'AUDIO' | 'VIDEO' | 'COMIC' | 'BRIEFINGS' | 'CATALOG';
 
-export interface LandingPageProps {
+interface LandingPageProps {
   onEnter: () => void;
   onStartMission?: () => void;
   onContinueMission?: () => void;
@@ -68,6 +21,7 @@ export interface LandingPageProps {
   savedGameSol?: number;
   savedGameDest?: string;
   onOpenAcademy?: () => void;
+  onOpenTrainingCenter?: () => void;
   onOpenRover?: () => void;
   onOpenHowToPlay?: () => void;
   onOpenSettings?: () => void;
@@ -97,656 +51,88 @@ export interface LandingPageProps {
   onOpenSpaceGamesHub?: () => void;
 }
 
-// ── CELESTIAL DATA TYPES ──────────────────────────────────────────────────
-export interface PlanetData {
-  id: string;
-  name: string;
-  color: number;
-  emissive: number;
-  radius: number;
-  orbitRadius: number;
-  distanceAU: string;
-  actualAU: number;
-  diameterKm: string;
-  gravityMs2: string;
-  surfaceTemp: string;
-  atmosphere: string;
-  moons: number;
-  funFact: string;
-  hasRings?: boolean;
-  zone: string;
-  orbitalPeriod: string;
-  dayLength: string;
-  discoveredBy: string;
-  emoji: string;
-  massKg: string;
-  axialTilt: string;
-  orbitalVelocityKms: string;
-  interiorLayers: { name: string; depth: string; desc: string }[];
-  atmosphereGases: { name: string; pct: number; color: string }[];
-}
+// ── Starfield Canvas ──────────────────────────────────────────────────────────
+const StarfieldCanvas: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-export interface SpaceStationData {
-  id: string;
-  name: string;
-  agency: string;
-  type: string;
-  parentBody: 'earth' | 'moon';
-  altitudeKm: number;
-  velocityKms: number;
-  crewCount: number;
-  crewManifest: string;
-  launchYear: number;
-  status: 'Operational' | 'Active Transit' | 'Planned Construction';
-  color: string;
-  description: string;
-  specs: { label: string; value: string }[];
-}
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-export interface SolarMissionData {
-  id: string;
-  name: string;
-  agency: string;
-  type: string;
-  trajectoryType: 'eccentric-solar' | 'lagrange-l1' | 'lagrange-l2' | 'interstellar' | 'mars-surface' | 'lunar-orbit';
-  distanceFromSunAU: number;
-  currentSpeedKms: number;
-  lightDelayStr: string;
-  color: string;
-  missionObjective: string;
-  keyAchievement: string;
-  instruments: string[];
-}
+    let animId: number;
+    const stars: { x: number; y: number; r: number; opacity: number; speed: number; phase: number }[] = [];
 
-// ── PLANETARY DATA ROSTER (With Interior Structure & Atmosphere breakdown) ──
-export const PLANETS: PlanetData[] = [
+    const init = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      stars.length = 0;
+      const count = Math.floor((canvas.width * canvas.height) / 5000);
+      for (let i = 0; i < count; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 1.5 + 0.2,
+          opacity: Math.random() * 0.7 + 0.2,
+          speed: Math.random() * 0.004 + 0.001,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+    };
+
+    const draw = (t: number) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const s of stars) {
+        const alpha = s.opacity * (0.5 + 0.5 * Math.sin(t * s.speed * 1000 + s.phase));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.fill();
+      }
+      animId = requestAnimationFrame(draw);
+    };
+
+    init();
+    animId = requestAnimationFrame(draw);
+    const onResize = () => init();
+    window.addEventListener('resize', onResize);
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="landing-starfield" />;
+};
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+const FEATURES = [
   {
-    id: 'mercury',
-    name: 'Mercury',
-    color: 0xc4cbd4,
-    emissive: 0x64748b,
-    radius: 2.2,
-    orbitRadius: 20,
-    distanceAU: '0.387 AU (57.9M km)',
-    actualAU: 0.387,
-    diameterKm: '4,879 km',
-    gravityMs2: '3.7 m/s²',
-    surfaceTemp: '-180°C to 430°C',
-    atmosphere: 'Ultra-thin exosphere (Oxygen, Sodium, Hydrogen, Helium)',
-    moons: 0,
-    funFact: 'A year on Mercury is just 88 Earth days, but one solar day takes 176 Earth days! Its metallic core occupies 85% of its radius.',
-    zone: 'Inner Rocky Planets',
-    orbitalPeriod: '87.97 Earth Days',
-    dayLength: '58.65 Earth Days',
-    discoveredBy: 'Known since antiquity (Telescope: Galileo, 1631)',
-    emoji: '☿️',
-    massKg: '3.30 × 10²³ kg (0.055 Earths)',
-    axialTilt: '0.034° (Nearly vertical)',
-    orbitalVelocityKms: '47.4 km/s',
-    interiorLayers: [
-      { name: 'Solid Silicate Crust', depth: '35 km', desc: 'Thick basaltic silicate crust scarred by impact craters and lobate scarps.' },
-      { name: 'Silicate Mantle', depth: '600 km', desc: 'Relatively thin silicate mantle surrounding colossal iron core.' },
-      { name: 'Molten / Solid Iron Core', depth: '1,800 km', desc: 'Huge iron-nickel core driving an unexpected global magnetic field.' },
-    ],
-    atmosphereGases: [
-      { name: 'Oxygen', pct: 42, color: '#38bdf8' },
-      { name: 'Sodium', pct: 29, color: '#f59e0b' },
-      { name: 'Hydrogen', pct: 22, color: '#a855f7' },
-      { name: 'Helium', pct: 6, color: '#10b981' },
-      { name: 'Potassium', pct: 1, color: '#f43f5e' },
-    ],
+    icon: '🎮',
+    title: 'Outpost Command & Resource Management',
+    desc: 'Run humanity’s permanent outpost on the Moon or Mars. Balance power grids, Sabatier life support, and crop biomes across 30 Sols of unforgiving space conditions.',
   },
   {
-    id: 'venus',
-    name: 'Venus',
-    color: 0xf59e0b,
-    emissive: 0xd97706,
-    radius: 2.8,
-    orbitRadius: 30,
-    distanceAU: '0.723 AU (108.2M km)',
-    actualAU: 0.723,
-    diameterKm: '12,104 km',
-    gravityMs2: '8.87 m/s²',
-    surfaceTemp: '465°C (Hottest in Solar System)',
-    atmosphere: '96.5% Carbon Dioxide, Sulfuric Acid clouds, 92 bar surface pressure',
-    moons: 0,
-    funFact: 'Venus rotates in retrograde (clockwise) and so slowly that a day is longer than its year! Surface pressure equals 900m underwater on Earth.',
-    zone: 'Inner Rocky Planets',
-    orbitalPeriod: '224.7 Earth Days',
-    dayLength: '243 Earth Days (Retrograde)',
-    discoveredBy: 'Known since antiquity (Phases observed by Galileo, 1610)',
-    emoji: '♀️',
-    massKg: '4.87 × 10²⁴ kg (0.815 Earths)',
-    axialTilt: '177.3° (Upside-down)',
-    orbitalVelocityKms: '35.0 km/s',
-    interiorLayers: [
-      { name: 'Silicate Crust', depth: '50 km', desc: 'Basaltic crust dominated by volcanic plains and tessera terrain.' },
-      { name: 'Rock Mantle', depth: '3,000 km', desc: 'Convecting silicate mantle; undergoes periodic global resurfacing events.' },
-      { name: 'Iron-Nickel Core', depth: '3,000 km', desc: 'Partially molten metallic core without an active dynamo magnetic shield.' },
-    ],
-    atmosphereGases: [
-      { name: 'Carbon Dioxide (CO₂)', pct: 96.5, color: '#ef4444' },
-      { name: 'Nitrogen (N₂)', pct: 3.5, color: '#3b82f6' },
-      { name: 'Sulfuric Acid / SO₂', pct: 0.1, color: '#eab308' },
-    ],
+    icon: '🚜',
+    title: 'Playable Rover Exploration',
+    desc: 'Pilot the lunar terrain vehicle across crater rims. Navigate boulder fields, drill volatile ice cores in permanently shadowed regions, and beam data to base.',
   },
   {
-    id: 'earth',
-    name: 'Earth',
-    color: 0x38bdf8,
-    emissive: 0x0284c7,
-    radius: 3.0,
-    orbitRadius: 42,
-    distanceAU: '1.000 AU (149.6M km)',
-    actualAU: 1.000,
-    diameterKm: '12,742 km',
-    gravityMs2: '9.81 m/s²',
-    surfaceTemp: '15°C Average (-89°C to 56.7°C)',
-    atmosphere: '78.08% N₂, 20.95% O₂, 0.93% Ar, 0.04% CO₂ (Water vapor clouds)',
-    moons: 1,
-    funFact: 'The Goldilocks sanctuary of life. Possesses active plate tectonics, strong geodynamo magnetic shield, and 71% surface liquid oceans.',
-    zone: 'Inner Rocky Planets (Habitable Zone)',
-    orbitalPeriod: '365.25 Days',
-    dayLength: '23 Hours 56 Minutes 4.1 Seconds',
-    discoveredBy: 'Home Planet — Humanity',
-    emoji: '🌍',
-    massKg: '5.97 × 10²⁴ kg',
-    axialTilt: '23.44° (Drives Seasons)',
-    orbitalVelocityKms: '29.78 km/s',
-    interiorLayers: [
-      { name: 'Continental & Oceanic Crust', depth: '5–70 km', desc: 'Tectonically active plates carrying life and liquid hydrosphere.' },
-      { name: 'Silicate Mantle', depth: '2,900 km', desc: 'Solid rock that flows over millions of years driving continental drift.' },
-      { name: 'Liquid Outer Core', depth: '2,200 km', desc: 'Churning liquid iron-nickel generating the geodynamo magnetosphere.' },
-      { name: 'Solid Inner Core', depth: '1,220 km', desc: 'Crystalline iron-nickel sphere hotter than the surface of the Sun.' },
-    ],
-    atmosphereGases: [
-      { name: 'Nitrogen (N₂)', pct: 78.08, color: '#3b82f6' },
-      { name: 'Oxygen (O₂)', pct: 20.95, color: '#06b6d4' },
-      { name: 'Argon (Ar)', pct: 0.93, color: '#8b5cf6' },
-      { name: 'Carbon Dioxide & Vapor', pct: 0.04, color: '#10b981' },
-    ],
-  },
-  {
-    id: 'mars',
-    name: 'Mars',
-    color: 0xf43f5e,
-    emissive: 0xbe123c,
-    radius: 2.4,
-    orbitRadius: 56,
-    distanceAU: '1.524 AU (227.9M km)',
-    actualAU: 1.524,
-    diameterKm: '6,779 km',
-    gravityMs2: '3.72 m/s²',
-    surfaceTemp: '-65°C Average (-140°C to 20°C)',
-    atmosphere: '95.3% CO₂, 2.6% N₂, 1.9% Ar, 610 Pa surface pressure',
-    moons: 2,
-    funFact: 'Houses Olympus Mons (21 km tall, largest volcano) and Valles Marineris (4,000 km grand rift canyon). Target for NASA Artemis human exploration.',
-    zone: 'Inner Rocky Planets',
-    orbitalPeriod: '687 Earth Days (1.88 Earth Years)',
-    dayLength: '24 Hours 37 Minutes 22 Seconds (1 Sol)',
-    discoveredBy: 'Known since antiquity',
-    emoji: '♂️',
-    massKg: '6.42 × 10²³ kg (0.107 Earths)',
-    axialTilt: '25.19°',
-    orbitalVelocityKms: '24.07 km/s',
-    interiorLayers: [
-      { name: 'Basaltic Crust', depth: '50 km', desc: 'Rich in iron-oxide rust providing distinctive crimson hue.' },
-      { name: 'Silicate Mantle', depth: '1,500 km', desc: 'Dormant mantle; ancient volcanic hotspots produced immense shield volcanoes.' },
-      { name: 'Dense Iron-Sulfur Core', depth: '1,830 km', desc: 'Liquid iron core with sulfur; solidified dynamo shutdown allowed atmosphere loss.' },
-    ],
-    atmosphereGases: [
-      { name: 'Carbon Dioxide (CO₂)', pct: 95.3, color: '#ef4444' },
-      { name: 'Nitrogen (N₂)', pct: 2.6, color: '#3b82f6' },
-      { name: 'Argon (Ar)', pct: 1.9, color: '#8b5cf6' },
-      { name: 'Oxygen & Trace', pct: 0.2, color: '#06b6d4' },
-    ],
-  },
-  {
-    id: 'jupiter',
-    name: 'Jupiter',
-    color: 0xfbbf24,
-    emissive: 0xb45309,
-    radius: 4.8,
-    orbitRadius: 82,
-    distanceAU: '5.204 AU (778.5M km)',
-    actualAU: 5.204,
-    diameterKm: '139,820 km',
-    gravityMs2: '24.79 m/s²',
-    surfaceTemp: '-110°C (Cloud deck)',
-    atmosphere: '89.8% H₂, 10.2% He, ammonia cloud belts & lightning storm vortices',
-    moons: 95,
-    funFact: 'Has more mass than all other solar system planets combined (318 Earth masses). Great Red Spot storm has raged for >350 years.',
-    zone: 'Gas Giants',
-    orbitalPeriod: '11.86 Earth Years',
-    dayLength: '9 Hours 55 Minutes 30 Seconds (Fastest spin)',
-    discoveredBy: 'Known since antiquity (Galilean moons discovered 1610)',
-    emoji: '♃',
-    massKg: '1.90 × 10²⁷ kg (317.8 Earths)',
-    axialTilt: '3.13°',
-    orbitalVelocityKms: '13.07 km/s',
-    interiorLayers: [
-      { name: 'Gaseous Hydrogen/Helium Atmosphere', depth: '1,000 km', desc: 'Ammonia cloud decks, violent jet streams and Great Red Spot anticyclone.' },
-      { name: 'Liquid Hydrogen Envelope', depth: '20,000 km', desc: 'Supercritical fluid state under thousands of atmospheres of pressure.' },
-      { name: 'Metallic Liquid Hydrogen', depth: '40,000 km', desc: 'Electrically conductive liquid metal generating colossal magnetosphere.' },
-      { name: 'Diffuse Heavy Element Core', depth: '10,000 km', desc: 'Dilute core of rock, metal, and ice fragments blended into metallic hydrogen.' },
-    ],
-    atmosphereGases: [
-      { name: 'Hydrogen (H₂)', pct: 89.8, color: '#38bdf8' },
-      { name: 'Helium (He)', pct: 10.2, color: '#a855f7' },
-      { name: 'Methane & Ammonia', pct: 0.1, color: '#f59e0b' },
-    ],
-  },
-  {
-    id: 'saturn',
-    name: 'Saturn',
-    color: 0xfde047,
-    emissive: 0xa16207,
-    radius: 4.2,
-    orbitRadius: 110,
-    distanceAU: '9.582 AU (1.433B km)',
-    actualAU: 9.582,
-    diameterKm: '116,460 km',
-    gravityMs2: '10.44 m/s²',
-    surfaceTemp: '-140°C',
-    atmosphere: '96.3% H₂, 3.25% He, methane, ammonia ice haze',
-    moons: 146,
-    funFact: 'Crown jewel of rings extending 282,000 km across but only ~10 meters thin! Saturn is so light (density 0.687 g/cm³) it would float in water.',
-    hasRings: true,
-    zone: 'Gas Giants',
-    orbitalPeriod: '29.46 Earth Years',
-    dayLength: '10 Hours 33 Minutes 38 Seconds',
-    discoveredBy: 'Known since antiquity (Galileo 1610, Rings by Huygens 1655)',
-    emoji: '♄',
-    massKg: '5.68 × 10²⁶ kg (95.2 Earths)',
-    axialTilt: '26.73°',
-    orbitalVelocityKms: '9.68 km/s',
-    interiorLayers: [
-      { name: 'Hydrogen Cloud Envelope', depth: '1,000 km', desc: 'Hazy yellow ammonia clouds with polar hexagonal jet stream.' },
-      { name: 'Liquid Metallic Hydrogen', depth: '30,000 km', desc: 'Helium rain precipitates downward through metallic hydrogen toward the core.' },
-      { name: 'Rock & Ice Dense Core', depth: '15,000 km', desc: 'Dense rocky core equivalent to 9–22 Earth masses.' },
-    ],
-    atmosphereGases: [
-      { name: 'Hydrogen (H₂)', pct: 96.3, color: '#38bdf8' },
-      { name: 'Helium (He)', pct: 3.25, color: '#a855f7' },
-      { name: 'Methane & Trace', pct: 0.45, color: '#eab308' },
-    ],
-  },
-  {
-    id: 'uranus',
-    name: 'Uranus',
-    color: 0x67e8f9,
-    emissive: 0x0e7490,
-    radius: 3.2,
-    orbitRadius: 136,
-    distanceAU: '19.20 AU (2.872B km)',
-    actualAU: 19.20,
-    diameterKm: '50,724 km',
-    gravityMs2: '8.69 m/s²',
-    surfaceTemp: '-195°C to -224°C (Coldest atmosphere)',
-    atmosphere: '82.5% H₂, 15.2% He, 2.3% Methane (gives brilliant cyan hue)',
-    moons: 28,
-    funFact: 'Extreme 97.77° axial tilt — effectively rolls on its side along its orbit! One pole gets 42 continuous years of sunlight followed by 42 years of dark.',
-    zone: 'Ice Giants',
-    orbitalPeriod: '84.01 Earth Years',
-    dayLength: '17 Hours 14 Minutes 24 Seconds (Retrograde)',
-    discoveredBy: 'William Herschel (March 13, 1781)',
-    emoji: '⛢',
-    massKg: '8.68 × 10²⁵ kg (14.5 Earths)',
-    axialTilt: '97.77° (Horizontal)',
-    orbitalVelocityKms: '6.80 km/s',
-    interiorLayers: [
-      { name: 'Upper Methane-Ammonia Atmosphere', depth: '600 km', desc: 'Cyan haze absorbing red sunlight.' },
-      { name: 'Superheated Water-Ammonia Mantle', depth: '10,000 km', desc: 'Dense, hot, high-pressure fluid slush of water, ammonia, and methane.' },
-      { name: 'Silicate/Iron-Nickel Rocky Core', depth: '4,000 km', desc: 'Small core with mass roughly 0.55 Earths.' },
-    ],
-    atmosphereGases: [
-      { name: 'Hydrogen (H₂)', pct: 82.5, color: '#38bdf8' },
-      { name: 'Helium (He)', pct: 15.2, color: '#a855f7' },
-      { name: 'Methane (CH₄)', pct: 2.3, color: '#06b6d4' },
-    ],
-  },
-  {
-    id: 'neptune',
-    name: 'Neptune',
-    color: 0x3b82f6,
-    emissive: 0x1d4ed8,
-    radius: 3.1,
-    orbitRadius: 162,
-    distanceAU: '30.05 AU (4.495B km)',
-    actualAU: 30.05,
-    diameterKm: '49,244 km',
-    gravityMs2: '11.15 m/s²',
-    surfaceTemp: '-201°C',
-    atmosphere: '80% H₂, 19% He, 1.5% Methane, supersonic jet streams >2,100 km/h',
-    moons: 16,
-    funFact: 'Most distant major planet. Discovered by mathematical prediction before ever being observed visually! Triton moon orbits backwards and erupts nitrogen geysers.',
-    zone: 'Ice Giants',
-    orbitalPeriod: '164.79 Earth Years',
-    dayLength: '16 Hours 6 Minutes 36 Seconds',
-    discoveredBy: 'Urbain Le Verrier & Johann Galle (September 23, 1846)',
-    emoji: '♆',
-    massKg: '1.02 × 10²⁶ kg (17.1 Earths)',
-    axialTilt: '28.32°',
-    orbitalVelocityKms: '5.43 km/s',
-    interiorLayers: [
-      { name: 'Upper Atmosphere & Cloud Belts', depth: '800 km', desc: 'Supersonic winds surpassing 2,100 km/h with cirrus methane cloud streaks.' },
-      { name: 'Ionic Water-Ammonia Slush Ocean', depth: '12,000 km', desc: 'Superionic water exhibiting electrical conductivity; may form diamond hail.' },
-      { name: 'Dense Iron-Silicate Core', depth: '5,000 km', desc: 'Rocky core with mass ~1.2 Earths.' },
-    ],
-    atmosphereGases: [
-      { name: 'Hydrogen (H₂)', pct: 80.0, color: '#38bdf8' },
-      { name: 'Helium (He)', pct: 19.0, color: '#a855f7' },
-      { name: 'Methane (CH₄)', pct: 1.5, color: '#2563eb' },
-    ],
+    icon: '🔬',
+    title: 'NASA Science & Transparent Scoring',
+    desc: 'Every simulation constant and failure mode is mathematically grounded in official NASA BVAD life support and Kilopower engineering documents.',
   },
 ];
 
-// ── SPACE STATIONS ────────────────────────────────────────────────────────
-export const SPACE_STATIONS: SpaceStationData[] = [
-  {
-    id: 'iss',
-    name: 'International Space Station (ISS)',
-    agency: 'NASA / ESA / JAXA / CSA / Roscosmos',
-    type: 'Modular Habitation Space Station',
-    parentBody: 'earth',
-    altitudeKm: 418.5,
-    velocityKms: 7.66,
-    crewCount: 7,
-    crewManifest: 'Expedition 72 Crew',
-    launchYear: 1998,
-    status: 'Operational',
-    color: '#38bdf8',
-    description: 'Largest human-made laboratory in space. Continuous human occupation since Nov 2, 2000. Features 16 pressurized modules, Canadarm2, and 8 massive photovoltaic solar arrays.',
-    specs: [
-      { label: 'Altitude', value: '418.5 km (LEO)' },
-      { label: 'Orbital Speed', value: '27,580 km/h (7.66 km/s)' },
-      { label: 'Period', value: '92.68 minutes (~15.5 orbits/day)' },
-      { label: 'Mass', value: '444,615 kg (970,000 lbs)' },
-      { label: 'Solar Span', value: '109 meters (Full Football Field)' },
-    ],
-  },
-  {
-    id: 'tiangong',
-    name: 'Tiangong Space Station (CSS)',
-    agency: 'CMSA (China Manned Space Agency)',
-    type: 'Permanent Multi-Module Orbital Lab',
-    parentBody: 'earth',
-    altitudeKm: 389.2,
-    velocityKms: 7.67,
-    crewCount: 3,
-    crewManifest: 'Shenzhou Mission Crew (3 Taikonauts)',
-    launchYear: 2021,
-    status: 'Operational',
-    color: '#f59e0b',
-    description: 'T-shaped permanent multi-module space station consisting of Tianhe core module, Wentian laboratory, Mengtian science module, and flexible gallium arsenide solar wings.',
-    specs: [
-      { label: 'Altitude', value: '389.2 km (LEO)' },
-      { label: 'Orbital Speed', value: '27,620 km/h (7.67 km/s)' },
-      { label: 'Architecture', value: 'T-Shaped 3-Module Cluster' },
-      { label: 'Core Module', value: 'Tianhe (16.6m length, 22.5 tonnes)' },
-    ],
-  },
-  {
-    id: 'lunar-gateway',
-    name: 'Lunar Gateway (Artemis Hub)',
-    agency: 'NASA / ESA / JAXA / CSA / MBRSC',
-    type: 'Deep Space Cislunar Outpost',
-    parentBody: 'moon',
-    altitudeKm: 3000,
-    velocityKms: 1.50,
-    crewCount: 4,
-    crewManifest: 'Artemis Astronaut Crew',
-    launchYear: 2027,
-    status: 'Planned Construction',
-    color: '#a855f7',
-    description: 'The international deep-space gateway orbiting the Moon in a Near-Rectilinear Halo Orbit (NRHO). Serves as a staging base for astronaut landings at the Lunar South Pole.',
-    specs: [
-      { label: 'Orbit Type', value: 'Near-Rectilinear Halo Orbit (NRHO)' },
-      { label: 'Propulsion', value: 'PPE (50 kW Solar Electric Xenon Thruster)' },
-      { label: 'Habitation', value: 'HALO (Habitation & Logistics Outpost)' },
-      { label: 'Robotic System', value: 'Canadarm3 AI Autonomous Arm' },
-    ],
-  },
-  {
-    id: 'hubble',
-    name: 'Hubble Space Telescope (HST)',
-    agency: 'NASA / ESA',
-    type: 'Great Observatory Satellite',
-    parentBody: 'earth',
-    altitudeKm: 535.0,
-    velocityKms: 7.58,
-    crewCount: 0,
-    crewManifest: 'Autonomous Robotic Observatory',
-    launchYear: 1990,
-    status: 'Operational',
-    color: '#06b6d4',
-    description: 'The revolutionary space observatory operating in Low Earth Orbit since April 1990. Has made over 1.6 million astronomical observations.',
-    specs: [
-      { label: 'Altitude', value: '535 km' },
-      { label: 'Primary Mirror', value: '2.4 meter (7.9 ft)' },
-      { label: 'Observations Made', value: '> 1,600,000 Targets' },
-    ],
-  },
+const STEPS = [
+  { emoji: '🌍', title: '1. Select Mission', desc: 'Choose between Lunar Artemis Base Camp (Shackleton Crater) or Martian Ares Base (Jezero Crater).', color: '#a78bfa' },
+  { emoji: '🏗️', title: '2. Outpost Construction', desc: 'Allocate a limited 45,000 kg cargo mass budget across habitat, nuclear Kilopower, and life support.', color: '#38bdf8' },
+  { emoji: '⚡', title: '3. Survive Hard Decisions', desc: 'Manage daily shifts. Weather the 354-hour lunar night, solar particle storms, and cascading subsystem wear.', color: '#43ffa0' },
+  { emoji: '🔬', title: '4. Rover EVA & Debrief', desc: 'Deploy the surface rover for ice core sampling, earn research points, and review your explainable AIB debrief.', color: '#f59e0b' },
 ];
 
-// ── SOLAR PROBES & DEEP SPACE FLEET ───────────────────────────────────────
-export const SOLAR_MISSIONS: SolarMissionData[] = [
-  {
-    id: 'parker-solar-probe',
-    name: 'Parker Solar Probe (PSP)',
-    agency: 'NASA Goddard / JHU-APL',
-    type: 'Extreme Heliophysics Probe',
-    trajectoryType: 'eccentric-solar',
-    distanceFromSunAU: 0.082,
-    currentSpeedKms: 176.0,
-    lightDelayStr: '41 Seconds',
-    color: '#f97316',
-    missionObjective: 'Plunge directly through the superheated solar corona to solve why the corona is 300x hotter than the solar surface and trace the supersonic solar wind.',
-    keyAchievement: 'First human spacecraft to fly through the Sun’s upper atmosphere (Alfvén critical surface) at over 692,000 km/h.',
-    instruments: ['FIELDS (EM Waves)', 'WISPR (Coronal Imager)', 'SWEAP (Solar Wind)', 'ISʘIS (Particles)'],
-  },
-  {
-    id: 'jwst',
-    name: 'James Webb Space Telescope (JWST)',
-    agency: 'NASA / ESA / CSA',
-    type: 'Flagship Infrared Observatory',
-    trajectoryType: 'lagrange-l2',
-    distanceFromSunAU: 1.01,
-    currentSpeedKms: 0.2,
-    lightDelayStr: '5.0 Seconds',
-    color: '#eab308',
-    missionObjective: 'Unveil the cosmic dawn by observing the first galaxies formed after the Big Bang, study planetary formation, and analyze exoplanet atmospheres.',
-    keyAchievement: 'Successfully unfolded 6.5m gold beryllium mirror and 5-layer tennis-court-sized sunshield at Sun-Earth L2 (1.5M km from Earth).',
-    instruments: ['NIRCam', 'NIRSpec', 'MIRI', 'FGS/NIRISS'],
-  },
-  {
-    id: 'perseverance',
-    name: 'Perseverance Rover & Ingenuity',
-    agency: 'NASA JPL',
-    type: 'Mars Surface Astrobiology',
-    trajectoryType: 'mars-surface',
-    distanceFromSunAU: 1.524,
-    currentSpeedKms: 24.1,
-    lightDelayStr: '12 Minutes 35 Seconds',
-    color: '#f43f5e',
-    missionObjective: 'Seeking signs of ancient microbial life in Jezero Crater paleolake, caching sealed rock samples for Mars Sample Return, and generating O₂ via MOXIE.',
-    keyAchievement: 'Cached 25 geological core samples; Ingenuity helicopter completed 72 powered flights in thin Martian air.',
-    instruments: ['Mastcam-Z', 'SuperCam', 'PIXL', 'SHERLOC', 'MOXIE', 'RIMFAX Radar'],
-  },
-  {
-    id: 'voyager-1',
-    name: 'Voyager 1',
-    agency: 'NASA JPL',
-    type: 'Interstellar Cosmic Explorer',
-    trajectoryType: 'interstellar',
-    distanceFromSunAU: 163.4,
-    currentSpeedKms: 17.0,
-    lightDelayStr: '22 Hours 38 Minutes',
-    color: '#34d399',
-    missionObjective: 'First human-made machine to cross the Heliopause into true interstellar space. Currently sampling interstellar plasma and galactic cosmic rays.',
-    keyAchievement: 'Farthest human object from Earth (>24.4 billion km). Launched in 1977, still communicating via NASA Deep Space Network.',
-    instruments: ['CRS (Cosmic Ray)', 'MAG (Magnetometer)', 'PWS (Plasma Wave)'],
-  },
-];
-
-// ── CELESTIAL EPHEMERIS ENGINE ────────────────────────────────────────────
-function getJulianDate(date: Date): number {
-  return date.getTime() / 86400000 + 2440587.5;
-}
-
-function getPlanetHeliocentricAngle(planetId: string, jd: number): number {
-  const d = jd - 2451545.0; // Days from J2000.0 epoch
-  const rates: Record<string, { L0: number; n: number }> = {
-    mercury: { L0: 252.25, n: 4.0923344 },
-    venus: { L0: 181.98, n: 1.6021302 },
-    earth: { L0: 100.46, n: 0.9856474 },
-    mars: { L0: 355.45, n: 0.5240330 },
-    jupiter: { L0: 34.40, n: 0.0830853 },
-    saturn: { L0: 49.94, n: 0.0334442 },
-    uranus: { L0: 313.23, n: 0.0117283 },
-    neptune: { L0: 304.88, n: 0.0059810 },
-  };
-  const r = rates[planetId] || { L0: 0, n: 1 };
-  const deg = (r.L0 + r.n * d) % 360;
-  return (deg * Math.PI) / 180;
-}
-
-// ── 3D MODEL BUILDERS ─────────────────────────────────────────────────────
-function createSaturnRingGeometry(innerRadius: number, outerRadius: number): THREE.BufferGeometry {
-  const geo = new THREE.RingGeometry(innerRadius, outerRadius, 128);
-  const pos = geo.attributes.position;
-  const uvs = geo.attributes.uv;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const r = Math.sqrt(x * x + y * y);
-    const u = (r - innerRadius) / (outerRadius - innerRadius);
-    uvs.setXY(i, u, 0.5);
-  }
-  uvs.needsUpdate = true;
-  return geo;
-}
-
-function createTextSprite(text: string, color: string, subtext?: string, isCompact: boolean = false): THREE.Sprite {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
-  canvas.width = 256;
-  canvas.height = 64;
-  ctx.clearRect(0, 0, 256, 64);
-
-  // Hallmark Rim Workbench: 0px card radius, hairline border, deep space dark background
-  ctx.fillStyle = 'rgba(4, 7, 14, 0.88)';
-  ctx.fillRect(8, 6, 240, 52);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(8, 6, 240, 52);
-
-  // Modern NASA typography
-  ctx.font = 'bold 18px "Space Grotesk", -apple-system, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = color;
-  ctx.fillText(text, 128, subtext ? 28 : 37);
-
-  if (subtext) {
-    ctx.font = '600 12px "JetBrains Mono", monospace';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(subtext, 128, 48);
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: true });
-  const sprite = new THREE.Sprite(spriteMat);
-  sprite.scale.set(isCompact ? 4.0 : 6.5, isCompact ? 1.0 : 1.62, 1);
-  return sprite;
-}
-
-function createRealisticISSMesh(): THREE.Group {
-  const group = new THREE.Group();
-  const trussGeo = new THREE.BoxGeometry(7.8, 0.22, 0.22);
-  const trussMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.25 });
-  group.add(new THREE.Mesh(trussGeo, trussMat));
-
-  const moduleMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.65, roughness: 0.3 });
-  const centralModuleGeo = new THREE.CylinderGeometry(0.42, 0.42, 2.8, 18);
-  const central = new THREE.Mesh(centralModuleGeo, moduleMat);
-  central.rotation.x = Math.PI / 2;
-  group.add(central);
-
-  const wingGeo = new THREE.BoxGeometry(0.95, 2.1, 0.03);
-  const wingMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, emissive: 0x1e3a8a, emissiveIntensity: 0.55 });
-  const offsets = [-3.3, -2.3, 2.3, 3.3];
-  offsets.forEach((xOff) => {
-    const w1 = new THREE.Mesh(wingGeo, wingMat);
-    w1.position.set(xOff, 1.25, 0);
-    group.add(w1);
-    const w2 = new THREE.Mesh(wingGeo, wingMat);
-    w2.position.set(xOff, -1.25, 0);
-    group.add(w2);
-  });
-
-  group.scale.set(0.4, 0.4, 0.4);
-  return group;
-}
-
-function createRealisticTiangongMesh(): THREE.Group {
-  const group = new THREE.Group();
-  const coreGeo = new THREE.CylinderGeometry(0.5, 0.5, 2.6, 18);
-  const coreMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.6, roughness: 0.28 });
-  const core = new THREE.Mesh(coreGeo, coreMat);
-  core.rotation.x = Math.PI / 2;
-  group.add(core);
-
-  const labGeo = new THREE.CylinderGeometry(0.44, 0.44, 2.1, 16);
-  const lab1 = new THREE.Mesh(labGeo, coreMat);
-  lab1.rotation.z = Math.PI / 2;
-  lab1.position.set(-1.25, 0, 0.35);
-  const lab2 = new THREE.Mesh(labGeo, coreMat);
-  lab2.rotation.z = Math.PI / 2;
-  lab2.position.set(1.25, 0, 0.35);
-  group.add(lab1);
-  group.add(lab2);
-
-  const solarGeo = new THREE.BoxGeometry(0.75, 2.4, 0.03);
-  const solarMat = new THREE.MeshStandardMaterial({ color: 0xd97706, emissive: 0x92400e, emissiveIntensity: 0.45 });
-  const sWing1 = new THREE.Mesh(solarGeo, solarMat);
-  sWing1.position.set(-2.65, 0, 0.35);
-  const sWing2 = new THREE.Mesh(solarGeo, solarMat);
-  sWing2.position.set(2.65, 0, 0.35);
-  group.add(sWing1);
-  group.add(sWing2);
-
-  group.scale.set(0.38, 0.38, 0.38);
-  return group;
-}
-
-function createRealisticProbeMesh(colorHex: number): THREE.Group {
-  const group = new THREE.Group();
-  const bodyGeo = new THREE.BoxGeometry(1.2, 1.2, 1.6);
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.2 });
-  group.add(new THREE.Mesh(bodyGeo, bodyMat));
-
-  const dishGeo = new THREE.ConeGeometry(1.4, 0.4, 24, 1, true);
-  const dishMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.4, roughness: 0.3 });
-  const dish = new THREE.Mesh(dishGeo, dishMat);
-  dish.rotation.x = Math.PI;
-  dish.position.z = 1.1;
-  group.add(dish);
-
-  const solarGeo = new THREE.BoxGeometry(3.2, 0.8, 0.04);
-  const solarMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.3 });
-  const s1 = new THREE.Mesh(solarGeo, solarMat);
-  s1.position.x = 2.4;
-  const s2 = new THREE.Mesh(solarGeo, solarMat);
-  s2.position.x = -2.4;
-  group.add(s1);
-  group.add(s2);
-
-  group.scale.set(0.32, 0.32, 0.32);
-  return group;
-}
-
-// ── COMPONENT IMPLEMENTATION ──────────────────────────────────────────────
 export const LandingPage: React.FC<LandingPageProps> = ({
   onEnter,
   onStartMission,
@@ -755,1583 +141,1572 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   savedGameSol = 1,
   savedGameDest = 'Moon',
   onOpenAcademy,
+  onOpenTrainingCenter,
   onOpenRover,
-  onOpenHowToPlay: _onOpenHowToPlay,
-  onOpenSettings: _onOpenSettings,
-  onOpenScienceHub: _onOpenScienceHub,
+  onOpenHowToPlay,
+  onOpenSettings,
+  onOpenScienceHub,
   onOpenCredits,
   onOpenComics,
   onOpenLearningHub,
   onOpenDepot,
   onOpenClassroom,
   currentUser,
-  onUserUpdate,
   onOpenAuth,
   onOpenJudgePreview,
   onOpenTelemetry,
   onOpenCertificate,
-  isJudgeMode: _isJudgeMode = false,
-  onOpenOrrery: _onOpenOrrery,
+  isJudgeMode = false,
+
+
+  onOpenOrrery,
   onOpenMarsEDL,
-  onOpenTeacherGradebook: _onOpenTeacherGradebook,
+  onOpenTeacherGradebook,
   onOpenCharacterLocker,
-  onOpenLiveActivity: _onOpenLiveActivity,
+  onOpenLiveActivity,
   onOpenMultiplayerLobby,
   onOpenMoonbaseAlpha,
   onOpenBlackHole,
   onOpenExpedition,
   onOpenCampaign,
   onOpenSpaceGamesHub,
+  onUserUpdate,
 }) => {
-  const mountRef = useRef<HTMLDivElement>(null);
+  // Active historical astronaut selected by cadet
+  const activeAstronaut = ASTRONAUT_CHARACTERS.find((c) => c.id === currentUser?.selectedCharacterId) || ASTRONAUT_CHARACTERS[0];
 
-  // Simulation Ephemeris & Time
-  const [simDate, setSimDate] = useState<Date>(() => new Date());
-  const [currentJD, setCurrentJD] = useState<number>(() => getJulianDate(new Date()));
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
-  const [simSpeed, setSimSpeed] = useState<number>(1); // 1 = Real-time, 10, 100, 1000, 10000
-  const [isLiveSynced, setIsLiveSynced] = useState<boolean>(true);
+  // Cinematic Astronaut Inspection Mode & Camera Dolly
+  const [isInspectionMode, setIsInspectionMode] = useState(false);
+  const [previewAstronautId, setPreviewAstronautId] = useState<string | null>(null);
+  const [toastFeedback, setToastFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Visual Display Toggles
-  const [showOrbits, setShowOrbits] = useState<boolean>(true);
-  const [showLabels, setShowLabels] = useState<boolean>(true);
-  const [showAsteroids, setShowAsteroids] = useState<boolean>(true);
-  const [showSpacecraft, setShowSpacecraft] = useState<boolean>(true);
-  const [lightingMode, setLightingMode] = useState<'sun' | 'flood'>('sun');
-  const [is2DMode, setIs2DMode] = useState<boolean>(false);
-  const [isCommandDeckExpanded, setIsCommandDeckExpanded] = useState<boolean>(true);
+  const inspectingAstronaut = ASTRONAUT_CHARACTERS.find((c) => c.id === (previewAstronautId || currentUser?.selectedCharacterId || 'neil_armstrong')) || ASTRONAUT_CHARACTERS[0];
+  const unlockedIds = currentUser?.unlockedCharacterIds || ['neil_armstrong', 'kalpana_chawla'];
+  const isSelectedActive = (currentUser?.selectedCharacterId || 'neil_armstrong') === inspectingAstronaut.id;
+  const isSelectedUnlocked = unlockedIds.includes(inspectingAstronaut.id) || inspectingAstronaut.costCoins === 0;
 
-  // Selection & Sidebar
-  const [selectedEntity, setSelectedEntity] = useState<{
-    type: 'planet' | 'station' | 'mission';
-    data: PlanetData | SpaceStationData | SolarMissionData;
-  } | null>({ type: 'planet', data: PLANETS[2] }); // Default to Earth
-  const [drawerTab, setDrawerTab] = useState<'overview' | 'indepth' | 'numbers' | 'missions' | 'compare'>('overview');
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [cameraTarget, setCameraTarget] = useState<string>('sun');
-  const [isTargetLocked, setIsTargetLocked] = useState<boolean>(false);
-
-  // Search & Navigation
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
-  const [activeCategory, setActiveCategory] = useState<'all' | 'inner' | 'outer' | 'fleet' | 'tours'>('all');
-  const [isSimulatorsDropdownOpen, setIsSimulatorsDropdownOpen] = useState<boolean>(false);
-  const [isStoriesModalOpen, setIsStoriesModalOpen] = useState<boolean>(false);
-
-  // Hover Tooltip
-  const [hoverEntity, setHoverEntity] = useState<{ name: string; subtitle: string; x: number; y: number } | null>(null);
-
-  // Audio state
-  const [isAudioMuted, setIsAudioMuted] = useState<boolean>(() => spaceMusicEngine.getIsMuted());
-
-  // Size Comparison Slider
-  const [compareScale, setCompareScale] = useState<number>(1);
-
-  // Cadet Progression
-  const [cadetProg] = useState(() => getCadetProgression());
-  const rankInfo = getRankProgress(cadetProg.xp);
-
-  // Three.js Scene References
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const planetMeshesRef = useRef<Map<string, { mesh: THREE.Mesh; label: THREE.Sprite; clouds?: THREE.Mesh; moons?: { mesh: THREE.Mesh; angle: number; speed: number; orbitRadius: number }[]; orbitRadius: number; angle: number }>>(new Map());
-  const stationMeshesRef = useRef<Map<string, { group: THREE.Group; label: THREE.Sprite; parentId: string; orbitRadius: number; angle: number; orbitSpeed: number }>>(new Map());
-  const probeMeshesRef = useRef<Map<string, { group: THREE.Group; label: THREE.Sprite; distanceAU: number }>>(new Map());
-  const orbitLinesRef = useRef<THREE.Line[]>([]);
-  const asteroidPointsRef = useRef<THREE.Points | null>(null);
-  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
-  const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
-
-  // Refs for animation loop
-  const isPlayingRef = useRef(isPlaying);
-  isPlayingRef.current = isPlaying;
-  const simSpeedRef = useRef(simSpeed);
-  simSpeedRef.current = simSpeed;
-  const simDateRef = useRef(simDate);
-  simDateRef.current = simDate;
-  const cameraTargetRef = useRef(cameraTarget);
-  cameraTargetRef.current = cameraTarget;
-  const isTargetLockedRef = useRef(isTargetLocked);
-  isTargetLockedRef.current = isTargetLocked;
-
-  // Camera Orbit Interaction Variables
-  const isDraggingRef = useRef(false);
-  const previousMousePositionRef = useRef({ x: 0, y: 0 });
-  const camThetaRef = useRef(0.45);
-  const camPhiRef = useRef(1.12);
-  const camDistanceRef = useRef(135);
-  const camTargetPosRef = useRef(new THREE.Vector3(0, 0, 0));
-
-  // ── SPEECH SYNTHESIS HELPER ───────────────────────────────────────────────
-  const handleReadAloud = (text: string) => {
-    soundFx.playTelemetryChirp();
-    speechEngine.speak(text, 'HOUSTON_CAPCOM');
+  const showToast = (text: string, type: 'success' | 'error') => {
+    setToastFeedback({ text, type });
+    setTimeout(() => setToastFeedback(null), 3500);
   };
 
-  // ── FILTERED SEARCH SUGGESTIONS ──────────────────────────────────────────
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    const results: { id: string; name: string; type: string; category: 'planet' | 'station' | 'mission' | 'game' | 'simulator'; icon: string }[] = [];
-
-    PLANETS.forEach((p) => {
-      if (p.name.toLowerCase().includes(q) || p.zone.toLowerCase().includes(q)) {
-        results.push({ id: p.id, name: p.name, type: p.zone, category: 'planet', icon: '🪐' });
-      }
-    });
-
-    SPACE_STATIONS.forEach((s) => {
-      if (s.name.toLowerCase().includes(q) || s.agency.toLowerCase().includes(q)) {
-        results.push({ id: s.id, name: s.name, type: s.agency, category: 'station', icon: '🛰️' });
-      }
-    });
-
-    SOLAR_MISSIONS.forEach((m) => {
-      if (m.name.toLowerCase().includes(q) || m.missionObjective.toLowerCase().includes(q)) {
-        results.push({ id: m.id, name: m.name, type: m.type, category: 'mission', icon: '🚀' });
-      }
-    });
-
-    ALL_76_NASA_MISSIONS.slice(0, 30).forEach((gm) => {
-      if (gm.name.toLowerCase().includes(q) || gm.destinationName.toLowerCase().includes(q)) {
-        results.push({ id: gm.id, name: gm.name, type: `${gm.destinationName} Flight`, category: 'game', icon: '🎮' });
-      }
-    });
-
-    return results.slice(0, 8);
-  }, [searchQuery]);
-
-  // ── TARGET FOCUS HANDLER ──────────────────────────────────────────────────
-  const flyToTarget = useCallback((targetId: string) => {
-    setCameraTarget(targetId);
-    setIsTargetLocked(true);
-    soundFx.playClick(850);
-
-    const planet = PLANETS.find((p) => p.id === targetId);
-    if (planet) {
-      setSelectedEntity({ type: 'planet', data: planet });
-      setIsDrawerOpen(true);
-      camDistanceRef.current = Math.max(planet.radius * 6, 24);
-      return;
-    }
-
-    const station = SPACE_STATIONS.find((s) => s.id === targetId);
-    if (station) {
-      setSelectedEntity({ type: 'station', data: station });
-      setIsDrawerOpen(true);
-      camDistanceRef.current = 14;
-      return;
-    }
-
-    const mission = SOLAR_MISSIONS.find((m) => m.id === targetId);
-    if (mission) {
-      setSelectedEntity({ type: 'mission', data: mission });
-      setIsDrawerOpen(true);
-      camDistanceRef.current = 16;
-      return;
-    }
-
-    if (targetId === 'sun') {
-      camDistanceRef.current = 140;
-    }
-  }, []);
-
-  // ── RESET CAMERA VIEW ────────────────────────────────────────────────────
-  const handleResetCamera = () => {
-    setCameraTarget('sun');
-    setIsTargetLocked(false);
-    camThetaRef.current = 0.4;
-    camPhiRef.current = 1.1;
-    camDistanceRef.current = 180;
-    camTargetPosRef.current.set(0, 0, 0);
-    soundFx.playTelemetryChirp();
+  const handleOpenInspection = (charId?: string) => {
+    soundFx.playHydroPressureSwoosh();
+    setPreviewAstronautId(charId || activeAstronaut.id);
+    setIsInspectionMode(true);
   };
 
-  // ── LIVE EPHEMERIS SYNC ──────────────────────────────────────────────────
-  const syncToNow = () => {
-    const now = new Date();
-    setSimDate(now);
-    setCurrentJD(getJulianDate(now));
-    setIsLiveSynced(true);
-    soundFx.playClick(900);
+  const handleCloseInspection = () => {
+    soundFx.playHydroPressureSwoosh();
+    setIsInspectionMode(false);
   };
 
-  // ── THREE.JS SCENE INITIALIZATION ────────────────────────────────────────
-  useEffect(() => {
-    const container = mountRef.current;
-    if (!container) return;
-
-    const width = container.clientWidth || window.innerWidth;
-    const height = container.clientHeight || window.innerHeight;
-
-    // 1. Scene, Camera, Renderer
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020617);
-    sceneRef.current = scene;
-
-    const camera = new THREE.PerspectiveCamera(46, width / height, 0.1, 4000);
-    camera.position.set(0, 110, 180);
-    camera.lookAt(0, 0, 0);
-    cameraRef.current = camera;
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.25;
-    container.innerHTML = '';
-    container.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
-
-    // 2. High-Fidelity Scientific Lighting
-    const ambientLight = new THREE.AmbientLight(0x94a3b8, lightingMode === 'flood' ? 1.8 : 0.85);
-    scene.add(ambientLight);
-
-    const sunLight = new THREE.PointLight(0xfffbeb, 4.2, 1200, 0.35);
-    sunLight.position.set(0, 0, 0);
-    scene.add(sunLight);
-
-    // 3. Texture Loading
-    const texLoader = new THREE.TextureLoader();
-    const textures = {
-      sun: texLoader.load('/assets/planets/2k_sun.jpg'),
-      stars: texLoader.load('/assets/planets/2k_stars_milky_way.jpg'),
-      mercury: texLoader.load('/assets/planets/2k_mercury.jpg'),
-      venusAtm: texLoader.load('/assets/planets/2k_venus_atmosphere.jpg'),
-      earthDay: texLoader.load('/assets/planets/2k_earth_daymap.jpg'),
-      earthNight: texLoader.load('/assets/planets/2k_earth_nightmap.jpg'),
-      earthClouds: texLoader.load('/assets/planets/2k_earth_clouds.jpg'),
-      moon: texLoader.load('/assets/planets/2k_moon.jpg'),
-      mars: texLoader.load('/assets/planets/2k_mars.jpg'),
-      jupiter: texLoader.load('/assets/planets/2k_jupiter.jpg'),
-      saturn: texLoader.load('/assets/planets/2k_saturn.jpg'),
-      saturnRing: texLoader.load('/assets/planets/2k_saturn_ring_alpha.png'),
-      uranus: texLoader.load('/assets/planets/2k_uranus.jpg'),
-      neptune: texLoader.load('/assets/planets/2k_neptune.jpg'),
-    };
-
-    Object.values(textures).forEach((t) => {
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.anisotropy = 8;
-    });
-
-    // 4. Milky Way Celestial Sky Sphere & Starfield
-    const skyGeo = new THREE.SphereGeometry(2200, 48, 48);
-    const skyMat = new THREE.MeshBasicMaterial({ map: textures.stars, side: THREE.BackSide, depthWrite: false });
-    scene.add(new THREE.Mesh(skyGeo, skyMat));
-
-    // Twinkling Starfield Points
-    const starCount = 3000;
-    const starGeo = new THREE.BufferGeometry();
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i += 3) {
-      starPos[i] = (Math.random() - 0.5) * 2000;
-      starPos[i + 1] = (Math.random() - 0.5) * 2000;
-      starPos[i + 2] = (Math.random() - 0.5) * 2000;
+  const handleEquipAstronaut = (char: typeof ASTRONAUT_CHARACTERS[0]) => {
+    if (!currentUser) {
+      soundFx.playClick(900);
+      showToast(`🧑‍🚀 Previewing ${char.name}. Sign in at top-right to save to cadet dossier!`, 'success');
+      return;
     }
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const starMat = new THREE.PointsMaterial({ size: 1.5, color: 0xffffff, transparent: true, opacity: 0.85 });
-    scene.add(new THREE.Points(starGeo, starMat));
-
-    // 5. Blazing Sun Mesh & Corona Layers
-    const sunGeo = new THREE.SphereGeometry(7.2, 64, 64);
-    const sunMat = new THREE.MeshBasicMaterial({ map: textures.sun });
-    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-    scene.add(sunMesh);
-
-    const coronaGeo = new THREE.SphereGeometry(10.5, 48, 48);
-    const coronaMat = new THREE.MeshBasicMaterial({
-      color: 0xffaa00,
-      transparent: true,
-      opacity: 0.22,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-    });
-    const coronaMesh = new THREE.Mesh(coronaGeo, coronaMat);
-    scene.add(coronaMesh);
-
-    // 6. Build Planets & Orbits
-    const initialJD = getJulianDate(new Date());
-    const orbitLines: THREE.Line[] = [];
-
-    PLANETS.forEach((planet) => {
-      // Orbit Line Ellipse
-      const orbitCurve = new THREE.EllipseCurve(0, 0, planet.orbitRadius, planet.orbitRadius, 0, 2 * Math.PI, false, 0);
-      const points = orbitCurve.getPoints(140);
-      const orbitGeo = new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(p.x, 0, p.y)));
-      const orbitMat = new THREE.LineBasicMaterial({
-        color: planet.color,
-        transparent: true,
-        opacity: 0.24,
-      });
-      const orbitLine = new THREE.Line(orbitGeo, orbitMat);
-      orbitLine.visible = showOrbits;
-      scene.add(orbitLine);
-      orbitLines.push(orbitLine);
-
-      // Planet Mesh
-      const pGeo = new THREE.SphereGeometry(planet.radius, 48, 48);
-      let pMat: THREE.Material;
-
-      if (planet.id === 'earth') {
-        pMat = new THREE.MeshStandardMaterial({ map: textures.earthDay, roughness: 0.45, metalness: 0.1 });
-      } else if (planet.id === 'jupiter') {
-        pMat = new THREE.MeshStandardMaterial({ map: textures.jupiter, roughness: 0.6 });
-      } else if (planet.id === 'saturn') {
-        pMat = new THREE.MeshStandardMaterial({ map: textures.saturn, roughness: 0.6 });
-      } else if (planet.id === 'mars') {
-        pMat = new THREE.MeshStandardMaterial({ map: textures.mars, roughness: 0.7 });
-      } else if (planet.id === 'venus') {
-        pMat = new THREE.MeshStandardMaterial({ map: textures.venusAtm, roughness: 0.5 });
-      } else if (planet.id === 'mercury') {
-        pMat = new THREE.MeshStandardMaterial({ map: textures.mercury, roughness: 0.8 });
-      } else if (planet.id === 'uranus') {
-        pMat = new THREE.MeshStandardMaterial({ map: textures.uranus, roughness: 0.5 });
-      } else if (planet.id === 'neptune') {
-        pMat = new THREE.MeshStandardMaterial({ map: textures.neptune, roughness: 0.5 });
-      } else {
-        pMat = new THREE.MeshStandardMaterial({ color: planet.color, roughness: 0.5 });
-      }
-
-      const pMesh = new THREE.Mesh(pGeo, pMat);
-      const angle = getPlanetHeliocentricAngle(planet.id, initialJD);
-      pMesh.position.set(Math.cos(angle) * planet.orbitRadius, 0, Math.sin(angle) * planet.orbitRadius);
-      pMesh.name = planet.id;
-      scene.add(pMesh);
-
-      // Clouds for Earth
-      let cloudsMesh: THREE.Mesh | undefined;
-      if (planet.id === 'earth') {
-        const cGeo = new THREE.SphereGeometry(planet.radius * 1.025, 48, 48);
-        const cMat = new THREE.MeshStandardMaterial({
-          map: textures.earthClouds,
-          transparent: true,
-          opacity: 0.5,
-          blending: THREE.AdditiveBlending,
-        });
-        cloudsMesh = new THREE.Mesh(cGeo, cMat);
-        pMesh.add(cloudsMesh);
-
-      }
-
-      // Rings for Saturn
-      if (planet.hasRings) {
-        const ringGeo = createSaturnRingGeometry(planet.radius * 1.35, planet.radius * 2.5);
-        const ringMat = new THREE.MeshStandardMaterial({
-          map: textures.saturnRing,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.9,
-          roughness: 0.4,
-        });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-        ringMesh.rotation.x = Math.PI / 2 + 0.45;
-        pMesh.add(ringMesh);
-      }
-
-      // Billboard Text Label
-      const label = createTextSprite(planet.name.toUpperCase(), `#${planet.color.toString(16).padStart(6, '0')}`, planet.distanceAU);
-      label.position.copy(pMesh.position);
-      label.position.y += planet.radius + 3.8;
-      label.visible = showLabels;
-      scene.add(label);
-
-      // Moons (Earth Moon & Galilean Moons)
-      const moonsList: { mesh: THREE.Mesh; angle: number; speed: number; orbitRadius: number }[] = [];
-      if (planet.id === 'earth') {
-        const mGeo = new THREE.SphereGeometry(0.82, 24, 24);
-        const mMat = new THREE.MeshStandardMaterial({ map: textures.moon, roughness: 0.8 });
-        const moonMesh = new THREE.Mesh(mGeo, mMat);
-        moonMesh.name = 'moon';
-        scene.add(moonMesh);
-        moonsList.push({ mesh: moonMesh, angle: 0, speed: 2.2, orbitRadius: 6.2 });
-      }
-
-      planetMeshesRef.current.set(planet.id, {
-        mesh: pMesh,
-        label,
-        clouds: cloudsMesh,
-        moons: moonsList,
-        orbitRadius: planet.orbitRadius,
-        angle,
-      });
-    });
-    orbitLinesRef.current = orbitLines;
-
-    // 7. Space Stations (ISS, Tiangong around Earth; Gateway around Moon)
-    SPACE_STATIONS.forEach((station) => {
-      let stationGroup: THREE.Group;
-      if (station.id === 'iss') {
-        stationGroup = createRealisticISSMesh();
-      } else if (station.id === 'tiangong') {
-        stationGroup = createRealisticTiangongMesh();
-      } else {
-        stationGroup = createRealisticProbeMesh(0xa855f7);
-      }
-
-      stationGroup.name = station.id;
-      scene.add(stationGroup);
-
-      const label = createTextSprite(station.name, station.color, `${station.altitudeKm} km`, true);
-      label.visible = false;
-      scene.add(label);
-
-      stationMeshesRef.current.set(station.id, {
-        group: stationGroup,
-        label,
-        parentId: station.parentBody,
-        orbitRadius: station.id === 'iss' ? 4.5 : station.id === 'tiangong' ? 5.2 : 2.8,
-        angle: Math.random() * Math.PI * 2,
-        orbitSpeed: station.id === 'iss' ? 3.5 : 3.8,
-      });
-    });
-
-    // 8. Solar Missions & Interstellar Probes
-    SOLAR_MISSIONS.forEach((probe) => {
-      const probeGroup = createRealisticProbeMesh(parseInt(probe.color.replace('#', '0x')));
-      probeGroup.name = probe.id;
-      scene.add(probeGroup);
-
-      const label = createTextSprite(probe.name, probe.color, `${probe.distanceFromSunAU} AU`, true);
-      label.visible = false;
-      scene.add(label);
-
-      let rad = probe.distanceFromSunAU * 38;
-      if (probe.id === 'parker-solar-probe') rad = 11.5;
-      if (probe.id === 'jwst') rad = 46.5;
-      if (probe.id === 'perseverance') rad = 56.2;
-      if (probe.id === 'voyager-1') rad = 195.0;
-
-      const angle = (probe.distanceFromSunAU * 1.5) % (Math.PI * 2);
-      probeGroup.position.set(Math.cos(angle) * rad, 1.2, Math.sin(angle) * rad);
-      label.position.set(probeGroup.position.x, probeGroup.position.y + 3.2, probeGroup.position.z);
-
-      probeMeshesRef.current.set(probe.id, {
-        group: probeGroup,
-        label,
-        distanceAU: probe.distanceFromSunAU,
-      });
-    });
-
-    // 9. Asteroid Belt Particles
-    const astCount = 450;
-    const astGeo = new THREE.BufferGeometry();
-    const astPos = new Float32Array(astCount * 3);
-    for (let i = 0; i < astCount * 3; i += 3) {
-      const r = 67 + Math.random() * 11;
-      const th = Math.random() * Math.PI * 2;
-      const y = (Math.random() - 0.5) * 4.5;
-      astPos[i] = Math.cos(th) * r;
-      astPos[i + 1] = y;
-      astPos[i + 2] = Math.sin(th) * r;
+    const res = authService.selectCharacter(currentUser.id, char.id, char.avatar);
+    if (res.success && res.user) {
+      soundFx.playClick(950);
+      if (onUserUpdate) onUserUpdate(res.user);
+      showToast(`🧑‍🚀 ${char.name.toUpperCase()} is now your Active Flight Astronaut!`, 'success');
     }
-    astGeo.setAttribute('position', new THREE.BufferAttribute(astPos, 3));
-    const astMat = new THREE.PointsMaterial({ size: 1.1, color: 0xc4cbd4, transparent: true, opacity: 0.55 });
-    const astMesh = new THREE.Points(astGeo, astMat);
-    scene.add(astMesh);
-    asteroidPointsRef.current = astMesh;
+  };
 
-    // 10. Pointer & Mouse Event Listeners for Free Orbit & Click
-    const dom = renderer.domElement;
+  const handleUnlockAstronaut = (char: typeof ASTRONAUT_CHARACTERS[0]) => {
+    if (!currentUser) {
+      soundFx.playAlarm();
+      showToast('Cadet Profile required to unlock with coins. Sign in at top-right!', 'error');
+      return;
+    }
+    const userCoins = currentUser.coins ?? 500;
+    if (userCoins < char.costCoins) {
+      soundFx.playAlarm();
+      showToast(`Insufficient Coins! Need ${char.costCoins - userCoins} more Coins. Complete missions to earn!`, 'error');
+      return;
+    }
+    const res = authService.unlockCharacter(currentUser.id, char.id, char.costCoins);
+    if (res.success && res.user) {
+      soundFx.playVictory();
+      if (onUserUpdate) onUserUpdate(res.user);
+      studentActivityService.logActivity({
+        studentUsername: res.user.username,
+        studentFullName: res.user.fullName || res.user.username,
+        studentAvatar: char.avatar,
+        characterName: char.name,
+        actionType: 'CHARACTER_UNLOCKED',
+        missionTitle: `Unlocked Historic Astronaut: ${char.name}`,
+        destination: 'CAMPUS',
+        durationSeconds: 0,
+        scoreXp: 50,
+        coinsEarned: 0,
+        outcomeStatus: 'UNLOCKED',
+        notes: `Equipped ${char.specialPerk.name} (${char.specialPerk.statBonus}).`,
+      });
+      showToast(`🎉 Successfully unlocked ${char.name}! Perk: ${char.specialPerk.statBonus}`, 'success');
+    } else {
+      showToast(res.error || 'Failed to unlock astronaut.', 'error');
+    }
+  };
 
-    const onPointerDown = (e: PointerEvent) => {
-      isDraggingRef.current = true;
-      previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      // Raycaster for Hover Reticle
-      const rect = dom.getBoundingClientRect();
-      mouseRef.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouseRef.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-      raycasterRef.current.setFromCamera(mouseRef.current, camera);
-      const meshes: THREE.Object3D[] = [];
-      planetMeshesRef.current.forEach((val) => meshes.push(val.mesh));
-      stationMeshesRef.current.forEach((val) => meshes.push(val.group));
-      probeMeshesRef.current.forEach((val) => meshes.push(val.group));
-
-      const hits = raycasterRef.current.intersectObjects(meshes, true);
-      if (hits.length > 0) {
-        let hitObj: THREE.Object3D | null = hits[0].object;
-        while (hitObj && !hitObj.name && hitObj.parent && hitObj.parent !== scene) {
-          hitObj = hitObj.parent;
-        }
-        const nameId = hitObj?.name;
-        const matchedPlanet = PLANETS.find((p) => p.id === nameId);
-        const matchedStation = SPACE_STATIONS.find((s) => s.id === nameId);
-        const matchedProbe = SOLAR_MISSIONS.find((m) => m.id === nameId);
-
-        if (matchedPlanet) {
-          setHoverEntity({ name: matchedPlanet.name, subtitle: `${matchedPlanet.distanceAU} · ${matchedPlanet.zone}`, x: e.clientX, y: e.clientY });
-        } else if (matchedStation) {
-          setHoverEntity({ name: matchedStation.name, subtitle: `${matchedStation.altitudeKm} km · ${matchedStation.agency}`, x: e.clientX, y: e.clientY });
-        } else if (matchedProbe) {
-          setHoverEntity({ name: matchedProbe.name, subtitle: `${matchedProbe.distanceFromSunAU} AU · ${matchedProbe.agency}`, x: e.clientX, y: e.clientY });
-        }
-      } else {
-        setHoverEntity(null);
-      }
-
-      if (!isDraggingRef.current) return;
-      const dx = e.clientX - previousMousePositionRef.current.x;
-      const dy = e.clientY - previousMousePositionRef.current.y;
-      previousMousePositionRef.current = { x: e.clientX, y: e.clientY };
-
-      camThetaRef.current -= dx * 0.005;
-      camPhiRef.current = Math.max(0.12, Math.min(Math.PI - 0.12, camPhiRef.current - dy * 0.005));
-    };
-
-    const onPointerUp = () => {
-      isDraggingRef.current = false;
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      camDistanceRef.current = Math.max(12, Math.min(800, camDistanceRef.current + e.deltaY * 0.15));
-    };
-
-    const onClick = (e: MouseEvent) => {
-      const rect = dom.getBoundingClientRect();
-      const clickMouse = new THREE.Vector2(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1
-      );
-      raycasterRef.current.setFromCamera(clickMouse, camera);
-
-      const checkList: THREE.Object3D[] = [];
-      planetMeshesRef.current.forEach((val) => checkList.push(val.mesh));
-      stationMeshesRef.current.forEach((val) => checkList.push(val.group));
-      probeMeshesRef.current.forEach((val) => checkList.push(val.group));
-
-      const hits = raycasterRef.current.intersectObjects(checkList, true);
-      if (hits.length > 0) {
-        let hitObj: THREE.Object3D | null = hits[0].object;
-        while (hitObj && !hitObj.name && hitObj.parent && hitObj.parent !== scene) {
-          hitObj = hitObj.parent;
-        }
-        if (hitObj?.name) {
-          flyToTarget(hitObj.name);
-        }
-      }
-    };
-
-    dom.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    dom.addEventListener('wheel', onWheel, { passive: false });
-    dom.addEventListener('click', onClick);
-
-    // 11. Animation Loop
-    let animId: number;
-    let clock = new THREE.Clock();
-
-    const animate = () => {
-      animId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-
-      // Rotate Sun
-      sunMesh.rotation.y += 0.002;
-      coronaMesh.rotation.y -= 0.001;
-
-      // Advance Simulation Ephemeris
-      const isPlayingCur = isPlayingRef.current;
-      const speedCur = simSpeedRef.current;
-
-      if (isPlayingCur) {
-        const daysAdvance = delta * speedCur;
-        simDateRef.current = new Date(simDateRef.current.getTime() + daysAdvance * 86400000);
-        const newJD = getJulianDate(simDateRef.current);
-        setSimDate(new Date(simDateRef.current));
-        setCurrentJD(newJD);
-
-        const targetIdCur = cameraTargetRef.current;
-
-        // Update Heliocentric Planet Positions
-        planetMeshesRef.current.forEach((val, id) => {
-          const angle = getPlanetHeliocentricAngle(id, newJD);
-          val.angle = angle;
-          val.mesh.position.x = Math.cos(angle) * val.orbitRadius;
-          val.mesh.position.z = Math.sin(angle) * val.orbitRadius;
-          val.mesh.rotation.y += 0.015;
-
-          if (val.clouds) val.clouds.rotation.y += 0.003;
-
-          // Moons orbit planet
-          if (val.moons) {
-            val.moons.forEach((m) => {
-              m.angle += delta * m.speed;
-              m.mesh.position.x = val.mesh.position.x + Math.cos(m.angle) * m.orbitRadius;
-              m.mesh.position.y = val.mesh.position.y;
-              m.mesh.position.z = val.mesh.position.z + Math.sin(m.angle) * m.orbitRadius;
-              m.mesh.rotation.y += 0.02;
-            });
-          }
-
-          // Sync label with adaptive close-up fading
-          val.label.position.copy(val.mesh.position);
-          val.label.position.y += (val.mesh.geometry as THREE.SphereGeometry).parameters.radius + 3.8;
-          const isInspectingThisPlanet = targetIdCur === id && camDistanceRef.current < 28;
-          val.label.visible = showLabels && !isInspectingThisPlanet;
-        });
-
-        // Space Stations Orbit Earth / Moon with Adaptive Label Visibility
-        const earthData = planetMeshesRef.current.get('earth');
-        const isFocusingStation = targetIdCur === 'iss' || targetIdCur === 'tiangong' || targetIdCur === 'lunar-gateway';
-        const isCloseToEarth = (targetIdCur === 'earth' && camDistanceRef.current < 20);
-
-        stationMeshesRef.current.forEach((st, id) => {
-          st.angle += delta * st.orbitSpeed;
-          if (earthData) {
-            st.group.position.x = earthData.mesh.position.x + Math.cos(st.angle) * st.orbitRadius;
-            st.group.position.y = earthData.mesh.position.y + 0.3;
-            st.group.position.z = earthData.mesh.position.z + Math.sin(st.angle) * st.orbitRadius;
-            st.group.rotation.y += 0.02;
-
-            st.label.position.set(st.group.position.x, st.group.position.y + 1.2, st.group.position.z);
-            st.label.visible = showLabels && showSpacecraft && (targetIdCur === id || (isCloseToEarth && isFocusingStation));
-          }
-        });
-
-        // Probe Labels: Show only when probe is targeted or zoomed near it, keeping overview clean
-        probeMeshesRef.current.forEach((pr, id) => {
-          const isProbeTargeted = targetIdCur === id;
-          const isNearProbe = camDistanceRef.current < 50;
-          pr.label.visible = showLabels && showSpacecraft && (isProbeTargeted || isNearProbe);
-        });
-
-        // Rotate Asteroid Belt
-        if (asteroidPointsRef.current) {
-          asteroidPointsRef.current.rotation.y += 0.0004;
-        }
-      }
-
-      // Smooth Camera Positioning & Lerp
-      const targetId = cameraTargetRef.current;
-      let targetCenter = new THREE.Vector3(0, 0, 0);
-
-      if (targetId !== 'sun') {
-        const pObj = planetMeshesRef.current.get(targetId);
-        const sObj = stationMeshesRef.current.get(targetId);
-        const mObj = probeMeshesRef.current.get(targetId);
-
-        if (pObj) {
-          targetCenter = pObj.mesh.position.clone();
-        } else if (sObj) {
-          targetCenter = sObj.group.position.clone();
-        } else if (mObj) {
-          targetCenter = mObj.group.position.clone();
-        }
-      }
-
-      camTargetPosRef.current.lerp(targetCenter, 0.08);
-
-      const theta = camThetaRef.current;
-      const phi = camPhiRef.current;
-      const dist = camDistanceRef.current;
-
-      const cx = camTargetPosRef.current.x + dist * Math.sin(phi) * Math.sin(theta);
-      const cy = camTargetPosRef.current.y + dist * Math.cos(phi);
-      const cz = camTargetPosRef.current.z + dist * Math.sin(phi) * Math.cos(theta);
-
-      camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.08);
-      camera.lookAt(camTargetPosRef.current);
-
-      renderer.render(scene, camera);
-    };
-
-    animate();
-
-    const onResize = () => {
-      if (!container) return;
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', onResize);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', onResize);
-      dom.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      dom.removeEventListener('wheel', onWheel);
-      dom.removeEventListener('click', onClick);
-      if (dom.parentElement) dom.parentElement.removeChild(dom);
-      renderer.dispose();
-    };
-  }, [lightingMode, flyToTarget]);
-
-  // ── VISIBILITY SYNCHRONIZATION ──────────────────────────────────────────
-  useEffect(() => {
-    orbitLinesRef.current.forEach((l) => { l.visible = showOrbits; });
-  }, [showOrbits]);
-
-  useEffect(() => {
-    planetMeshesRef.current.forEach((p) => { p.label.visible = showLabels; });
-    stationMeshesRef.current.forEach((s) => { s.label.visible = showLabels && showSpacecraft; });
-    probeMeshesRef.current.forEach((m) => { m.label.visible = showLabels && showSpacecraft; });
-  }, [showLabels, showSpacecraft]);
-
-  useEffect(() => {
-    stationMeshesRef.current.forEach((s) => { s.group.visible = showSpacecraft; });
-    probeMeshesRef.current.forEach((m) => { m.group.visible = showSpacecraft; });
-  }, [showSpacecraft]);
-
-  useEffect(() => {
-    if (asteroidPointsRef.current) asteroidPointsRef.current.visible = showAsteroids;
-  }, [showAsteroids]);
-
-  // Keyboard Shortcuts: / to search, Space for play/pause, Esc to close, H to reset camera
-  const searchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        if (e.key === 'Escape') {
-          (e.target as HTMLElement).blur();
-          setIsSearchFocused(false);
-        }
-        return;
-      }
-      if (e.key === '/') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        setIsSearchFocused(true);
-      } else if (e.key === ' ') {
-        e.preventDefault();
-        setIsPlaying((p) => !p);
-        soundFx.playClick(650);
-      } else if (e.key === 'Escape') {
-        setIsStoriesModalOpen(false);
-        setIsSimulatorsDropdownOpen(false);
-        setIsDrawerOpen(false);
-      } else if (e.key === 'h' || e.key === 'H') {
-        handleResetCamera();
+      if (e.key === 'Escape' && isInspectionMode) {
+        handleCloseInspection();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isInspectionMode]);
+
+  // Global first-interaction unlock for Web Audio policy and ambient space music
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      soundFx.unlock();
+      if (!spaceMusicEngine.getIsPlaying() && !spaceMusicEngine.getIsMuted()) {
+        spaceMusicEngine.start();
+      }
+    };
+    window.addEventListener('pointerdown', handleFirstInteraction, { once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
   }, []);
 
-  // ── SPEED & SCRUBBER HANDLERS ───────────────────────────────────────────
-  const handleSetSpeed = (multiplier: number) => {
-    setSimSpeed(multiplier);
-    setIsPlaying(true);
-    setIsLiveSynced(false);
-    soundFx.playClick(multiplier > 1 ? 900 : 700);
+  const [warping, setWarping] = useState(false);
+  const [hangarAsset, setHangarAsset] = useState<'ASTRONAUT' | 'ROVER' | 'SPACECRAFT' | 'OUTPOST'>('ASTRONAUT');
+  const [selectedMatchMode, setSelectedMatchMode] = useState<'SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL'>('SPACE_GAMES');
+  const [showModeDropdown, setShowModeDropdown] = useState(false);
+  const [showIntelDossier, setShowIntelDossier] = useState(false);
+  const [isSimsHubOpen, setIsSimsHubOpen] = useState(false);
+  const [isAcademyHubOpen, setIsAcademyHubOpen] = useState(false);
+  const [isCrewHubOpen, setIsCrewHubOpen] = useState(false);
+  const [audioMuted, setAudioMuted] = useState(false);
+  const [musicMuted, setMusicMuted] = useState(() => spaceMusicEngine.getIsMuted());
+
+  const [cadetProg] = useState(() => getCadetProgression());
+  const rankInfo = getRankProgress(cadetProg.xp);
+
+  const handleStart = () => {
+    soundFx.playReactorStart();
+    setWarping(true);
+    setTimeout(() => {
+      setWarping(false);
+      if (selectedMatchMode === 'SPACE_GAMES' && onOpenSpaceGamesHub) {
+        onOpenSpaceGamesHub();
+      } else if (selectedMatchMode === 'EARTH_TO_MOON' && onOpenExpedition) {
+        onOpenExpedition();
+      } else if (selectedMatchMode === 'NEW_CAMPAIGN') {
+        if (onOpenCampaign) {
+          onOpenCampaign();
+        } else if (onStartMission) {
+          onStartMission();
+        }
+      } else if (selectedMatchMode === 'MOONBASE_ALPHA' && onOpenMoonbaseAlpha) {
+        onOpenMoonbaseAlpha();
+      } else if (selectedMatchMode === 'BLACK_HOLE' && onOpenBlackHole) {
+        onOpenBlackHole();
+      } else if (selectedMatchMode === 'JUDGE_DEMO' && onOpenJudgePreview) {
+        onOpenJudgePreview();
+      } else if (selectedMatchMode === 'MARS_EDL' && onOpenMarsEDL) {
+        onOpenMarsEDL();
+      } else if (hasSavedGame && onContinueMission) {
+        onContinueMission();
+      } else if (onStartMission) {
+        onStartMission();
+      } else {
+        onEnter();
+      }
+    }, 500);
   };
 
-  const handleStepDay = (days: number) => {
-    const next = new Date(simDate.getTime() + days * 86400000);
-    setSimDate(next);
-    setCurrentJD(getJulianDate(next));
-    setIsLiveSynced(false);
-    soundFx.playClick(750);
+  const handleNavClick = (callback?: () => void, sound: 'click' | 'chirp' | 'reactor' = 'click') => {
+    if (!callback) return;
+    if (sound === 'chirp') soundFx.playTelemetryChirp();
+    else if (sound === 'reactor') soundFx.playReactorStart();
+    else soundFx.playClick(800);
+    callback();
   };
-
-  const handleTimelineScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value); // Year float, e.g. 2026.8
-    const baseYear = Math.floor(val);
-    const dayOfYear = (val - baseYear) * 365.25;
-    const date = new Date(Date.UTC(baseYear, 0, 1 + dayOfYear));
-    setSimDate(date);
-    setCurrentJD(getJulianDate(date));
-    setIsLiveSynced(false);
-  };
-
-  const currentYearFloat = simDate.getUTCFullYear() + (simDate.getUTCMonth() * 30.5 + simDate.getUTCDate()) / 365.25;
 
   return (
-    <div className="nasa-eyes-root">
-      {/* 1. Fullscreen 3D WebGL Canvas Layer */}
-      <div
-        ref={mountRef}
-        className="nasa-eyes-canvas-container"
-        role="img"
-        aria-label="Interactive 3D Solar System Orrery with real-time JPL planetary ephemeris and NASA spacecraft trajectories"
-      />
+    <div className="pubg-lobby-viewport" id="astro-camp-landing">
+      {/* GPU Accelerated Cinematic Background Layer with Dolly Zoom */}
+      <div className={`pubg-lobby-bg-layer ${isInspectionMode ? 'inspection-active' : ''}`} />
+      <StarfieldCanvas />
+      <div className="tactical-grid-overlay" />
+      <div className="tactical-vignette" />
 
-      {/* 2. Interactive Hover Reticle */}
-      {hoverEntity && (
-        <div className="ne-hover-reticle" style={{ left: hoverEntity.x, top: hoverEntity.y }}>
-          <div className="ne-reticle-box">
-            <div className="ne-reticle-title">{hoverEntity.name}</div>
-            <div className="ne-reticle-subtitle">{hoverEntity.subtitle}</div>
-          </div>
-          <div className="ne-reticle-arrow" />
+      {/* Military Corner Brackets */}
+      <div className="tactical-bracket-tl" />
+      <div className="tactical-bracket-tr" />
+      <div className="tactical-bracket-bl" />
+      <div className="tactical-bracket-br" />
+
+      {warping && <div className="landing-warp-overlay" />}
+
+      {/* Real-time Feedback Toast for Inspection / Equip */}
+      {toastFeedback && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '75px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100000,
+            background: toastFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(239, 68, 68, 0.95)',
+            color: '#ffffff',
+            padding: '10px 24px',
+            borderRadius: '8px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '13px',
+            fontWeight: 800,
+            boxShadow: '0 8px 25px rgba(0,0,0,0.8)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            animation: 'fadeInDown 0.3s ease',
+          }}
+        >
+          <span>{toastFeedback.type === 'success' ? '🚀' : '⚠️'}</span>
+          <span>{toastFeedback.text}</span>
         </div>
       )}
 
-      {/* 3. HUD Overlay Layer */}
-      <div className="nasa-eyes-hud">
-        {/* ═══ FLOATING CELESTIAL CONTROLS TOOLBAR (Directly over 3D Canvas) ═══ */}
-        <div className="ne-floating-celestial-toolbar nasa-eyes-interactive" role="toolbar" aria-label="Orrery Navigation Controls">
-          {/* Category Filter Chips */}
-          <nav className="ne-category-bar" aria-label="Celestial Filters">
-            <button
-              className={`ne-category-tab ${activeCategory === 'all' ? 'active' : ''}`}
-              onClick={() => { setActiveCategory('all'); handleResetCamera(); }}
-              title="View Complete Solar System"
-            >
-              <Sun size={13} />
-              <span>Solar System</span>
-            </button>
-            <button
-              className={`ne-category-tab ${activeCategory === 'inner' ? 'active' : ''}`}
-              onClick={() => { setActiveCategory('inner'); flyToTarget('earth'); }}
-              title="Focus on Terrestrial Inner Worlds"
-            >
-              <Globe size={13} />
-              <span>Inner Worlds</span>
-            </button>
-            <button
-              className={`ne-category-tab ${activeCategory === 'outer' ? 'active' : ''}`}
-              onClick={() => { setActiveCategory('outer'); flyToTarget('jupiter'); }}
-              title="Focus on Outer Gas & Ice Giants"
-            >
-              <Sparkles size={13} />
-              <span>Gas Giants</span>
-            </button>
-            <button
-              className={`ne-category-tab ${activeCategory === 'fleet' ? 'active' : ''}`}
-              onClick={() => { setActiveCategory('fleet'); flyToTarget('iss'); }}
-              title="Track Active Spacecraft Fleet & Probes"
-            >
-              <Satellite size={13} />
-              <span>Fleet</span>
-            </button>
-            <button
-              className={`ne-category-tab ${isStoriesModalOpen ? 'active' : ''}`}
-              onClick={() => { setIsStoriesModalOpen(!isStoriesModalOpen); soundFx.playClick(800); }}
-              title="Curated NASA Guided Expeditions"
-            >
-              <Rocket size={13} />
-              <span>Tours</span>
-            </button>
-          </nav>
-
-          {/* Central Search Bar */}
-          <div className="ne-search-wrapper">
-            <div className="ne-search-input-box">
-              <Search size={14} style={{ color: '#38bdf8' }} />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search celestial bodies, probes, missions... (/)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setTimeout(() => setIsSearchFocused(false), 250)}
-              />
-              <span className="ne-search-key-badge">/</span>
+      {/* Top Inspection Mode Header Bar */}
+      {isInspectionMode && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '68px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 32px',
+            background: 'linear-gradient(180deg, rgba(7, 9, 14, 0.96) 0%, rgba(7, 9, 14, 0.5) 80%, transparent 100%)',
+            zIndex: 60,
+            backdropFilter: 'blur(12px)',
+            borderBottom: '1px solid rgba(0, 210, 255, 0.25)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(0, 210, 255, 0.15)', border: '1px solid #00d2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', boxShadow: '0 0 15px rgba(0, 210, 255, 0.3)' }}>
+              🛰️
             </div>
-
-            {/* Autocomplete Dropdown */}
-            {isSearchFocused && searchResults.length > 0 && (
-              <div className="ne-search-dropdown">
-                {searchResults.map((res) => (
-                  <div
-                    key={res.id}
-                    className="ne-search-result-item"
-                    onClick={() => {
-                      flyToTarget(res.id);
-                      setSearchQuery('');
-                      setIsSearchFocused(false);
-                    }}
-                  >
-                    <div className="ne-search-item-left">
-                      <span>{res.icon}</span>
-                      <strong style={{ fontSize: '12px' }}>{res.name}</strong>
-                    </div>
-                    <span className="ne-search-item-badge">{res.type}</span>
-                  </div>
-                ))}
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)', letterSpacing: '0.08em' }}>
+                HANGAR BAY 04 · CREW INSPECTION PEDESTAL
               </div>
-            )}
+              <div style={{ fontSize: '10px', color: '#ff9e1b', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>● RAY-TRACED SPECULAR PEDESTAL</span>
+                <span>•</span>
+                <span style={{ color: '#00d2ff' }}>NASA EMU SUIT TELEMETRY</span>
+              </div>
+            </div>
           </div>
 
-          {/* Camera Reset & Fullscreen Controls */}
-          <div className="ne-toolbar-quick-tools">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="tactical-badge-pill" style={{ color: '#fcd34d', borderColor: 'rgba(245, 158, 11, 0.35)', background: 'rgba(15, 23, 42, 0.8)' }}>
+              <span>🪙 {(currentUser?.coins ?? 500).toLocaleString()} COINS</span>
+            </div>
             <button
-              className="ne-btn-icon"
-              onClick={handleResetCamera}
-              title="Reset Camera to Solar System Overview"
+              className="inspection-back-btn"
+              onClick={handleCloseInspection}
+              id="btn-back-lobby-esc"
+              title="Return to Main Lobby (Press ESC)"
             >
-              <RotateCcw size={14} />
-            </button>
-            <button
-              className="ne-btn-icon"
-              onClick={() => {
-                if (!document.fullscreenElement) {
-                  document.documentElement.requestFullscreen().catch(() => {});
-                } else {
-                  document.exitFullscreen().catch(() => {});
-                }
-              }}
-              title="Toggle Fullscreen Canvas"
-            >
-              <Maximize2 size={14} />
+              <span>✕</span>
+              <span>BACK TO LOBBY [ESC]</span>
             </button>
           </div>
         </div>
+      )}
 
-        {/* Top-Left Telemetry Status Card (Non-blocking aerospace telemetry) */}
-        <div className="ne-telemetry-hud-card nasa-eyes-interactive">
-          <div className="ne-telemetry-hud-header">
-            <span className="ne-live-pulse-dot" />
-            <span className="ne-telemetry-label">JPL EPHEMERIS DE440</span>
-            <span className="ne-telemetry-status">{isLiveSynced ? 'LIVE' : 'SIM'}</span>
+      {/* ── TOP TACTICAL STATUS BAR (PUBG / COD MOBILE STYLE) ── */}
+      <header
+        className="tactical-top-bar"
+        style={{
+          opacity: isInspectionMode ? 0 : 1,
+          pointerEvents: isInspectionMode ? 'none' : 'auto',
+          transition: 'all 0.4s ease',
+        }}
+      >
+        {/* Left: Player Profile Card */}
+        <div 
+          className="tactical-player-card" 
+          onClick={() => handleNavClick(onOpenAuth || onOpenAcademy)}
+          title="Manage Callsign, Security Level & Credentials"
+        >
+          <div className="tactical-avatar-ring" style={{ borderColor: rankInfo.currentRank.color }}>
+            <span>{currentUser?.avatar || rankInfo.currentRank.badgeEmoji}</span>
+            <span className="tactical-level-badge" style={{ backgroundColor: rankInfo.currentRank.color }}>
+              LV.{rankInfo.currentRank.level}
+            </span>
           </div>
-          <div className="ne-telemetry-body">
-            <div style={{ color: '#94a3b8', fontSize: '9px', letterSpacing: '0.04em' }}>CURRENT TARGET</div>
-            <div style={{ color: '#38bdf8', fontSize: '13px', fontWeight: 900 }}>
-              {selectedEntity?.data.name.toUpperCase() || 'EARTH'}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#ffffff' }}>
+                {currentUser ? (currentUser.role === 'teacher' ? `👩‍🏫 ${currentUser.username}` : `@${currentUser.username}`) : 'CALLSIGN: CADET-01'}
+              </span>
+              <span 
+                style={{ 
+                  fontSize: '9px', 
+                  background: 'rgba(148, 163, 184, 0.16)', 
+                  color: '#e2e8f0', 
+                  fontWeight: 800, 
+                  padding: '1px 5px', 
+                  borderRadius: '3px',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                }}
+              >
+                {currentUser?.role === 'teacher' ? 'INSTRUCTOR' : rankInfo.currentRank.titleEn.split('&')[0].trim().toUpperCase()}
+              </span>
             </div>
-            <div style={{ color: '#cbd5e1', fontSize: '10px' }}>
-              DIST: {selectedEntity && 'distanceAU' in selectedEntity.data ? selectedEntity.data.distanceAU : '1.000 AU (149.6M km)'}
+            <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+              <span>XP: {cadetProg.xp} / {rankInfo.nextRank ? rankInfo.nextRank.minXp : 'MAX'}</span>
+              <span style={{ color: '#10b981', fontWeight: 700 }}>● ONLINE</span>
             </div>
           </div>
+        </div>
+
+        {/* Center: Mission Operations & Fast Tools (Replaced old Sector Shackleton & Ping text) */}
+        <div 
+          className="hidden md:flex"
+          style={{ 
+            alignItems: 'center', 
+            gap: '6px',
+            background: 'rgba(10, 15, 26, 0.75)',
+            border: '1px solid rgba(0, 210, 255, 0.22)',
+            borderRadius: '20px',
+            padding: '3px 8px',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          {/* 1. SCHOOL */}
           <button
-            className="ne-telemetry-drawer-btn"
-            onClick={() => { setIsDrawerOpen(!isDrawerOpen); soundFx.playClick(850); }}
-            title="Inspect Celestial Telemetry & Physics Dossier"
+            onClick={() => handleNavClick(onOpenTrainingCenter || onOpenAcademy, 'chirp')}
+            className="tactical-badge-pill"
+            style={{
+              cursor: 'pointer',
+              background: 'linear-gradient(180deg, rgba(0, 210, 255, 0.2), rgba(15, 23, 42, 0.8))',
+              borderColor: 'rgba(0, 210, 255, 0.45)',
+              color: '#38bdf8',
+              fontWeight: 800,
+              fontSize: '11px',
+              padding: '4px 10px',
+              gap: '5px',
+            }}
+            title="Junior Astronaut 3D Realistic Training Center (NBL, ECLSS, Habitat & Emergency Drills)"
           >
-            <Info size={12} />
-            <span>{isDrawerOpen ? 'Close Telemetry Dossier' : 'Inspect Dossier'}</span>
+            <span>🏫</span>
+            <span>SCHOOL</span>
+          </button>
+
+          {/* 2. RADAR */}
+          {onOpenTelemetry && (
+            <button
+              id="pubg-btn-telemetry-radar"
+              onClick={() => handleNavClick(onOpenTelemetry, 'chirp')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'rgba(15, 23, 42, 0.8)',
+                borderColor: 'rgba(0, 210, 255, 0.25)',
+                color: '#e2e8f0',
+                fontWeight: 800,
+                fontSize: '11px',
+                padding: '4px 10px',
+                gap: '5px',
+              }}
+              title="NASA Live Telemetry Pipeline & Space Weather"
+            >
+              <span>🛰️</span>
+              <span>RADAR</span>
+            </button>
+          )}
+
+          {/* 3. SCORES */}
+          {onOpenTeacherGradebook && (
+            <button
+              onClick={() => handleNavClick(onOpenTeacherGradebook, 'chirp')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'rgba(15, 23, 42, 0.8)',
+                borderColor: currentUser?.role === 'teacher' ? '#ff9e1b' : 'rgba(0, 210, 255, 0.25)',
+                color: currentUser?.role === 'teacher' ? '#ff9e1b' : '#e2e8f0',
+                fontWeight: 800,
+                fontSize: '11px',
+                padding: '4px 10px',
+                gap: '5px',
+              }}
+              title="Classroom Scores, Student Progress & Gradebook"
+            >
+              <span>📊</span>
+              <span>SCORES</span>
+            </button>
+          )}
+
+          {/* 4. JUDGE */}
+          {onOpenJudgePreview && (
+            <button
+              onClick={() => handleNavClick(onOpenJudgePreview, 'chirp')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'rgba(255, 158, 27, 0.18)',
+                borderColor: '#ff9e1b',
+                color: '#ff9e1b',
+                fontWeight: 900,
+                fontSize: '11px',
+                padding: '4px 10px',
+                gap: '5px',
+              }}
+              title="Space Apps Challenge Judge Speedrun (Instant 1-Click Win)"
+            >
+              <span>🏆</span>
+              <span>JUDGE</span>
+            </button>
+          )}
+
+          {/* 5. DIPLOMA */}
+          {onOpenCertificate && (
+            <button
+              onClick={() => handleNavClick(onOpenCertificate, 'chirp')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'rgba(15, 23, 42, 0.8)',
+                borderColor: 'rgba(0, 210, 255, 0.25)',
+                color: '#e2e8f0',
+                fontWeight: 800,
+                fontSize: '11px',
+                padding: '4px 10px',
+                gap: '5px',
+              }}
+              title="NASA Junior Astronaut Flight Certificate"
+            >
+              <span>📜</span>
+              <span>DIPLOMA</span>
+            </button>
+          )}
+
+          {/* 6. INTEL */}
+          {onOpenComics && (
+            <button
+              onClick={() => handleNavClick(onOpenComics, 'chirp')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'rgba(15, 23, 42, 0.8)',
+                borderColor: 'rgba(0, 210, 255, 0.25)',
+                color: '#e2e8f0',
+                fontWeight: 800,
+                fontSize: '11px',
+                padding: '4px 10px',
+                gap: '5px',
+              }}
+              title="Graphic Intel Briefings & Interactive Comics"
+            >
+              <span>📖</span>
+              <span>INTEL</span>
+            </button>
+          )}
+
+          {/* 7. CONFIG */}
+          {onOpenSettings && (
+            <button
+              onClick={() => handleNavClick(onOpenSettings, 'chirp')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'rgba(15, 23, 42, 0.8)',
+                borderColor: 'rgba(148, 163, 184, 0.28)',
+                color: '#cbd5e1',
+                fontWeight: 800,
+                fontSize: '11px',
+                padding: '4px 10px',
+                gap: '5px',
+              }}
+              title="Audio, Graphics & Control Settings"
+            >
+              <span>⚙️</span>
+              <span>CONFIG</span>
+            </button>
+          )}
+        </div>
+
+        {/* Right: Tactical Vitals & Fast Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Cadet Coins */}
+          <button
+            onClick={() => handleNavClick(onOpenCharacterLocker || onOpenDepot || onOpenAcademy)}
+            className="tactical-badge-pill"
+            style={{ color: '#fcd34d', borderColor: 'rgba(245, 158, 11, 0.35)', background: 'rgba(15, 23, 42, 0.8)', cursor: 'pointer' }}
+            title="Cadet In-Game Coins (Earn from Missions & Exams)"
+          >
+            <span>🪙 {(currentUser?.coins ?? 500).toLocaleString()} COINS</span>
+          </button>
+
+          {/* Famous Astronaut Character Locker */}
+          {onOpenCharacterLocker && (
+            <button
+              onClick={() => handleNavClick(onOpenCharacterLocker)}
+              className="tactical-badge-pill"
+              style={{ color: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.25)', background: 'rgba(15, 23, 42, 0.8)', cursor: 'pointer', fontWeight: 800 }}
+              title="Historic Astronaut Hangar & Character Selector"
+            >
+              <span>🧑‍🚀 CREW</span>
+            </button>
+          )}
+
+          {/* Live Mission Radar */}
+          {onOpenLiveActivity && (
+            <button
+              onClick={() => handleNavClick(onOpenLiveActivity)}
+              className="tactical-badge-pill"
+              style={{ color: '#6ee7b7', borderColor: 'rgba(16, 185, 129, 0.35)', background: 'rgba(15, 23, 42, 0.8)', cursor: 'pointer', fontWeight: 800 }}
+              title="Synchronized Real-Time Cadet Mission Radar"
+            >
+              <span>📡 LIVE RADAR</span>
+            </button>
+          )}
+
+          {/* Base Vitals */}
+          <div className="tactical-badge-pill hidden lg:flex" style={{ color: '#6ee7b7', borderColor: 'rgba(16, 185, 129, 0.25)' }} title="Base Power Grid">
+            <span>⚡ 100%</span>
+          </div>
+          <div className="tactical-badge-pill hidden lg:flex" style={{ color: '#7dd3fc', borderColor: 'rgba(2, 132, 199, 0.25)' }} title="Life Support Reserves">
+            <span>💧 850L</span>
+          </div>
+
+          {/* Sign In / Switch Account Button */}
+          {onOpenAuth && (
+            <button
+              onClick={() => handleNavClick(onOpenAuth)}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: currentUser ? 'rgba(15, 23, 42, 0.8)' : 'linear-gradient(180deg, #334155, #1e293b)',
+                color: '#fff',
+                borderColor: 'rgba(148, 163, 184, 0.28)',
+                fontWeight: 800,
+              }}
+              title="Switch Account / Sign In / Register"
+            >
+              {currentUser ? '👤 ACCOUNT' : '🔒 SIGN IN'}
+            </button>
+          )}
+
+          {/* Multiplayer Co-Op Mission Lobby */}
+          {onOpenMultiplayerLobby && (
+            <button
+              onClick={() => handleNavClick(onOpenMultiplayerLobby, 'chirp')}
+              className="tactical-badge-pill"
+              id="landing-top-btn-coop"
+              style={{
+                cursor: 'pointer',
+                background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3))',
+                color: '#6ee7b7',
+                borderColor: 'rgba(16, 185, 129, 0.4)',
+                fontWeight: 800,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
+              }}
+              title="NASA Multi-Crew Co-Op Mission Lobby · Fly Missions Together"
+            >
+              👥 CO-OP LOBBY
+            </button>
+          )}
+
+          {/* NASA Eyes 3D Solar Orrery Quick Launch */}
+          {onOpenOrrery && (
+            <button
+              onClick={() => handleNavClick(onOpenOrrery, 'chirp')}
+              className="tactical-badge-pill"
+              id="landing-top-btn-orrery"
+              style={{
+                cursor: 'pointer',
+                background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.7))',
+                color: '#f8fafc',
+                borderColor: 'rgba(148, 163, 184, 0.25)',
+                fontWeight: 800,
+              }}
+              title="NASA Eyes: 3D Interactive Solar System Orrery & Space Stations"
+            >
+              🪐 3D SOLAR EYES
+            </button>
+          )}
+
+
+          {/* Background Space Music Toggle */}
+          <button
+            onClick={() => {
+              const muted = spaceMusicEngine.toggleMute();
+              setMusicMuted(muted);
+              soundFx.playClick(850);
+            }}
+            className="tactical-badge-pill"
+            style={{
+              cursor: 'pointer',
+              background: !musicMuted ? 'rgba(56, 189, 248, 0.25)' : 'rgba(15, 23, 42, 0.8)',
+              borderColor: !musicMuted ? '#38bdf8' : 'rgba(148, 163, 184, 0.3)',
+              color: !musicMuted ? '#38bdf8' : '#94a3b8',
+              fontWeight: 800,
+            }}
+            title={musicMuted ? 'Turn Space Music ON' : 'Turn Space Music OFF'}
+          >
+            {!musicMuted ? '🎵 MUSIC: ON' : '🔇 MUSIC: OFF'}
+          </button>
+
+          {/* Quick Sound Toggle */}
+          <button
+            onClick={() => {
+              setAudioMuted(!audioMuted);
+              soundFx.playClick(900);
+            }}
+            className="tactical-badge-pill"
+            style={{ cursor: 'pointer', background: audioMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 23, 42, 0.8)' }}
+            title={audioMuted ? 'Unmute Audio FX' : 'Mute Audio FX'}
+          >
+            {audioMuted ? '🔇 FX' : '🔊 FX'}
           </button>
         </div>
+      </header>
 
-        {/* ═══ FEATURED STORIES & TOURS MODAL (NASA Eyes Scrollytelling) ═══ */}
-        {isStoriesModalOpen && (
-          <div className="ne-stories-modal nasa-eyes-interactive">
-            <div className="ne-stories-header">
-              <div className="ne-stories-title">
-                <Rocket size={16} style={{ color: '#38bdf8' }} />
-                <span>Featured NASA Tours</span>
-              </div>
+      {/* ── MAIN TACTICAL BATTLE ARENA (3-COLUMN LAYOUT) ── */}
+      <main style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px 20px 8px 20px', width: '100%', overflow: 'hidden', position: 'relative', zIndex: 10 }}>
+        
+        {/* Top Capcom Urgent Directive Bar */}
+        <div 
+          style={{ 
+            background: 'linear-gradient(90deg, rgba(7, 9, 14, 0.94) 0%, rgba(17, 22, 34, 0.88) 50%, rgba(7, 9, 14, 0.94) 100%)',
+            border: '1px solid rgba(0, 210, 255, 0.3)',
+            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+            padding: '5px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backdropFilter: 'blur(10px)',
+            zIndex: 25,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '14px', animation: 'spin 12s linear infinite' }}>📡</span>
+            <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900 }}>
+              HOUSTON CAPCOM DIRECTIVE:
+            </span>
+            <span style={{ fontSize: '11.5px', color: '#cbd5e1' }}>
+              NASA Artemis III directives active at Shackleton Rim (-89.9°S). Maintain Kilopower grid, drill volatile ice in crater shadows, and survive polar night.
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Direct Animation Video & Ground School Launcher */}
+            <button
+              id="pubg-btn-training-center"
+              onClick={() => handleNavClick(onOpenTrainingCenter || onOpenAcademy, 'chirp')}
+              style={{
+                background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.28) 0%, rgba(59, 130, 246, 0.35) 100%)',
+                border: '1px solid #00d2ff',
+                color: '#ffffff',
+                padding: '4px 14px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 0 15px rgba(0, 210, 255, 0.45)',
+                transition: 'all 0.2s ease',
+              }}
+              title="Watch Space Animation Videos & 3D Ground School"
+            >
+              <span style={{ fontSize: '13px' }}>🎬</span>
+              <span>ANIMATION VIDEOS & 3D GROUND SCHOOL</span>
+              <span style={{ color: '#00d2ff', fontWeight: 900 }}>▶</span>
+            </button>
+            {currentUser?.role === 'teacher' && onOpenTeacherGradebook && (
               <button
-                className="ne-drawer-close-btn"
-                onClick={() => setIsStoriesModalOpen(false)}
+                onClick={() => handleNavClick(onOpenTeacherGradebook, 'chirp')}
+                style={{
+                  background: 'rgba(255, 158, 27, 0.2)',
+                  border: '1px solid #ff9e1b',
+                  color: '#ffb03a',
+                  padding: '2px 8px',
+                  borderRadius: '3px',
+                  fontSize: '10px',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
               >
-                <X size={16} />
+                📊 TEACHER GRADEBOOK READY →
               </button>
-            </div>
-            <div className="ne-stories-list">
-              <div
-                className="ne-story-item"
-                onClick={() => {
-                  flyToTarget('earth');
-                  setIsStoriesModalOpen(false);
-                  handleReadAloud('Artemis program returns humanity to the Lunar South Pole to establish permanent Shackleton Base.');
-                }}
-              >
-                <div className="ne-story-item-title">
-                  <span>1. Artemis Lunar Return</span>
-                  <span style={{ color: '#38bdf8', fontSize: '11px' }}>Moonbase</span>
-                </div>
-                <div className="ne-story-item-desc">
-                  Track the human expedition from Earth orbit to Lunar Gateway and the Shackleton Crater south polar base.
-                </div>
-              </div>
+            )}
 
-              <div
-                className="ne-story-item"
-                onClick={() => {
-                  flyToTarget('mars');
-                  setIsStoriesModalOpen(false);
-                  handleReadAloud('Perseverance Rover explores ancient lakebeds in Jezero crater seeking signs of ancient microbial life.');
-                }}
-              >
-                <div className="ne-story-item-title">
-                  <span>2. Mars Jezero Astrobiology</span>
-                  <span style={{ color: '#f43f5e', fontSize: '11px' }}>Perseverance</span>
-                </div>
-                <div className="ne-story-item-desc">
-                  Inspect the Mars 2020 landing site, MOXIE oxygen generation, and rock sample caching.
-                </div>
-              </div>
+          </div>
+        </div>
 
-              <div
-                className="ne-story-item"
-                onClick={() => {
-                  flyToTarget('parker-solar-probe');
-                  setIsStoriesModalOpen(false);
-                  handleReadAloud('Parker Solar Probe dives directly into the Sun’s fiery corona at 692,000 kilometers per hour.');
-                }}
-              >
-                <div className="ne-story-item-title">
-                  <span>3. Touching the Sun</span>
-                  <span style={{ color: '#f97316', fontSize: '11px' }}>Parker Probe</span>
-                </div>
-                <div className="ne-story-item-desc">
-                  Experience extreme heliophysics inside the solar corona protected by a carbon-composite heat shield.
-                </div>
+        {/* ── PANORAMIC MID-SECTION (PUBG MOBILE HUD OVERLAYS) ── */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', width: '100%', minHeight: 0, overflow: 'hidden' }}>
+          
+          {/* ── LEFT COLUMN: GAME MODE SELECTOR (FADES IN INSPECTION MODE) ── */}
+          <div
+            style={{
+              zIndex: 20,
+              alignSelf: 'flex-start',
+              marginTop: '10px',
+              marginLeft: '20px',
+              opacity: isInspectionMode ? 0 : 1,
+              pointerEvents: isInspectionMode ? 'none' : 'auto',
+              transform: isInspectionMode ? 'translateX(-30px)' : 'none',
+              transition: 'all 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            {/* PUBG MODE SELECTOR CARD */}
+            <div 
+              className="pubg-mode-card"
+              onClick={() => {
+                const modes: ('SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL')[] = [
+                  'SPACE_GAMES',
+                  'EARTH_TO_MOON',
+                  'SOL1_SURVIVAL',
+                  'MOONBASE_ALPHA',
+                  'BLACK_HOLE',
+                  'NEW_CAMPAIGN',
+                  'JUDGE_DEMO',
+                  'MARS_EDL'
+                ];
+                const nextIdx = (modes.indexOf(selectedMatchMode) + 1) % modes.length;
+                setSelectedMatchMode(modes[nextIdx]);
+                soundFx.playClick(900);
+              }}
+              title="Click to Switch Mission Mode"
+              style={{ width: '270px' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900, letterSpacing: '0.06em' }}>
+                  {selectedMatchMode === 'SPACE_GAMES' && '🪐 DEDICATED SPACE GAMES ARCADE (3 AGE TIERS)'}
+                  {selectedMatchMode === 'EARTH_TO_MOON' && '🚀 ADVANCED ASTRONAUT EXPEDITIONS (LEVEL 5)'}
+                  {selectedMatchMode === 'SOL1_SURVIVAL' && '🌕 LUNAR EXPEDITION'}
+                  {selectedMatchMode === 'MOONBASE_ALPHA' && '🧑‍🚀 MOONBASE ALPHA (EVA)'}
+                  {selectedMatchMode === 'BLACK_HOLE' && '🕳️ BLACK HOLE RELATIVITY'}
+                  {selectedMatchMode === 'NEW_CAMPAIGN' && '🚀 NASA 76 MISSIONS'}
+                  {selectedMatchMode === 'JUDGE_DEMO' && '🏆 JUDGE SPEEDRUN'}
+                  {selectedMatchMode === 'MARS_EDL' && '🔴 MARS 2020 EDL'}
+                </span>
+                <span style={{ fontSize: '9px', color: '#00d2ff', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                  SWITCH ▾
+                </span>
               </div>
-
-              <div
-                className="ne-story-item"
-                onClick={() => {
-                  flyToTarget('voyager-1');
-                  setIsStoriesModalOpen(false);
-                  handleReadAloud('Voyager 1 has traversed over 24 billion kilometers into interstellar space beyond the solar bubble.');
-                }}
-              >
-                <div className="ne-story-item-title">
-                  <span>4. Interstellar Voyage</span>
-                  <span style={{ color: '#34d399', fontSize: '11px' }}>Voyager 1</span>
-                </div>
-                <div className="ne-story-item-desc">
-                  Travel 24.4 billion kilometers beyond the heliopause into the cosmic void carrying the Golden Record.
-                </div>
+              <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)' }}>
+                {selectedMatchMode === 'SPACE_GAMES' && "No Man's Sky · KSP · Space Engineers · Star Citizen"}
+                {selectedMatchMode === 'EARTH_TO_MOON' && 'New Shepard (10 Min to Space), Artemis V, Apollo 11'}
+                {selectedMatchMode === 'SOL1_SURVIVAL' && 'Moon Base Survival (Sol 1)'}
+                {selectedMatchMode === 'MOONBASE_ALPHA' && 'Outpost Crisis: Low-G EVA Repair'}
+                {selectedMatchMode === 'BLACK_HOLE' && 'SpaceEngine Relativistic Lensing'}
+                {selectedMatchMode === 'NEW_CAMPAIGN' && 'All 76 Flight Missions'}
+                {selectedMatchMode === 'JUDGE_DEMO' && '1-Click Judge Victory Demo'}
+                {selectedMatchMode === 'MARS_EDL' && 'Jezero Crater Sky Crane EDL'}
               </div>
-
-              <div
-                className="ne-story-item"
-                onClick={() => {
-                  flyToTarget('jwst');
-                  setIsStoriesModalOpen(false);
-                  handleReadAloud('James Webb Space Telescope observes the cosmic dawn from Lagrange Point 2.');
-                }}
-              >
-                <div className="ne-story-item-title">
-                  <span>5. Cosmic Dawn at L2</span>
-                  <span style={{ color: '#eab308', fontSize: '11px' }}>JWST</span>
-                </div>
-                <div className="ne-story-item-desc">
-                  Peer 13.5 billion years into the past with gold hexagonal mirrors observing first-light galaxies.
-                </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '6px', fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+                <span>📍 {selectedMatchMode === 'SPACE_GAMES' ? 'Dedicated Arcade Suite (Ages 6-10 / 11-15 / 16+)' : selectedMatchMode === 'EARTH_TO_MOON' ? 'Classified: Advanced Astronauts Only' : selectedMatchMode === 'BLACK_HOLE' ? 'Kerr Event Horizon' : 'Shackleton Rim'}</span>
+                <span>•</span>
+                <span style={{ color: '#10b981' }}>● Real-Time 3D Simulation</span>
               </div>
             </div>
           </div>
-        )}
 
-        {/* ═══ CONTEXTUAL INSPECTION DRAWER (Authentic NASA Eyes Panel) ═══ */}
-        {isDrawerOpen && selectedEntity && (
-          <aside className="ne-side-drawer nasa-eyes-interactive" aria-label="Target Inspector">
-            <div className="ne-sheet-handle" />
-            {/* Drawer Header */}
-            <div className="ne-drawer-header">
-              <div className="ne-drawer-title-row">
-                <div className="ne-drawer-target-title">
-                  <span>{'emoji' in selectedEntity.data ? selectedEntity.data.emoji : '🛰️'}</span>
-                  <span>{selectedEntity.data.name}</span>
+          {/* ── CENTER: LIVE 3D MOVING FULL-BODY ARTEMIS ASTRONAUT (PUBG LOBBY STYLE) ── */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', position: 'relative', zIndex: 15, paddingBottom: '0px' }}>
+            
+            {/* Live Interactive Full-Body 3D Real NASA Astronaut Character (Moving, Idle Breathing, Drag 360°, Zero Weapons) */}
+            <LobbyAstronaut3D 
+              characterId={inspectingAstronaut.id}
+              astronautName={inspectingAstronaut.name} 
+              isInspectionMode={isInspectionMode}
+              envMapUrl="/assets/artemis_lobby_clean_hangar.png"
+              onInteract={() => {
+                if (!isInspectionMode) {
+                  handleOpenInspection(inspectingAstronaut.id);
+                }
+              }} 
+            />
+
+            {/* Astronaut Overhead Nameplate & Switch Suit Action (Faded in Inspection Mode) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px', opacity: isInspectionMode ? 0 : 1, pointerEvents: isInspectionMode ? 'none' : 'auto', transition: 'all 0.3s ease' }}>
+              <div 
+                style={{ 
+                  background: 'rgba(17, 22, 34, 0.9)', 
+                  border: '1px solid rgba(0, 210, 255, 0.45)', 
+                  clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
+                  padding: '5px 20px', 
+                  backdropFilter: 'blur(12px)',
+                  textAlign: 'center',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.85), 0 0 20px rgba(0, 210, 255, 0.3)',
+                }}
+              >
+                <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <span>{inspectingAstronaut.avatar}</span>
+                  <span>{inspectingAstronaut.name.toUpperCase()}</span>
+                  <span style={{ fontSize: '11px', color: '#38bdf8' }}>{inspectingAstronaut.countryFlag.split(' ')[0]}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <button
-                    className={`ne-btn-icon ${isTargetLocked ? 'active' : ''}`}
-                    onClick={() => setIsTargetLocked(!isTargetLocked)}
-                    title={isTargetLocked ? 'Target Camera Locked' : 'Lock Camera on Target'}
-                  >
-                    <Crosshair size={14} />
-                  </button>
-                  <button
-                    className="ne-drawer-close-btn"
-                    onClick={() => setIsDrawerOpen(false)}
-                    title="Close Inspector"
-                  >
-                    <X size={18} />
-                  </button>
+                <div style={{ fontSize: '10px', color: '#00d2ff', fontFamily: 'var(--font-mono)', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <span>SUIT: NASA EMU EVA SPACESUIT</span>
+                  <span>•</span>
+                  <span style={{ color: '#10b981' }}>O₂: 100% NOMINAL</span>
+                  <span>•</span>
+                  <span>RAD: 0.12 mSv</span>
                 </div>
               </div>
 
-              {/* Real-time Telemetry Strip */}
-              <div className="ne-telemetry-strip">
-                <div className="ne-telemetry-cell">
-                  <span className="ne-telemetry-label">Sun Distance</span>
-                  <span className="ne-telemetry-value">
-                    {'actualAU' in selectedEntity.data ? `${selectedEntity.data.actualAU} AU` : '1.00 AU'}
-                  </span>
+              {/* Character Locker / Switch Astronaut Action Button */}
+              <button
+                onClick={() => handleOpenInspection(inspectingAstronaut.id)}
+                style={{
+                  background: 'rgba(22, 30, 46, 0.92)',
+                  border: '1px solid rgba(255, 158, 27, 0.55)',
+                  clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+                  padding: '8px 16px',
+                  color: '#ff9e1b',
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
+                  backdropFilter: 'blur(8px)',
+                  transition: 'all 0.2s ease',
+                  height: '100%',
+                }}
+                title="Inspect Astronaut on Glowing Pedestal"
+              >
+                <span>🔍</span>
+                <span>INSPECT & SWITCH</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ── RIGHT COLUMN: 5 FLIGHT HUBS STACKED DIRECTLY ABOVE START BUTTON (FADES IN INSPECTION MODE) ── */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              zIndex: 25,
+              alignSelf: 'flex-end',
+              marginBottom: '10px',
+              marginRight: '20px',
+              width: '240px',
+              opacity: isInspectionMode ? 0 : 1,
+              pointerEvents: isInspectionMode ? 'none' : 'auto',
+              transform: isInspectionMode ? 'translateX(30px)' : 'none',
+              transition: 'all 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            {/* Mission Hubs Header Tag */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px 2px 4px' }}>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#00d2ff', fontWeight: 900, letterSpacing: '0.08em' }}>
+                ✦ MISSION HUBS
+              </span>
+              <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#10b981', fontWeight: 700 }}>
+                ● 5 HUBS READY
+              </span>
+            </div>
+
+            {/* 1. Missions Campaign (76 Missions) */}
+            <button
+              className="pubg-bottom-tab"
+              onClick={() => handleNavClick(onOpenCampaign, 'reactor')}
+              id="pubg-tab-missions"
+              title="Browse all 76 NASA Flight Missions (Mercury to Artemis)"
+              style={{
+                borderColor: 'rgba(0, 210, 255, 0.6)',
+                background: 'linear-gradient(90deg, rgba(0, 210, 255, 0.22), rgba(15, 23, 42, 0.95))',
+                width: '100%',
+                boxSizing: 'border-box',
+                justifyContent: 'space-between',
+                padding: '7px 12px',
+                height: '38px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>🚀</span>
+                <span>76 MISSIONS</span>
+              </div>
+              <div className="pubg-tab-badge" style={{ position: 'static', background: '#00d2ff', width: '7px', height: '7px' }} />
+            </button>
+
+            {/* 2. Simulation Labs Hub (Dropdown Menu) */}
+            <div style={{ position: 'relative', width: '100%' }}>
+              <button
+                className={`pubg-bottom-tab ${isSimsHubOpen ? 'active' : ''}`}
+                onClick={() => {
+                  setIsSimsHubOpen(!isSimsHubOpen);
+                  setIsAcademyHubOpen(false);
+                  setIsCrewHubOpen(false);
+                  soundFx.playClick(800);
+                }}
+                id="pubg-tab-sims-hub"
+                style={{
+                  borderColor: 'rgba(168, 85, 247, 0.65)',
+                  background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.22), rgba(15, 23, 42, 0.95))',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  justifyContent: 'space-between',
+                  padding: '7px 12px',
+                  height: '38px',
+                }}
+                title="Open 3D Real-Time Simulation Labs"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>🧪</span>
+                  <span>SIMULATION LABS</span>
                 </div>
-                <div className="ne-telemetry-cell">
-                  <span className="ne-telemetry-label">Orbital Velocity</span>
-                  <span className="ne-telemetry-value">
-                    {'orbitalVelocityKms' in selectedEntity.data
-                      ? selectedEntity.data.orbitalVelocityKms
-                      : 'velocityKms' in selectedEntity.data
-                      ? `${selectedEntity.data.velocityKms} km/s`
-                      : '30.0 km/s'}
-                  </span>
+                <span style={{ fontSize: '10px', color: '#c084fc' }}>{isSimsHubOpen ? '◀' : '▼'}</span>
+              </button>
+
+              {/* Flyout menu to the LEFT */}
+              {isSimsHubOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 'calc(100% + 12px)',
+                    background: 'rgba(10, 15, 26, 0.96)',
+                    border: '1px solid rgba(168, 85, 247, 0.5)',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    minWidth: '290px',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.9), 0 0 30px rgba(168, 85, 247, 0.35)',
+                    zIndex: 100,
+                    animation: 'characterSlideIn 0.2s ease-out',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#c084fc', letterSpacing: '0.1em', fontWeight: 800, paddingBottom: '6px', borderBottom: '1px solid rgba(168, 85, 247, 0.2)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>✦ 3D PLANETARY SIMULATION LABS</span>
+                    <span style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setIsSimsHubOpen(false)}>✕</span>
+                  </div>
+                  {onOpenMoonbaseAlpha && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenMoonbaseAlpha, 'reactor'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🌕</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Moonbase Alpha 3D</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Lunar South Pole EVA Crisis Outpost</div>
+                      </div>
+                    </button>
+                  )}
+                  {onOpenBlackHole && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenBlackHole, 'chirp'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🕳️</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Relativistic Black Hole</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Gravitational Lensing & Event Horizon Lab</div>
+                      </div>
+                    </button>
+                  )}
+                  {onOpenOrrery && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenOrrery, 'chirp'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🪐</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>3D Solar System Orrery</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Real Trajectories & Orbital Mechanics</div>
+                      </div>
+                    </button>
+                  )}
+                  {onOpenRover && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenRover, 'chirp'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🚜</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Mars Rover Surface EVA</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Perseverance Sample Return Mission</div>
+                      </div>
+                    </button>
+                  )}
+                  {onOpenSpaceGamesHub && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenSpaceGamesHub, 'reactor'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🎮</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Dedicated Space Games</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>KSP, Space Engineers, Star Citizen Suite</div>
+                      </div>
+                    </button>
+                  )}
                 </div>
-                <div className="ne-telemetry-cell">
-                  <span className="ne-telemetry-label">Light Delay</span>
-                  <span className="ne-telemetry-value">
-                    {'actualAU' in selectedEntity.data
-                      ? `${(selectedEntity.data.actualAU * 8.3).toFixed(1)} Min`
-                      : '1.2 Sec'}
+              )}
+            </div>
+
+            {/* 3. Astronaut Academy & Training Hub (Dropdown Menu) */}
+            <div style={{ position: 'relative', width: '100%' }}>
+              <button
+                className={`pubg-bottom-tab ${isAcademyHubOpen ? 'active' : ''}`}
+                onClick={() => {
+                  setIsAcademyHubOpen(!isAcademyHubOpen);
+                  setIsSimsHubOpen(false);
+                  setIsCrewHubOpen(false);
+                  soundFx.playClick(800);
+                }}
+                id="pubg-tab-academy-hub"
+                style={{
+                  borderColor: 'rgba(59, 130, 246, 0.65)',
+                  background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(15, 23, 42, 0.95))',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  justifyContent: 'space-between',
+                  padding: '7px 12px',
+                  height: '38px',
+                }}
+                title="Open Cadet Training Academy"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>🪖</span>
+                  <span>ACADEMY</span>
+                </div>
+                <span style={{ fontSize: '10px', color: '#60a5fa' }}>{isAcademyHubOpen ? '◀' : '▼'}</span>
+              </button>
+
+              {/* Flyout menu to the LEFT */}
+              {isAcademyHubOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 'calc(100% + 12px)',
+                    background: 'rgba(10, 15, 26, 0.96)',
+                    border: '1px solid rgba(59, 130, 246, 0.5)',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    minWidth: '270px',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.9), 0 0 30px rgba(59, 130, 246, 0.35)',
+                    zIndex: 100,
+                    animation: 'characterSlideIn 0.2s ease-out',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#60a5fa', letterSpacing: '0.1em', fontWeight: 800, paddingBottom: '6px', borderBottom: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>✦ CADET TRAINING ACADEMY</span>
+                    <span style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setIsAcademyHubOpen(false)}>✕</span>
+                  </div>
+                  <button
+                    className="pubg-hub-subitem"
+                    onClick={() => { setIsAcademyHubOpen(false); handleNavClick(onOpenTrainingCenter || onOpenAcademy, 'chirp'); }}
+                    style={{ border: '1px solid #00d2ff', background: 'rgba(0, 210, 255, 0.12)' }}
+                  >
+                    <span style={{ fontSize: '20px' }}>🏫</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontWeight: 800, color: '#00d2ff', fontSize: '12px' }}>3D Realistic Training Center</div>
+                      <div style={{ fontSize: '10px', color: '#cbd5e1' }}>NBL Pool, ECLSS, 4.3 psi Suit, Habitat & Drills</div>
+                    </div>
+                  </button>
+                  {onOpenAcademy && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsAcademyHubOpen(false); handleNavClick(onOpenAcademy, 'chirp'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🪖</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Astronaut Academy</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Rank Exams, Flight Certification</div>
+                      </div>
+                    </button>
+                  )}
+                  {onOpenClassroom && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsAcademyHubOpen(false); handleNavClick(onOpenClassroom, 'chirp'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🎓</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Ground School Classroom</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Educator Dossier & Gradebook</div>
+                      </div>
+                    </button>
+                  )}
+                  {onOpenLearningHub && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsAcademyHubOpen(false); handleNavClick(() => onOpenLearningHub('NOTEBOOK'), 'chirp'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>📓</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Flight Notes & Journal</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Student Mission Debrief Logs</div>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Crew Locker & Lunar Depot Hub (Dropdown Menu) */}
+            <div style={{ position: 'relative', width: '100%' }}>
+              <button
+                className={`pubg-bottom-tab ${isCrewHubOpen ? 'active' : ''}`}
+                onClick={() => {
+                  setIsCrewHubOpen(!isCrewHubOpen);
+                  setIsSimsHubOpen(false);
+                  setIsAcademyHubOpen(false);
+                  soundFx.playClick(800);
+                }}
+                id="pubg-tab-crew-hub"
+                style={{
+                  borderColor: 'rgba(245, 158, 11, 0.65)',
+                  background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.22), rgba(15, 23, 42, 0.95))',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  justifyContent: 'space-between',
+                  padding: '7px 12px',
+                  height: '38px',
+                }}
+                title="Open Crew Locker & Depot Hub"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>🧑‍🚀</span>
+                  <span>CREW & DEPOT</span>
+                </div>
+                <span style={{ fontSize: '10px', color: '#fbbf24' }}>{isCrewHubOpen ? '◀' : '▼'}</span>
+              </button>
+
+              {/* Flyout menu to the LEFT */}
+              {isCrewHubOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 'calc(100% + 12px)',
+                    background: 'rgba(10, 15, 26, 0.96)',
+                    border: '1px solid rgba(245, 158, 11, 0.5)',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    minWidth: '270px',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.9), 0 0 30px rgba(245, 158, 11, 0.35)',
+                    zIndex: 100,
+                    animation: 'characterSlideIn 0.2s ease-out',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#fbbf24', letterSpacing: '0.1em', fontWeight: 800, paddingBottom: '6px', borderBottom: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>✦ CREW LOCKER & LUNAR DEPOT</span>
+                    <span style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setIsCrewHubOpen(false)}>✕</span>
+                  </div>
+                  {onOpenCharacterLocker && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsCrewHubOpen(false); handleNavClick(onOpenCharacterLocker, 'chirp'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🧑‍🚀</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Astronaut Crew Locker</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Switch Characters, EVA Perks</div>
+                      </div>
+                    </button>
+                  )}
+                  {onOpenDepot && (
+                    <button
+                      className="pubg-hub-subitem"
+                      onClick={() => { setIsCrewHubOpen(false); handleNavClick(onOpenDepot, 'chirp'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🏗️</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>3D Base Depot</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Inspect & Buy Lunar Hardware</div>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 5. Science & Intel Dossier (Modal Toggle) */}
+            <button
+              className="pubg-bottom-tab"
+              onClick={() => {
+                setShowIntelDossier(true);
+                soundFx.playClick(750);
+              }}
+              id="pubg-tab-dossier"
+              style={{
+                borderColor: 'rgba(0, 210, 255, 0.5)',
+                color: '#00d2ff',
+                width: '100%',
+                boxSizing: 'border-box',
+                justifyContent: 'flex-start',
+                padding: '7px 12px',
+                height: '38px',
+                gap: '8px',
+              }}
+              title="Open NASA Open Science & Intel Dossier"
+            >
+              <span style={{ fontSize: '16px' }}>🔬</span>
+              <span>SCIENCE DOSSIER</span>
+            </button>
+
+            {/* ── MASTER PUBG START BUTTON (DIRECTLY BELOW THE 5 HUBS) ── */}
+            <button
+              className="pubg-start-btn"
+              onClick={handleStart}
+              id="pubg-main-start-btn"
+              title="Launch Selected Mission / Expedition"
+              style={{
+                width: '100%',
+                height: '52px',
+                fontSize: '22px',
+                boxShadow: '0 0 32px rgba(255, 158, 27, 0.75), 0 6px 20px rgba(0,0,0,0.85)',
+                margin: 0,
+                marginTop: '4px',
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: '22px' }}>▶</span>
+              <span>{hasSavedGame && selectedMatchMode === 'SOL1_SURVIVAL' ? 'CONTINUE' : 'START'}</span>
+            </button>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              HOLOGRAPHIC INSPECTION HUD OVERLAYS (EXPANDS WHEN ASTRONAUT CLICKED)
+              ═══════════════════════════════════════════════════════════════ */}
+
+          {/* 1. LEFT SIDE: FLOATING SEMI-TRANSPARENT STAT CARD */}
+          {isInspectionMode && (
+            <div
+              className="hologram-stat-card"
+              style={{
+                position: 'absolute',
+                left: '20px',
+                top: '12px',
+                zIndex: 45,
+                maxHeight: 'calc(100vh - 225px)',
+                overflowY: 'auto',
+              }}
+            >
+              {/* Header: Avatar, Name, Flag & Pricing Tag */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '26px' }}>{inspectingAstronaut.avatar}</span>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)', letterSpacing: '0.06em' }}>
+                      {inspectingAstronaut.name.toUpperCase()}
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                      {inspectingAstronaut.countryFlag} · {inspectingAstronaut.agency}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Price / Unlock Tag */}
+                {isSelectedActive ? (
+                  <span style={{ background: 'rgba(16, 185, 129, 0.25)', border: '1px solid #10b981', color: '#34d399', fontSize: '10px', fontWeight: 900, padding: '3px 8px', borderRadius: '4px', fontFamily: 'var(--font-mono)' }}>
+                    ● DEPLOYED
                   </span>
+                ) : isSelectedUnlocked ? (
+                  <span style={{ background: 'rgba(0, 210, 255, 0.2)', border: '1px solid #00d2ff', color: '#38bdf8', fontSize: '10px', fontWeight: 900, padding: '3px 8px', borderRadius: '4px', fontFamily: 'var(--font-mono)' }}>
+                    UNLOCKED
+                  </span>
+                ) : (
+                  <span style={{ background: 'rgba(255, 158, 27, 0.2)', border: '1px solid #ff9e1b', color: '#fbbf24', fontSize: '10px', fontWeight: 900, padding: '3px 8px', borderRadius: '4px', fontFamily: 'var(--font-mono)' }}>
+                    🪙 {inspectingAstronaut.costCoins.toLocaleString()} COINS
+                  </span>
+                )}
+              </div>
+
+              {/* Historical Role & Title */}
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#e2e8f0', fontWeight: 700, fontFamily: 'var(--font-space)', lineHeight: 1.4 }}>
+                {inspectingAstronaut.historicalTitle}
+              </div>
+
+              {/* Special Perk Card with Sci-Fi Badge Icons */}
+              <div style={{ marginTop: '14px', background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(0, 210, 255, 0.35)', borderRadius: '6px', padding: '12px' }}>
+                <div style={{ fontSize: '11px', color: '#ff9e1b', fontWeight: 800, fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>⚡ SPECIAL FLIGHT PERK:</span>
+                  <span>{inspectingAstronaut.specialPerk.name}</span>
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#cbd5e1', marginTop: '6px', lineHeight: 1.45 }}>
+                  {inspectingAstronaut.specialPerk.description}
+                </div>
+                <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 210, 255, 0.15)', border: '1px solid rgba(0, 210, 255, 0.4)', padding: '3px 8px', borderRadius: '4px', color: '#38bdf8', fontSize: '10px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
+                  <span>🛡️ {inspectingAstronaut.specialPerk.statBonus}</span>
                 </div>
               </div>
-            </div>
 
-            {/* Tabs Navigation */}
-            <div className="ne-drawer-tabs">
-              <button
-                className={`ne-drawer-tab ${drawerTab === 'overview' ? 'active' : ''}`}
-                onClick={() => setDrawerTab('overview')}
-              >
-                Overview
-              </button>
-              <button
-                className={`ne-drawer-tab ${drawerTab === 'indepth' ? 'active' : ''}`}
-                onClick={() => setDrawerTab('indepth')}
-              >
-                In Depth
-              </button>
-              <button
-                className={`ne-drawer-tab ${drawerTab === 'numbers' ? 'active' : ''}`}
-                onClick={() => setDrawerTab('numbers')}
-              >
-                By Numbers
-              </button>
-              <button
-                className={`ne-drawer-tab ${drawerTab === 'missions' ? 'active' : ''}`}
-                onClick={() => setDrawerTab('missions')}
-              >
-                Missions
-              </button>
-              <button
-                className={`ne-drawer-tab ${drawerTab === 'compare' ? 'active' : ''}`}
-                onClick={() => setDrawerTab('compare')}
-              >
-                Compare
-              </button>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="ne-drawer-content">
-              {/* TAB 1: OVERVIEW */}
-              {drawerTab === 'overview' && (
-                <>
-                  <div className="ne-drawer-hero-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', color: '#38bdf8', fontFamily: 'monospace', fontWeight: 700 }}>
-                        {'zone' in selectedEntity.data ? selectedEntity.data.zone : 'Earth Orbital Laboratory'}
-                      </span>
-                      <button
-                        className="ne-btn-secondary"
-                        style={{ padding: '3px 8px', fontSize: '10.5px' }}
-                        onClick={() => handleReadAloud('funFact' in selectedEntity.data ? selectedEntity.data.funFact : ('description' in selectedEntity.data ? selectedEntity.data.description : selectedEntity.data.missionObjective))}
-                        title="Read Aloud with Houston Capcom Voice"
-                      >
-                        <Volume2 size={12} />
-                        <span>Listen</span>
-                      </button>
-                    </div>
-
-                    <p className="ne-narrative-text">
-                      {'funFact' in selectedEntity.data ? selectedEntity.data.funFact : ('description' in selectedEntity.data ? selectedEntity.data.description : selectedEntity.data.missionObjective)}
-                    </p>
-                  </div>
-
-                  {/* Contextual Website Elements Actions */}
-                  <div className="ne-website-actions-card">
-                    <div className="ne-website-actions-title">
-                      <Zap size={13} />
-                      <span>Jr_AstroCamp Integrated Experiences</span>
-                    </div>
-
-                    {selectedEntity.data.id === 'mars' && (
-                      <>
-                        {onOpenMarsEDL && (
-                          <button className="ne-action-link-btn" onClick={onOpenMarsEDL}>
-                            <span>🔴 Launch Mars Entry, Descent & Landing Simulator</span>
-                            <ChevronRight size={14} />
-                          </button>
-                        )}
-                        {onOpenRover && (
-                          <button className="ne-action-link-btn" onClick={onOpenRover}>
-                            <span>🚜 Deploy Surface Rover Sortie (Jezero Crater)</span>
-                            <ChevronRight size={14} />
-                          </button>
-                        )}
-                      </>
-                    )}
-
-                    {selectedEntity.data.id === 'earth' && (
-                      <>
-                        {onOpenExpedition && (
-                          <button className="ne-action-link-btn" onClick={onOpenExpedition}>
-                            <span>🚀 Launch Earth-to-Moon Apollo/Artemis Flight</span>
-                            <ChevronRight size={14} />
-                          </button>
-                        )}
-                        {onOpenMultiplayerLobby && (
-                          <button className="ne-action-link-btn" onClick={onOpenMultiplayerLobby}>
-                            <span>👥 Multiplayer Flight Crew Command Room</span>
-                            <ChevronRight size={14} />
-                          </button>
-                        )}
-                      </>
-                    )}
-
-                    {selectedEntity.data.id === 'iss' && onOpenTelemetry && (
-                      <button className="ne-action-link-btn" onClick={onOpenTelemetry}>
-                        <span>📊 Open Live NASA Deep Space Network Telemetry</span>
-                        <ChevronRight size={14} />
-                      </button>
-                    )}
-
-                    {onOpenLearningHub && (
-                      <button className="ne-action-link-btn" onClick={() => onOpenLearningHub('NOTEBOOK')}>
-                        <span>📖 Open Handwritten AstroCamp Field Notebook</span>
-                        <ChevronRight size={14} />
-                      </button>
-                    )}
-
-                    {onOpenCampaign && (
-                      <button className="ne-action-link-btn" onClick={onOpenCampaign}>
-                        <span>🎮 View 76 Real NASA Flight Missions</span>
-                        <ChevronRight size={14} />
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* TAB 2: IN DEPTH (Geology & Atmosphere) */}
-              {drawerTab === 'indepth' && (
-                <>
-                  {'interiorLayers' in selectedEntity.data && (
-                    <div className="ne-drawer-hero-card">
-                      <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#ffffff' }}>Internal Structure &amp; Core</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {selectedEntity.data.interiorLayers.map((layer, idx) => (
-                          <div key={idx} style={{ padding: '8px', background: 'rgba(2, 6, 23, 0.6)', borderRadius: '6px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>
-                              <span>{layer.name}</span>
-                              <span style={{ fontFamily: 'monospace', color: '#94a3b8' }}>{layer.depth}</span>
-                            </div>
-                            <div style={{ fontSize: '11.5px', color: '#cbd5e1', marginTop: '3px' }}>{layer.desc}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {'atmosphereGases' in selectedEntity.data && (
-                    <div className="ne-drawer-hero-card">
-                      <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#ffffff' }}>Atmosphere Composition</h4>
-                      <div className="ne-atmosphere-bar-container">
-                        <div className="ne-bar-track">
-                          {selectedEntity.data.atmosphereGases.map((gas, idx) => (
-                            <div key={idx} className="ne-bar-seg" style={{ width: `${gas.pct}%`, background: gas.color }} />
-                          ))}
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                          {selectedEntity.data.atmosphereGases.map((gas, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#cbd5e1' }}>
-                              <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: gas.color }} />
-                              <span>{gas.name}: <strong>{gas.pct}%</strong></span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {'specs' in selectedEntity.data && (
-                    <div className="ne-drawer-hero-card">
-                      <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#ffffff' }}>Technical Specifications</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {selectedEntity.data.specs.map((s, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', borderBottom: '1px solid rgba(56, 189, 248, 0.1)', paddingBottom: '4px' }}>
-                            <span style={{ color: '#94a3b8' }}>{s.label}</span>
-                            <strong style={{ color: '#ffffff' }}>{s.value}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* TAB 3: BY THE NUMBERS */}
-              {drawerTab === 'numbers' && 'diameterKm' in selectedEntity.data && (
-                <div className="ne-drawer-hero-card">
-                  <table className="ne-numbers-table">
-                    <tbody>
-                      <tr>
-                        <td className="ne-numbers-label">Equatorial Diameter</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.diameterKm}</td>
-                      </tr>
-                      <tr>
-                        <td className="ne-numbers-label">Surface Gravity</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.gravityMs2}</td>
-                      </tr>
-                      <tr>
-                        <td className="ne-numbers-label">Orbital Period (Year)</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.orbitalPeriod}</td>
-                      </tr>
-                      <tr>
-                        <td className="ne-numbers-label">Solar Day Length</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.dayLength}</td>
-                      </tr>
-                      <tr>
-                        <td className="ne-numbers-label">Surface Temperature</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.surfaceTemp}</td>
-                      </tr>
-                      <tr>
-                        <td className="ne-numbers-label">Known Moons</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.moons}</td>
-                      </tr>
-                      <tr>
-                        <td className="ne-numbers-label">Total Mass</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.massKg}</td>
-                      </tr>
-                      <tr>
-                        <td className="ne-numbers-label">Axial Tilt</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.axialTilt}</td>
-                      </tr>
-                      <tr>
-                        <td className="ne-numbers-label">Orbital Velocity</td>
-                        <td className="ne-numbers-value">{selectedEntity.data.orbitalVelocityKms}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+              {/* Sci-Fi Spec Badges Grid */}
+              <div style={{ marginTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ background: 'rgba(17, 24, 39, 0.75)', border: '1px solid rgba(148, 163, 184, 0.2)', padding: '6px 8px', borderRadius: '4px' }}>
+                  <div style={{ color: '#94a3b8' }}>EVA O₂ STABILITY</div>
+                  <div style={{ color: '#10b981', fontWeight: 800, marginTop: '2px' }}>+25% NOMINAL</div>
                 </div>
-              )}
-
-              {/* TAB 4: MISSIONS TO TARGET */}
-              {drawerTab === 'missions' && (
-                <div className="ne-missions-grid">
-                  <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase' }}>
-                    NASA Flight Missions to {selectedEntity.data.name}
+                <div style={{ background: 'rgba(17, 24, 39, 0.75)', border: '1px solid rgba(148, 163, 184, 0.2)', padding: '6px 8px', borderRadius: '4px' }}>
+                  <div style={{ color: '#94a3b8' }}>RAD SHIELDING</div>
+                  <div style={{ color: '#38bdf8', fontWeight: 800, marginTop: '2px' }}>TIER-4 LUNAR</div>
+                </div>
+                <div style={{ background: 'rgba(17, 24, 39, 0.75)', border: '1px solid rgba(148, 163, 184, 0.2)', padding: '6px 8px', borderRadius: '4px' }}>
+                  <div style={{ color: '#94a3b8' }}>SPACE DURATION</div>
+                  <div style={{ color: '#fcd34d', fontWeight: 800, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {inspectingAstronaut.totalTimeInSpace || 'Orbital Specialist'}
                   </div>
-                  {ALL_76_NASA_MISSIONS.filter((m) => {
-                    const tid = selectedEntity.data.id.toLowerCase();
-                    const tname = selectedEntity.data.name.toLowerCase();
-                    if (tid === 'mars') return m.destination === 'MARS' || m.era === 'MARS_FLEET' || m.destinationName.toLowerCase().includes('martian');
-                    if (tid === 'earth' || tid === 'iss' || tid === 'tiangong' || tid === 'hubble') return m.destination === 'EARTH_ORBIT' || m.era === 'SHUTTLE_ISS' || m.era === 'PIONEERS';
-                    if (tid === 'moon' || tid === 'lunar-gateway') return m.destination === 'MOON' || m.era === 'LUNAR_APOLLO' || m.era === 'ARTEMIS_ERA';
-                    if (tid === 'jupiter' || tid === 'saturn' || tid === 'uranus' || tid === 'neptune') return m.era === 'DEEP_WORLDS' || m.name.toLowerCase().includes(tid) || m.destinationName.toLowerCase().includes(tid);
-                    if (tid === 'sun' || tid === 'parker-solar-probe') return m.era === 'COSMIC_SENTINELS' || m.name.toLowerCase().includes('solar') || m.name.toLowerCase().includes('parker');
-                    return m.destinationName.toLowerCase().includes(tname) || m.name.toLowerCase().includes(tname);
-                  }).slice(0, 8).map((mission) => (
-                    <div key={mission.id} className="ne-mission-card">
-                      <div className="ne-mission-info">
-                        <span className="ne-mission-name">{mission.name} ({mission.launchYear})</span>
-                        <span className="ne-mission-meta">{mission.tagline}</span>
+                </div>
+                <div style={{ background: 'rgba(17, 24, 39, 0.75)', border: '1px solid rgba(148, 163, 184, 0.2)', padding: '6px 8px', borderRadius: '4px' }}>
+                  <div style={{ color: '#94a3b8' }}>SPACEWALKS</div>
+                  <div style={{ color: '#fcd34d', fontWeight: 800, marginTop: '2px' }}>
+                    {inspectingAstronaut.spacewalkCount ?? 0} EVA Sorties
+                  </div>
+                </div>
+              </div>
+
+              {/* Historic Quote */}
+              <div style={{ marginTop: '12px', fontSize: '10.5px', fontStyle: 'italic', color: '#94a3b8', borderLeft: '2px solid #ff9e1b', paddingLeft: '8px', lineHeight: 1.4 }}>
+                "{inspectingAstronaut.famousQuote}"
+              </div>
+            </div>
+          )}
+
+          {/* 2. BOTTOM HORIZONTAL SCROLLING CAROUSEL */}
+          {isInspectionMode && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 45,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <div style={{ fontSize: '10px', color: '#ff9e1b', fontFamily: 'var(--font-mono)', fontWeight: 800, letterSpacing: '0.08em', textShadow: '0 0 8px rgba(255, 158, 27, 0.6)' }}>
+                ◄ SELECT HISTORIC ASTRONAUT TO INSPECT & EQUIP ({ASTRONAUT_CHARACTERS.length} CANDIDATES) ►
+              </div>
+              <div className="hologram-carousel-bar">
+                {ASTRONAUT_CHARACTERS.map((char) => {
+                  const isCharActive = char.id === inspectingAstronaut.id;
+                  const isCharEquipped = (currentUser?.selectedCharacterId || 'neil_armstrong') === char.id;
+                  const isCharUnlocked = unlockedIds.includes(char.id) || char.costCoins === 0;
+
+                  return (
+                    <div
+                      key={char.id}
+                      className={`carousel-astronaut-card ${isCharActive ? 'active' : ''}`}
+                      onClick={() => {
+                        soundFx.playClick(920);
+                        setPreviewAstronautId(char.id);
+                      }}
+                      title={`Preview ${char.name} (${char.historicalTitle})`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '20px' }}>{char.avatar}</span>
+                        {isCharEquipped ? (
+                          <span style={{ fontSize: '8.5px', color: '#10b981', fontWeight: 900, fontFamily: 'var(--font-mono)', background: 'rgba(16, 185, 129, 0.2)', padding: '1px 5px', borderRadius: '3px' }}>
+                            EQUIPPED
+                          </span>
+                        ) : isCharUnlocked ? (
+                          <span style={{ fontSize: '8.5px', color: '#38bdf8', fontWeight: 900, fontFamily: 'var(--font-mono)', background: 'rgba(0, 210, 255, 0.15)', padding: '1px 5px', borderRadius: '3px' }}>
+                            READY
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '8.5px', color: '#fbbf24', fontWeight: 900, fontFamily: 'var(--font-mono)', background: 'rgba(255, 158, 27, 0.2)', padding: '1px 5px', borderRadius: '3px' }}>
+                            🔒 {char.costCoins}
+                          </span>
+                        )}
                       </div>
-                      {onOpenCampaign && (
-                        <button
-                          className="ne-btn-secondary"
-                          style={{ padding: '4px 8px', fontSize: '11px' }}
-                          onClick={onOpenCampaign}
-                        >
-                          Play
-                        </button>
-                      )}
+
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {char.name}
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#94a3b8', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>
+                          {char.countryFlag.split(' ')[0]} · {char.historicFlight.split('(')[0].trim()}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 3. BOTTOM-RIGHT: GLOWING HIGH-CONTRAST "EQUIP / UNLOCK" MASTER BUTTON */}
+          {isInspectionMode && (
+            <div style={{ position: 'absolute', right: '28px', bottom: '24px', zIndex: 45, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+              <button
+                className={`inspection-master-btn ${isSelectedActive ? 'equipped' : isSelectedUnlocked ? '' : 'locked'}`}
+                id="btn-inspection-equip-unlock"
+                onClick={() => {
+                  if (isSelectedActive) {
+                    soundFx.playClick(700);
+                    showToast(`🧑‍🚀 ${inspectingAstronaut.name} is already deployed for this mission!`, 'success');
+                  } else if (isSelectedUnlocked) {
+                    handleEquipAstronaut(inspectingAstronaut);
+                  } else {
+                    handleUnlockAstronaut(inspectingAstronaut);
+                  }
+                }}
+                title={isSelectedActive ? 'Currently Deployed' : isSelectedUnlocked ? 'Equip Selected Astronaut' : `Unlock for ${inspectingAstronaut.costCoins} Coins`}
+              >
+                {isSelectedActive ? (
+                  <>
+                    <span style={{ fontSize: '20px' }}>✓</span>
+                    <span>CURRENTLY DEPLOYED</span>
+                  </>
+                ) : isSelectedUnlocked ? (
+                  <>
+                    <span style={{ fontSize: '20px' }}>⚡</span>
+                    <span>EQUIP ASTRONAUT</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '20px' }}>🔓</span>
+                    <span>UNLOCK · {inspectingAstronaut.costCoins.toLocaleString()} COINS</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+
+
+
+      {/* ── EXPANDABLE NASA OPEN SCIENCE INTEL DOSSIER (MODAL DIALOG - NEVER STRETCHES LOBBY) ── */}
+        {showIntelDossier && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 999999,
+              background: 'rgba(5, 7, 12, 0.94)',
+              backdropFilter: 'blur(20px)',
+              overflowY: 'auto',
+              padding: '40px 24px 60px 24px',
+              animation: 'characterSlideIn 0.25s ease-out',
+            }}
+          >
+            {/* Modal Header & Close Button */}
+            <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', borderBottom: '1px solid rgba(0, 210, 255, 0.3)', paddingBottom: '16px' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#00d2ff', letterSpacing: '0.12em', fontWeight: 800 }}>
+                  NASA INTERNATIONAL SPACE APPS CHALLENGE 2026 · TEAM MYSTERIO
+                </div>
+                <h1 style={{ fontSize: '26px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)', margin: '4px 0 0 0' }}>
+                  Jr_AstroCamp: Mission Dossier & Science Architecture
+                </h1>
+              </div>
+              <button
+                onClick={() => setShowIntelDossier(false)}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.6)',
+                  color: '#f87171',
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '13px',
+                }}
+              >
+                ✕ CLOSE DOSSIER [ESC]
+              </button>
+            </div>
+
+            <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+              {/* WHAT IS ASTRO CAMP */}
+              <section className="landing-section" style={{ padding: '0 0 40px 0' }}>
+                <h2 className="landing-section-title">
+                  One Platform.{' '}
+                  <span style={{ background: 'linear-gradient(90deg,#a78bfa,#38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                    Real Engineering. Real Science.
+                  </span>
+                </h2>
+                <p className="landing-section-sub">
+                  Jr_AstroCamp transforms space science education from passive reading into an active, high-stakes planetary outpost simulation and flight trainer.
+                </p>
+                <div className="landing-features-grid">
+                  {FEATURES.map((f) => (
+                    <div key={f.title} className="landing-feature-card">
+                      <span className="feature-icon">{f.icon}</span>
+                      <div className="feature-title">{f.title}</div>
+                      <p className="feature-desc">{f.desc}</p>
                     </div>
                   ))}
                 </div>
-              )}
+              </section>
 
-              {/* TAB 5: COMPARE SIZE */}
-              {drawerTab === 'compare' && 'diameterKm' in selectedEntity.data && (
-                <div className="ne-drawer-hero-card" style={{ alignItems: 'center', textAlign: 'center' }}>
-                  <h4 style={{ margin: 0, fontSize: '13px', color: '#ffffff' }}>Scale Comparison vs Earth</h4>
-                  <p style={{ fontSize: '11.5px', color: '#94a3b8', margin: '4px 0 16px 0' }}>
-                    Visual scale comparison against Earth (12,742 km).
-                  </p>
+              <hr className="landing-divider" />
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', minHeight: '160px' }}>
-                    {/* Target Body */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                      <div
-                        style={{
-                          width: `${Math.max(28, Math.min(140, selectedEntity.data.radius * 16 * compareScale))}px`,
-                          height: `${Math.max(28, Math.min(140, selectedEntity.data.radius * 16 * compareScale))}px`,
-                          borderRadius: '50%',
-                          background: `#${selectedEntity.data.color.toString(16).padStart(6, '0')}`,
-                          boxShadow: `0 0 20px #${selectedEntity.data.color.toString(16).padStart(6, '0')}66`,
-                          transition: 'all 0.2s ease',
-                        }}
-                      />
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#ffffff' }}>{selectedEntity.data.name}</span>
-                      <span style={{ fontSize: '10px', color: '#38bdf8', fontFamily: 'monospace' }}>{selectedEntity.data.diameterKm}</span>
+              {/* HOW IT WORKS */}
+              <section className="landing-section" style={{ padding: '40px 0' }}>
+                <h2 className="landing-section-title">
+                  The 4-Stage Astronaut Journey
+                </h2>
+                <p className="landing-section-sub">
+                  From payload budgeting to crisis survival, experience the real engineering trade-offs of human deep space exploration.
+                </p>
+                <div className="landing-steps-grid">
+                  {STEPS.map((s) => (
+                    <div key={s.title} className="landing-step-card" style={{ borderTop: `3px solid ${s.color}` }}>
+                      <span className="step-emoji">{s.emoji}</span>
+                      <div className="step-title" style={{ color: s.color }}>{s.title}</div>
+                      <p className="step-desc">{s.desc}</p>
                     </div>
+                  ))}
+                </div>
+              </section>
 
-                    <span style={{ fontSize: '18px', color: '#64748b' }}>vs</span>
-
-                    {/* Earth Reference */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                      <div
-                        style={{
-                          width: `${48 * compareScale}px`,
-                          height: `${48 * compareScale}px`,
-                          borderRadius: '50%',
-                          background: '#38bdf8',
-                          boxShadow: '0 0 20px #38bdf866',
-                          transition: 'all 0.2s ease',
-                        }}
-                      />
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#ffffff' }}>Earth</span>
-                      <span style={{ fontSize: '10px', color: '#38bdf8', fontFamily: 'monospace' }}>12,742 km</span>
-                    </div>
-                  </div>
-
-                  {/* Zoom scale slider */}
-                  <div style={{ width: '100%', marginTop: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#94a3b8' }}>
-                      <span>Visual Scale</span>
-                      <span>{compareScale.toFixed(1)}x</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2.0"
-                      step="0.1"
-                      value={compareScale}
-                      onChange={(e) => setCompareScale(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: '#38bdf8' }}
-                    />
+              {/* FOOTER */}
+              <footer className="landing-footer" style={{ borderTop: '1px solid rgba(148, 163, 184, 0.15)', paddingTop: '32px' }}>
+                <div className="landing-brand">
+                  <div className="landing-logo-ring">🚀</div>
+                  <div>
+                    <div className="landing-brand-name">Jr_AstroCamp: Beyond Earth</div>
+                    <div className="landing-brand-sub">NASA International Space Apps Challenge 2026 · Team Mysterio</div>
                   </div>
                 </div>
-              )}
+                <p className="landing-footer-copy">
+                  Built for the NASA Space Apps Challenge 2026: "Build a Junior Astronaut Mission Trainer". Grounded in open NASA research and open data.
+                </p>
+              </footer>
             </div>
-          </aside>
+          </div>
         )}
-
-        {/* ═══ BOTTOM PLAYBACK & TIMELINE DOCK (Exact NASA Eyes Controls) ═══ */}
-        <footer className="nasa-eyes-bottombar nasa-eyes-interactive">
-          {/* Left Time & Ephemeris Controls */}
-          <div className="ne-time-cluster">
-            <div className="ne-time-display-box">
-              <span className="ne-clock-utc">{simDate.toUTCString()}</span>
-              <span className="ne-clock-jd">JD {currentJD.toFixed(4)}</span>
-            </div>
-
-            <button
-              className="ne-now-btn"
-              onClick={syncToNow}
-              title="Return to real-world present time"
-            >
-              Now
-            </button>
-
-            {/* Transport Speed Buttons */}
-            <div className="ne-time-transport">
-              <button
-                className="ne-transport-btn"
-                onClick={() => handleStepDay(-1)}
-                title="Step backward 1 Earth Day"
-              >
-                -1D
-              </button>
-              <button
-                className={`ne-transport-btn ${!isPlaying ? 'active' : ''}`}
-                onClick={() => { setIsPlaying(!isPlaying); soundFx.playClick(600); }}
-                title={isPlaying ? 'Pause Simulation' : 'Resume Simulation'}
-              >
-                {isPlaying ? <Pause size={12} /> : <Play size={12} />}
-              </button>
-              <button
-                className="ne-transport-btn"
-                onClick={() => handleStepDay(1)}
-                title="Step forward 1 Earth Day"
-              >
-                +1D
-              </button>
-              <button
-                className={`ne-transport-btn ${simSpeed === 10 ? 'active' : ''}`}
-                onClick={() => handleSetSpeed(10)}
-                title="10x Speed"
-              >
-                10x
-              </button>
-              <button
-                className={`ne-transport-btn ${simSpeed === 100 ? 'active' : ''}`}
-                onClick={() => handleSetSpeed(100)}
-                title="100x Speed"
-              >
-                100x
-              </button>
-              <button
-                className={`ne-transport-btn ${simSpeed === 1000 ? 'active' : ''}`}
-                onClick={() => handleSetSpeed(1000)}
-                title="1,000x Speed"
-              >
-                1k
-              </button>
-            </div>
-          </div>
-
-          {/* Center Space-Time Scrubber */}
-          <div className="ne-scrubber-container">
-            <div className="ne-scrubber-track-box">
-              <input
-                type="range"
-                min="1975"
-                max="2045"
-                step="0.05"
-                value={currentYearFloat}
-                onChange={handleTimelineScrub}
-                className="ne-slider-range"
-              />
-            </div>
-            <div className="ne-scrubber-labels">
-              <span>1975 (Viking / Apollo)</span>
-              <span style={{ color: '#38bdf8', fontWeight: 800 }}>{simDate.getUTCFullYear()}</span>
-              <span>2045 (Interstellar Era)</span>
-            </div>
-          </div>
-
-          {/* Right Display Layer Toggles */}
-          <div className="ne-toggles-cluster">
-            <button
-              className={`ne-toggle-btn ${showOrbits ? 'active' : ''}`}
-              onClick={() => { setShowOrbits(!showOrbits); soundFx.playClick(750); }}
-              title="Toggle Orbital Trajectory Lines"
-            >
-              <span className="ne-toggle-led" />
-              <span>Orbits</span>
-            </button>
-
-            <button
-              className={`ne-toggle-btn ${showLabels ? 'active' : ''}`}
-              onClick={() => { setShowLabels(!showLabels); soundFx.playClick(750); }}
-              title="Toggle Celestial Billboard Labels"
-            >
-              <span className="ne-toggle-led" />
-              <span>Labels</span>
-            </button>
-
-            <button
-              className={`ne-toggle-btn ${showSpacecraft ? 'active' : ''}`}
-              onClick={() => { setShowSpacecraft(!showSpacecraft); soundFx.playClick(750); }}
-              title="Toggle Human Spacecraft Fleet"
-            >
-              <span className="ne-toggle-led" />
-              <span>Fleet</span>
-            </button>
-
-            <button
-              className={`ne-toggle-btn ${showAsteroids ? 'active' : ''}`}
-              onClick={() => { setShowAsteroids(!showAsteroids); soundFx.playClick(750); }}
-              title="Toggle Main Asteroid Belt"
-            >
-              <span className="ne-toggle-led" />
-              <span>Asteroids</span>
-            </button>
-
-            <button
-              className={`ne-toggle-btn ${lightingMode === 'flood' ? 'active' : ''}`}
-              onClick={() => { setLightingMode(lightingMode === 'sun' ? 'flood' : 'sun'); soundFx.playClick(800); }}
-              title="Switch between Solar Shadow Lighting and Studio Floodlight"
-            >
-              <Sun size={12} />
-              <span>{lightingMode === 'sun' ? 'Sunlight' : 'Flood'}</span>
-            </button>
-          </div>
-        </footer>
-      </div>
+      </main>
     </div>
   );
 };
-
-export default LandingPage;

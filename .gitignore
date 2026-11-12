@@ -28,16 +28,12 @@ venv/
 *.sln
 *.sw?
 
-# Blender backup files
+# Large archives and temporary local test outputs
+NASA_Projct.zip
+*.zip
 *.blend1
-*.blend2
-*.blend@
-
-# Environment and secrets
-.env
-.env.*
-!.env.example
-
-# Local tools & agent cache
-.taste-skill/
+test_*.mjs
+test_*.png
+live_*.png
+*.py
 

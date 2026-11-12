@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Award, Download, RefreshCw, X } from 'lucide-react';
 
 /* ──────────────────────────────────────────────────────────
    🎖️ NASA Flight Certificate Generator
@@ -26,7 +25,6 @@ interface FlightCertificateModalProps {
   cadetName: string;
   completedMissions: string[];
   currentMissionName?: string;
-  earnedBadges?: string[];
 }
 
 export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
@@ -35,7 +33,6 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
   cadetName,
   completedMissions,
   currentMissionName,
-  earnedBadges = [],
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -234,13 +231,6 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
     ctx.font = 'bold 18px "Inter", sans-serif';
     ctx.fillStyle = '#e2e8f0';
     ctx.fillText(cert.missionName, W / 2, statsY + 140);
-    ctx.font = '600 12px "Inter", sans-serif';
-    ctx.fillStyle = '#facc15';
-    ctx.fillText(
-      `Special badges: ${earnedBadges.length > 0 ? earnedBadges.join(', ') : 'None yet'}`,
-      W / 2,
-      statsY + 164,
-    );
 
     // Stamp area
     const stampY = statsY + 180;
@@ -306,7 +296,7 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
 
     setCertificateReady(true);
     setIsGenerating(false);
-  }, [customName, completedMissions, currentMissionName, earnedBadges]);
+  }, [customName, completedMissions, currentMissionName]);
 
   const downloadCertificate = useCallback(() => {
     const canvas = canvasRef.current;
@@ -327,43 +317,38 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'rgba(0, 0, 0, 0.85)',
-      backdropFilter: 'blur(8px)',
+      background: 'rgba(0,0,0,0.88)',
+      backdropFilter: 'blur(10px)',
     }} onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '900px',
           maxWidth: '96vw',
-          maxHeight: '92dvh',
+          maxHeight: '92vh',
           overflow: 'auto',
-          background: 'var(--color-paper)',
-          border: '1px solid var(--rule-light)',
-          borderRadius: 0,
-          padding: '24px',
-          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.7)',
-          position: 'relative',
+          background: 'linear-gradient(145deg, #0f172a, #1e1b4b, #0f172a)',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          borderRadius: '20px',
+          padding: '28px',
+          boxShadow: '0 0 80px rgba(245, 158, 11, 0.1)',
         }}
       >
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'inline-flex', padding: '8px', border: '1px solid var(--rule-subtle)', marginBottom: '8px', background: 'var(--color-paper-2)' }}>
-            <Award size={24} style={{ color: 'var(--color-accent)' }} />
-          </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--color-accent)', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2px' }}>
-            NASA Astronaut Candidate Flight Log
-          </div>
+          <div style={{ fontSize: '40px', marginBottom: '6px' }}>🎖️</div>
           <h2 style={{
             margin: 0,
-            fontSize: '1.25rem',
-            fontWeight: 700,
-            color: 'var(--color-ink)',
-            letterSpacing: '-0.01em',
+            fontSize: '1.3rem',
+            fontWeight: 800,
+            background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
           }}>
-            Official Mission Debrief Certificate
+            NASA Flight Certificate Generator
           </h2>
-          <p style={{ color: 'var(--color-ink-muted)', fontSize: '0.8rem', marginTop: '4px' }}>
-            Generate authenticated credential verifying completed simulation milestones
+          <p style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: '4px' }}>
+            Generate your official Jr_AstroCamp mission debrief certificate
           </p>
         </div>
 
@@ -373,27 +358,24 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
           gap: '10px',
           marginBottom: '16px',
           alignItems: 'center',
-          flexWrap: 'wrap',
         }}>
-          <label style={{ color: 'var(--color-ink-muted)', fontSize: '0.8rem', fontWeight: 600, flexShrink: 0, fontFamily: 'var(--font-mono)' }}>
-            CADET NAME:
+          <label style={{ color: '#94a3b8', fontSize: '0.82rem', fontWeight: 600, flexShrink: 0 }}>
+            Cadet Name:
           </label>
           <input
             type="text"
             value={customName}
             onChange={(e) => { setCustomName(e.target.value); setCertificateReady(false); }}
-            placeholder="Enter cadet callsign"
+            placeholder="Enter your name"
             style={{
               flex: 1,
-              minWidth: '220px',
               padding: '10px 14px',
-              background: 'var(--color-paper-2)',
-              border: '1px solid var(--rule-subtle)',
-              borderRadius: 0,
-              color: 'var(--color-ink)',
-              fontSize: '0.88rem',
+              background: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '10px',
+              color: '#e2e8f0',
+              fontSize: '0.9rem',
               fontWeight: 600,
-              fontFamily: 'var(--font-sans)',
               outline: 'none',
             }}
           />
@@ -401,29 +383,28 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
             onClick={generateCertificate}
             disabled={isGenerating || !customName.trim()}
             style={{
-              padding: '10px 20px',
-              background: isGenerating ? 'var(--color-paper-3)' : 'var(--color-accent)',
-              border: '1px solid var(--color-accent)',
-              borderRadius: 0,
-              color: '#000000',
-              fontSize: '0.8rem',
+              padding: '10px 22px',
+              background: isGenerating
+                ? 'rgba(100,100,100,0.3)'
+                : 'linear-gradient(135deg, #f59e0b, #ef4444)',
+              border: 'none',
+              borderRadius: '10px',
+              color: '#fff',
+              fontSize: '0.85rem',
               fontWeight: 700,
-              fontFamily: 'var(--font-mono)',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
               cursor: isGenerating ? 'not-allowed' : 'pointer',
               flexShrink: 0,
             }}
           >
-            {isGenerating ? 'Compiling Credentials…' : 'Generate Certificate'}
+            {isGenerating ? '⏳ Generating…' : '🎖️ Generate Certificate'}
           </button>
         </div>
 
         {/* Canvas Preview */}
         <div style={{
-          borderRadius: 0,
+          borderRadius: '14px',
           overflow: 'hidden',
-          border: '1px solid var(--rule-subtle)',
+          border: '1px solid rgba(255,255,255,0.08)',
           marginBottom: '16px',
           background: '#020617',
         }}>
@@ -437,13 +418,13 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
           />
           {!certificateReady && (
             <div style={{
-              padding: '60px 20px',
+              padding: '80px 20px',
               textAlign: 'center',
-              color: 'var(--color-ink-faint)',
-              fontSize: '0.85rem',
+              color: '#475569',
+              fontSize: '0.9rem',
             }}>
-              <Award size={36} style={{ color: 'var(--color-ink-faint)', margin: '0 auto 12px' }} />
-              Enter cadet callsign and click "Generate Certificate" to render preview
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎖️</div>
+              Enter your name and click "Generate Certificate" to preview
             </div>
           )}
         </div>
@@ -454,43 +435,35 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
             <button
               onClick={downloadCertificate}
               style={{
-                padding: '10px 24px',
-                background: 'var(--color-accent)',
-                border: '1px solid var(--color-accent)',
-                borderRadius: 0,
-                color: '#000000',
-                fontSize: '0.82rem',
+                padding: '12px 32px',
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '0.9rem',
                 fontWeight: 700,
-                fontFamily: 'var(--font-mono)',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
               }}
             >
-              <Download size={14} /> Download Certificate (PNG)
+              📥 Download Certificate (PNG)
             </button>
             <button
               onClick={generateCertificate}
               style={{
-                padding: '10px 20px',
-                background: 'transparent',
-                border: '1px solid var(--rule-subtle)',
-                borderRadius: 0,
-                color: 'var(--color-ink-muted)',
-                fontSize: '0.82rem',
+                padding: '12px 24px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '12px',
+                color: '#94a3b8',
+                fontSize: '0.85rem',
                 fontWeight: 600,
-                fontFamily: 'var(--font-mono)',
-                textTransform: 'uppercase',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
               }}
             >
-              <RefreshCw size={14} /> Regenerate
+              🔄 Regenerate
             </button>
           </div>
         )}
@@ -498,24 +471,24 @@ export const FlightCertificateModal: React.FC<FlightCertificateModalProps> = ({
         {/* Close */}
         <button
           onClick={onClose}
-          aria-label="Close"
           style={{
             position: 'absolute',
             top: '16px',
             right: '16px',
-            background: 'transparent',
-            border: '1px solid var(--rule-subtle)',
-            borderRadius: 0,
-            width: '28px',
-            height: '28px',
+            background: 'rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--color-ink-muted)',
+            color: '#94a3b8',
             cursor: 'pointer',
+            fontSize: '16px',
           }}
         >
-          <X size={14} />
+          ×
         </button>
       </div>
     </div>

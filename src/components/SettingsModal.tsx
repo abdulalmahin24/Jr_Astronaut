@@ -76,16 +76,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '560px',
-          backgroundColor: 'var(--color-paper-2)',
-          border: 'var(--rule-hair) solid var(--color-rule)',
-          borderRadius: '0px',
+          backgroundColor: '#0a0f1d',
+          border: '1px solid rgba(56, 189, 248, 0.4)',
+          borderRadius: '16px',
         }}
       >
         {/* Header */}
-        <div className="modal-header" style={{ padding: '16px 22px', borderBottom: 'var(--rule-hair) solid var(--color-rule)' }}>
+        <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Sliders size={18} color="var(--color-accent-2)" />
-            <h2 className="modal-title" style={{ fontSize: '1.2rem', fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--color-ink)' }}>
+            <Sliders size={20} className="text-cyan-400" />
+            <h2 className="modal-title" style={{ fontSize: '1.2rem', fontWeight: 800 }}>
               Flight Computer Configuration &amp; Settings
             </h2>
           </div>
@@ -96,20 +96,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Audio Controls */}
-          <div style={{ backgroundColor: 'var(--color-paper-card)', padding: '16px', border: 'var(--rule-hair) solid var(--color-rule)' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-accent-2)', fontFamily: 'var(--font-outlier)', marginBottom: '12px' }}>
+          <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', marginBottom: '12px' }}>
               Sound Effects &amp; CapCom Voice Audio
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {isMuted ? <VolumeX size={18} color="var(--color-error)" /> : <Volume2 size={18} color="var(--color-accent-green)" />}
-                <span style={{ fontSize: '13px', color: 'var(--color-ink)' }}>Master Sound FX</span>
+                {isMuted ? <VolumeX size={18} className="text-rose-400" /> : <Volume2 size={18} className="text-emerald-400" />}
+                <span style={{ fontSize: '0.9rem', color: '#e2e8f0' }}>Master Sound FX</span>
               </div>
               <button
                 onClick={handleToggleSound}
-                className={isMuted ? 'hm-btn-secondary' : 'hm-btn-primary'}
-                style={{ padding: '6px 14px', fontSize: '11px', fontFamily: 'var(--font-outlier)' }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  backgroundColor: isMuted ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                  border: `1px solid ${isMuted ? '#ef4444' : '#10b981'}`,
+                  color: isMuted ? '#f87171' : '#43ffa0',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
               >
                 {isMuted ? 'Muted' : 'Enabled'}
               </button>
@@ -117,13 +125,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {voiceEnabled ? <Mic size={18} color="var(--color-accent-2)" /> : <MicOff size={18} color="var(--color-muted)" />}
-                <span style={{ fontSize: '13px', color: 'var(--color-ink)' }}>Speech Synthesis Briefings</span>
+                {voiceEnabled ? <Mic size={18} className="text-cyan-400" /> : <MicOff size={18} className="text-slate-500" />}
+                <span style={{ fontSize: '0.9rem', color: '#e2e8f0' }}>Speech Synthesis Briefings</span>
               </div>
               <button
                 onClick={handleToggleVoice}
-                className={voiceEnabled ? 'hm-btn-secondary' : 'hm-btn-secondary'}
-                style={{ padding: '6px 14px', fontSize: '11px', fontFamily: 'var(--font-outlier)' }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  backgroundColor: voiceEnabled ? 'rgba(56, 189, 248, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                  border: `1px solid ${voiceEnabled ? '#38bdf8' : '#64748b'}`,
+                  color: voiceEnabled ? '#38bdf8' : '#94a3b8',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
               >
                 {voiceEnabled ? 'Active' : 'Off'}
               </button>
@@ -131,8 +147,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Graphics Quality */}
-          <div style={{ backgroundColor: 'var(--color-paper-card)', padding: '16px', border: 'var(--rule-hair) solid var(--color-rule)' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-accent)', fontFamily: 'var(--font-outlier)', marginBottom: '12px' }}>
+          <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', marginBottom: '12px' }}>
               Rendering Engine &amp; Low-End Device Support
             </div>
 
@@ -147,18 +163,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     key={opt.id}
                     onClick={() => handleQualityChange(opt.id as any)}
-                    className={active ? 'hm-btn-primary' : 'hm-btn-secondary'}
                     style={{
                       padding: '10px 8px',
+                      borderRadius: '8px',
+                      border: active ? '1.5px solid #a78bfa' : '1px solid rgba(255, 255, 255, 0.1)',
+                      backgroundColor: active ? 'rgba(167, 139, 250, 0.15)' : 'rgba(30, 41, 59, 0.4)',
+                      color: active ? '#ffffff' : '#94a3b8',
+                      cursor: 'pointer',
                       textAlign: 'center',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
                     }}
                   >
-                    <div style={{ fontWeight: 700, fontSize: '12px' }}>{opt.label}</div>
-                    <div style={{ fontSize: '9.5px', color: active ? 'var(--color-accent-ink)' : 'var(--color-muted)', lineHeight: 1.2 }}>{opt.desc}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{opt.label}</div>
+                    <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '3px', lineHeight: 1.2 }}>{opt.desc}</div>
                   </button>
                 );
               })}
@@ -166,35 +182,63 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Reset Progress */}
-          <div style={{ backgroundColor: 'var(--color-paper-card)', padding: '16px', border: 'var(--rule-hair) solid var(--color-rule)' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-error)', fontFamily: 'var(--font-outlier)', marginBottom: '8px' }}>
+          <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f87171', textTransform: 'uppercase', marginBottom: '8px' }}>
               Mission Progression Reset
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--color-muted)', marginBottom: '12px', lineHeight: 1.4 }}>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '12px', lineHeight: 1.4 }}>
               Clear active outpost saved games, cadet academy XP, and mission certificates from this browser.
             </p>
 
             {!showResetConfirm ? (
               <button
                 onClick={() => setShowResetConfirm(true)}
-                className="hm-btn-secondary hm-nowrap"
-                style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid #ef4444',
+                  color: '#f87171',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
               >
                 <RotateCcw size={14} />
-                <span>Reset Local Data</span>
+                <span>Reset All Local Mission Data</span>
               </button>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   onClick={handleExecuteReset}
-                  className="hm-btn-primary hm-nowrap"
-                  style={{ backgroundColor: 'var(--color-error)', color: 'var(--color-ink)' }}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    backgroundColor: '#ef4444',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                  }}
                 >
                   Confirm Reset
                 </button>
                 <button
                   onClick={() => setShowResetConfirm(false)}
-                  className="hm-btn-secondary hm-nowrap"
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                  }}
                 >
                   Cancel
                 </button>

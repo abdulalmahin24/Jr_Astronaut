@@ -1,107 +1,106 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { getSharedGLTFLoader } from '../utils/modelLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { soundFx } from '../utils/audioEffects';
+
+export type SuitOption = 'EMU' | 'ARTEMIS' | 'ACES';
+
+interface SuitConfig {
+  id: SuitOption;
+  label: string;
+  subLabel: string;
+  modelPath: string;
+  icon: string;
+  color: string;
+}
+
+const SUIT_OPTIONS: SuitConfig[] = [
+  {
+    id: 'EMU',
+    label: 'NASA EMU',
+    subLabel: 'ISS & Spacewalk EVA',
+    modelPath: '/models/NASA_EMU_Realistic.glb',
+    icon: '👨‍🚀',
+    color: '#00d2ff',
+  },
+  {
+    id: 'ARTEMIS',
+    label: 'xEMU ARTEMIS',
+    subLabel: 'Lunar Surface Exploration',
+    modelPath: '/models/NASA_Neil_Apollo11_HD.glb',
+    icon: '🚀',
+    color: '#38bdf8',
+  },
+  {
+    id: 'ACES',
+    label: 'ACES ORANGE',
+    subLabel: 'Launch & Ascent Escape',
+    modelPath: '/models/ACES_Suit.glb',
+    icon: '🧡',
+    color: '#f97316',
+  },
+];
 
 interface LobbyAstronaut3DProps {
   characterId?: string;
   astronautName?: string;
   isInspectionMode?: boolean;
+  envMapUrl?: string;
   onInteract?: () => void;
+  onSuitChange?: (suit: string) => void;
 }
-
-export type SuitModelType = 'LM' | 'ROVER' | 'SATELLITE' | 'EMU';
-
-interface SuitConfig {
-  label: string;
-  file: string;
-  scaleAdj: number;
-  yOffset: number;
-  rotY: number;
-  name: string;
-  badge: string;
-  telemetry: string;
-}
-
-const SUIT_CONFIGS: Record<SuitModelType, SuitConfig> = {
-  LM: {
-    label: 'LUNAR MODULE',
-    file: '/models/Apollo_Lunar_Module.glb',
-    scaleAdj: 0.78,
-    yOffset: 0.04,
-    rotY: 0,
-    name: 'Apollo 11 Lunar Module "Eagle" (Descent & Ascent Stages)',
-    badge: 'LM-5 EAGLE',
-    telemetry: 'APOLLO LM EAGLE · DESCENT STAGE 100% FUEL · TRANQUILITY BASE READY',
-  },
-  ROVER: {
-    label: 'MARS ROVER',
-    file: '/models/Mars_Perseverance_Rover.glb',
-    scaleAdj: 0.80,
-    yOffset: 0.04,
-    rotY: -Math.PI / 4,
-    name: 'Mars Perseverance Rover (JPL Surface Astrobiology Lab)',
-    badge: 'MARS 2020',
-    telemetry: 'MARS 2020 PERSEVERANCE · MOXIE & SHERLOC ACTIVE · 6WD ROCKER-BOGIE',
-  },
-  SATELLITE: {
-    label: 'SATELLITE',
-    file: '/models/Satellite.glb',
-    scaleAdj: 0.82,
-    yOffset: 0.20,
-    rotY: Math.PI / 6,
-    name: 'Deep Space Relay Satellite (Gateway Orbiter Link)',
-    badge: 'GATEWAY RELAY',
-    telemetry: 'X-BAND HIGH-GAIN TELEMETRY · GAAS SOLAR ARRAYS · 100% DSN LINK',
-  },
-  EMU: {
-    label: 'ARTEMIS SUIT',
-    file: '/models/EMU_Suit_Clean.glb',
-    scaleAdj: 0.85,
-    yOffset: 0.04,
-    rotY: Math.PI,
-    name: 'NASA Extravehicular Mobility Unit (Artemis EVA Suit)',
-    badge: 'EVA MK-IV',
-    telemetry: 'NASA xEMU SUIT MK-IV · 100% O₂ NOMINAL · ARTEMIS EVA CERTIFIED',
-  },
-};
 
 export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
   characterId,
-  astronautName = 'Neil Armstrong',
+  astronautName = 'Kalpana Chawla',
   isInspectionMode = false,
   onInteract,
+  onSuitChange,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [activeSuit, setActiveSuit] = useState<SuitModelType>('LM');
-  const [isLoadingModel, setIsLoadingModel] = useState<boolean>(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [activeSuit, setActiveSuit] = useState<SuitOption>(() => {
+    if (characterId === 'kalpana_chawla') return 'ACES';
+    return 'EMU';
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
   const isInspectionModeRef = useRef(isInspectionMode);
+  const activeSuitRef = useRef<SuitOption>(activeSuit);
+  const modelRootRef = useRef<THREE.Group | null>(null);
+
+  // Drag-to-rotate states
+  const isDraggingRef = useRef(false);
+  const lastXRef = useRef(0);
+  const targetRotationYRef = useRef(0);
+  const currentRotationYRef = useRef(0);
 
   useEffect(() => {
     isInspectionModeRef.current = isInspectionMode;
   }, [isInspectionMode]);
 
   useEffect(() => {
+    activeSuitRef.current = activeSuit;
+  }, [activeSuit]);
+
+  useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
 
-    let isDisposed = false;
     const width = container.clientWidth || 640;
     const height = container.clientHeight || 750;
 
-    // 1. Scene
+    // 1. Three.js Scene
     const scene = new THREE.Scene();
 
-    // 2. Camera: Telephoto 34° FOV for true aerospace architectural scale
+    // 2. Camera with dolly zoom
     const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 50);
-    let zoomDistance = 4.45;
-    camera.position.set(0, 1.05, zoomDistance);
-    const currentLookAt = new THREE.Vector3(0, 0.72, 0);
+    camera.position.set(0, 0.95, 3.4);
+    const currentLookAt = new THREE.Vector3(0, 0.92, 0);
     camera.lookAt(currentLookAt);
 
-    // 3. WebGL Renderer
+    // 3. WebGL Renderer with Alpha
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
@@ -110,69 +109,58 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.15;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    // 4. Photorealistic Studio Environment Map via PMREM
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-    const roomEnv = new RoomEnvironment();
-    const envMap = pmrem.fromScene(roomEnv).texture;
-    scene.environment = envMap;
-
-    // 5. Aerospace Studio Key, Fill, Rim & Floor Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    // 4. Lighting: Heroic Studio Key + Rim + Visor Glint Spot
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
     scene.add(ambientLight);
 
-    // Key Light (Warm Solar Radiance)
-    const keyLight = new THREE.DirectionalLight(0xfff7ee, 1.9);
-    keyLight.position.set(3.5, 4.5, 4.0);
+    const keyLight = new THREE.DirectionalLight(0xfff8ee, 3.2);
+    keyLight.position.set(2.5, 4.0, 3.0);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 1024;
-    keyLight.shadow.mapSize.height = 1024;
     scene.add(keyLight);
 
-    // Rim Light (Artemis Lunar Cyan Glow)
-    const rimLight = new THREE.DirectionalLight(0x38bdf8, 1.5);
-    rimLight.position.set(-3.5, 2.5, -2.5);
+    const fillLight = new THREE.DirectionalLight(0x38bdf8, 1.6);
+    fillLight.position.set(-2.5, 2.0, 2.0);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0x00d2ff, 2.8);
+    rimLight.position.set(0, 3.0, -3.2);
     scene.add(rimLight);
 
-    // Front Soft Fill Light
-    const frontFill = new THREE.DirectionalLight(0xe0f2fe, 0.8);
-    frontFill.position.set(0, 1.5, 3.5);
-    scene.add(frontFill);
+    const spotLight = new THREE.SpotLight(0xfffaed, 3.5, 12, Math.PI / 6, 0.4);
+    spotLight.position.set(0.4, 2.4, 2.2);
+    spotLight.target.position.set(0, 1.45, 0);
+    scene.add(spotLight);
+    scene.add(spotLight.target);
 
-    // Pedestal Upward Cyan Glow
-    const pedestalLight = new THREE.PointLight(0x00d2ff, 1.3, 6);
-    pedestalLight.position.set(0, 0.3, 0.4);
-    scene.add(pedestalLight);
-
-    // 6. Expanded Holographic Pedestal: Broad footprint accommodating spacecraft landing gear
+    // 5. Glowing 3D Pedestal Floor Rings in Three.js
     const pedestalGroup = new THREE.Group();
     pedestalGroup.position.set(0, 0.02, 0);
 
-    // Outer cyan ring (diameter ~2.6m)
-    const ringGeo1 = new THREE.RingGeometry(1.26, 1.32, 64);
+    // Outer cyan dashed ring
+    const ringGeo1 = new THREE.RingGeometry(0.85, 0.89, 64);
     const ringMat1 = new THREE.MeshBasicMaterial({
       color: 0x00d2ff,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.65,
       blending: THREE.AdditiveBlending,
     });
     const ring1 = new THREE.Mesh(ringGeo1, ringMat1);
     ring1.rotation.x = -Math.PI / 2;
     pedestalGroup.add(ring1);
 
-    // Inner amber ring (diameter ~1.9m)
-    const ringGeo2 = new THREE.RingGeometry(0.92, 0.96, 48);
+    // Inner amber neon ring
+    const ringGeo2 = new THREE.RingGeometry(0.62, 0.65, 48);
     const ringMat2 = new THREE.MeshBasicMaterial({
       color: 0xff9e1b,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.75,
       blending: THREE.AdditiveBlending,
     });
     const ring2 = new THREE.Mesh(ringGeo2, ringMat2);
@@ -180,7 +168,7 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
     pedestalGroup.add(ring2);
 
     // Center circular glow disc
-    const discGeo = new THREE.CircleGeometry(0.82, 32);
+    const discGeo = new THREE.CircleGeometry(0.55, 32);
     const discMat = new THREE.MeshBasicMaterial({
       color: 0x00d2ff,
       side: THREE.DoubleSide,
@@ -194,239 +182,196 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
 
     scene.add(pedestalGroup);
 
-    // 7. Atmospheric Floating Space Dust Particles
+    // 6. Gold Visor Specular Sparkle Sprite
+    const glintCanvas = document.createElement('canvas');
+    glintCanvas.width = 64;
+    glintCanvas.height = 64;
+    const gCtx = glintCanvas.getContext('2d');
+    if (gCtx) {
+      const grad = gCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(255, 230, 140, 1)');
+      grad.addColorStop(0.3, 'rgba(255, 170, 40, 0.7)');
+      grad.addColorStop(0.7, 'rgba(0, 210, 255, 0.2)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      gCtx.fillStyle = grad;
+      gCtx.fillRect(0, 0, 64, 64);
+    }
+    const glintTex = new THREE.CanvasTexture(glintCanvas);
+    const glintMat = new THREE.SpriteMaterial({
+      map: glintTex,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.85,
+    });
+    const glintSprite = new THREE.Sprite(glintMat);
+    glintSprite.position.set(0.08, 1.48, 0.45);
+    glintSprite.scale.set(0.24, 0.24, 0.24);
+    scene.add(glintSprite);
+
+    // 7. Floating Dust Motes
     const particleCount = 100;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount * 3; i += 3) {
-      particlePos[i] = (Math.random() - 0.5) * 5.0;
-      particlePos[i + 1] = Math.random() * 3;
-      particlePos[i + 2] = (Math.random() - 0.5) * 4.0;
+      particlePos[i] = (Math.random() - 0.5) * 4;
+      particlePos[i + 1] = Math.random() * 2.8;
+      particlePos[i + 2] = (Math.random() - 0.5) * 3;
     }
     particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
     const particleMat = new THREE.PointsMaterial({
-      color: 0x38bdf8,
+      color: 0xffd27d,
       size: 0.024,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.5,
       blending: THREE.AdditiveBlending,
     });
     const particles = new THREE.Points(particleGeo, particleMat);
     scene.add(particles);
 
-    // 8. GLTF 3D MODEL LOADER WITH PIVOT GROUP & PBR FIXES
-    const modelGroup = new THREE.Group();
-    scene.add(modelGroup);
+    // 8. GLTF Loader Setup
+    const modelContainer = new THREE.Group();
+    scene.add(modelContainer);
+    modelRootRef.current = modelContainer;
 
-    let mixer: THREE.AnimationMixer | null = null;
-    let pivotGroup: THREE.Group | null = null;
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('/draco/');
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
 
-    setIsLoadingModel(true);
-    setLoadError(null);
-    const loader = getSharedGLTFLoader();
-    const currentConfig = SUIT_CONFIGS[activeSuit];
+    // Load active suit model
+    const loadSuitModel = (suitKey: SuitOption) => {
+      setIsLoading(true);
+      while (modelContainer.children.length > 0) {
+        modelContainer.remove(modelContainer.children[0]);
+      }
 
-    // Interactive Drag Orbit & Wheel Zoom Tracking
-    let isDragging = false;
-    let prevMouseX = 0;
-    let manualRotY = currentConfig.rotY;
-    const mousePos = { x: 0, y: 0 };
+      const config = SUIT_OPTIONS.find((s) => s.id === suitKey) || SUIT_OPTIONS[0];
 
-    const setupModel = (root: THREE.Object3D, animations?: THREE.AnimationClip[]) => {
-      // Create dedicated pivot group centered at origin
-      pivotGroup = new THREE.Group();
-      modelGroup.add(pivotGroup);
+      gltfLoader.load(
+        config.modelPath,
+        (gltf) => {
+          const root = gltf.scene;
 
-      // Measure neutral bounding box
-      const box = new THREE.Box3().setFromObject(root);
-      const size = box.getSize(new THREE.Vector3());
+          // Compute bounding box for auto-scaling and pedestal alignment
+          const box = new THREE.Box3().setFromObject(root);
+          const size = box.getSize(new THREE.Vector3());
+          const targetHeight = 1.72;
+          const scale = targetHeight / (size.y || 1);
+          root.scale.setScalar(scale);
 
-      const maxDim = Math.max(size.x, size.y, size.z);
-      // Perfect scale sizing: base reference 1.95m * scaleAdj
-      const targetDim = 1.95 * currentConfig.scaleAdj;
-      const scale = targetDim / (maxDim || 1);
-      root.scale.setScalar(scale);
+          // Center horizontally and rest on the pedestal floor
+          box.setFromObject(root);
+          root.position.x = -(box.min.x + box.max.x) / 2;
+          root.position.z = -(box.min.z + box.max.z) / 2;
+          root.position.y = -box.min.y + 0.04;
 
-      // Re-measure scaled box
-      box.setFromObject(root);
-      const scaledMin = box.min;
-      const scaledCenter = box.getCenter(new THREE.Vector3());
+          // Material enhancement: Visor 24K gold mirror + PBR suit fabric
+          root.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
 
-      // Center root at origin so pivot rotates cleanly around center
-      root.position.x = -scaledCenter.x;
-      root.position.y = -scaledMin.y + currentConfig.yOffset;
-      root.position.z = -scaledCenter.z;
-
-      pivotGroup.add(root);
-      pivotGroup.rotation.y = currentConfig.rotY;
-      manualRotY = currentConfig.rotY;
-
-      // PBR MATERIAL ENHANCEMENTS:
-      root.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          const mesh = child as THREE.Mesh;
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
-
-          const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-          materials.forEach((mat) => {
-            if (!mat) return;
-
-            // FIX: Eradicate transmissionFactor: 1 glass bug
-            if ('transmission' in mat) {
-              (mat as THREE.MeshPhysicalMaterial).transmission = 0;
-              (mat as THREE.MeshPhysicalMaterial).opacity = 1;
-              (mat as THREE.MeshPhysicalMaterial).transparent = false;
+              const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              mats.forEach((mat) => {
+                if (mat && (mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+                  const stdMat = mat as THREE.MeshStandardMaterial;
+                  const nameLower = (stdMat.name || '').toLowerCase();
+                  if (nameLower.includes('visor') || nameLower.includes('glass')) {
+                    stdMat.color.setHex(0xffd700);
+                    stdMat.metalness = 0.98;
+                    stdMat.roughness = 0.05;
+                    stdMat.emissive.setHex(0xb45309);
+                    stdMat.emissiveIntensity = 0.2;
+                  } else {
+                    stdMat.roughness = 0.55;
+                    stdMat.metalness = 0.15;
+                  }
+                }
+              });
             }
-
-            if ('roughness' in mat && 'metalness' in mat) {
-              const pbrMat = mat as THREE.MeshStandardMaterial;
-              const matName = (pbrMat.name || '').toLowerCase();
-
-              // Gold reflective visor and insulation foil
-              if (
-                matName.includes('foil_gold') ||
-                matName.includes('blinn1sg') ||
-                matName.includes('visor') ||
-                matName.includes('gold')
-              ) {
-                pbrMat.metalness = 0.95;
-                pbrMat.roughness = 0.12;
-                pbrMat.envMapIntensity = 2.2;
-              } else if (
-                matName.includes('foil_orange') ||
-                matName.includes('copper') ||
-                matName.includes('bronze')
-              ) {
-                pbrMat.metalness = 0.85;
-                pbrMat.roughness = 0.25;
-                pbrMat.envMapIntensity = 1.8;
-              } else if (
-                matName.includes('aluminum') ||
-                matName.includes('metal') ||
-                matName.includes('shiny_panel') ||
-                matName.includes('antenna')
-              ) {
-                pbrMat.metalness = 0.75;
-                pbrMat.roughness = 0.3;
-                pbrMat.envMapIntensity = 1.5;
-              } else {
-                pbrMat.metalness = 0.08;
-                pbrMat.roughness = 0.7;
-                pbrMat.envMapIntensity = 0.9;
-              }
-            }
-            mat.needsUpdate = true;
           });
+
+          modelContainer.add(root);
+          setIsLoading(false);
+        },
+        undefined,
+        (err) => {
+          console.warn('Failed to load suit GLB, using fallback geometry:', err);
+          setIsLoading(false);
         }
-      });
-
-      // Animation mixer if animations present
-      if (animations && animations.length > 0) {
-        mixer = new THREE.AnimationMixer(root);
-        const action = mixer.clipAction(animations[0]);
-        action.play();
-      }
-
-      setIsLoadingModel(false);
+      );
     };
 
-    loader.load(
-      currentConfig.file,
-      (gltf) => {
-        if (isDisposed) return;
-        setupModel(gltf.scene, gltf.animations);
-      },
-      undefined,
-      (error) => {
-        console.error(`Failed to load ${currentConfig.file}`, error);
-        if (!isDisposed) {
-          setIsLoadingModel(false);
-          setLoadError(`Failed to load 3D model: ${currentConfig.name}`);
-        }
-      }
-    );
+    loadSuitModel(activeSuit);
 
-    const handleMouseDown = (e: MouseEvent) => {
-      isDragging = true;
-      prevMouseX = e.clientX;
+    // 9. Interactive 360° Drag Controls
+    const handlePointerDown = (e: PointerEvent) => {
+      isDraggingRef.current = true;
+      lastXRef.current = e.clientX;
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect();
-      mousePos.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mousePos.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-      if (isDragging && pivotGroup) {
-        const deltaX = e.clientX - prevMouseX;
-        manualRotY += deltaX * 0.012;
-        prevMouseX = e.clientX;
-      }
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDraggingRef.current) return;
+      const deltaX = e.clientX - lastXRef.current;
+      targetRotationYRef.current += deltaX * 0.012;
+      lastXRef.current = e.clientX;
     };
 
-    const handleMouseUp = () => {
-      isDragging = false;
+    const handlePointerUp = () => {
+      isDraggingRef.current = false;
     };
 
-    // Smooth Wheel Zoom within safe bounds [2.8m - 6.2m]
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      zoomDistance += e.deltaY * 0.0025;
-      zoomDistance = THREE.MathUtils.clamp(zoomDistance, 2.8, 6.0);
-    };
+    container.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
 
-    container.addEventListener('mousedown', handleMouseDown);
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
+    // 10. Animation Loop
     let animId: number;
     const clock = new THREE.Clock();
 
-    // 9. Animation Render Loop
     const animate = () => {
       animId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const elapsed = clock.getElapsedTime();
+      const elapsedTime = clock.getElapsedTime();
 
-      if (mixer) {
-        mixer.update(delta);
+      // Smooth horizontal rotation lerp
+      currentRotationYRef.current +=
+        (targetRotationYRef.current - currentRotationYRef.current) * 0.08;
+      if (modelContainer) {
+        modelContainer.rotation.y = currentRotationYRef.current;
+        // Idle breathing oscillation
+        modelContainer.position.y = Math.sin(elapsedTime * 1.8) * 0.005;
       }
 
-      // Slow particle float
-      const pos = particleGeo.attributes.position.array as Float32Array;
+      // Floating dust particles
+      const positions = particleGeo.attributes.position.array as Float32Array;
       for (let i = 1; i < particleCount * 3; i += 3) {
-        pos[i] -= 0.0018;
-        if (pos[i] < 0) pos[i] = 3.0;
+        positions[i] += Math.sin(elapsedTime * 0.5 + positions[i]) * 0.0012;
       }
       particleGeo.attributes.position.needsUpdate = true;
 
-      // Rotate glowing floor pedestal
-      ring1.rotation.z = elapsed * 0.2;
-      ring2.rotation.z = -elapsed * 0.3;
-      const pulse = 0.5 + 0.4 * Math.sin(elapsed * 2.2);
-      discMat.opacity = 0.12 + 0.1 * pulse;
-      ringMat1.opacity = 0.45 + 0.35 * pulse;
-      ringMat2.opacity = 0.55 + 0.35 * pulse;
+      // Pedestal rotation animation
+      ring1.rotation.z = elapsedTime * 0.15;
+      ring2.rotation.z = -elapsedTime * 0.25;
 
-      // Smooth Pivot Rotation: drag orbit + subtle idle sway & mouse parallax
-      if (pivotGroup) {
-        const targetRotY = manualRotY + (isDragging ? 0 : mousePos.x * 0.25);
-        pivotGroup.rotation.y = THREE.MathUtils.lerp(pivotGroup.rotation.y, targetRotY, 0.08);
-        pivotGroup.rotation.x = THREE.MathUtils.lerp(pivotGroup.rotation.x, -mousePos.y * 0.04, 0.08);
-      }
+      // Visor sparkle pulse
+      const pulse = Math.sin(elapsedTime * 2.2) * 0.5 + 0.5;
+      glintSprite.scale.setScalar(0.20 + pulse * 0.10);
+      glintMat.opacity = 0.45 + pulse * 0.45;
 
-      // Smooth Camera Dolly & Zoom Lerp
-      const targetCamPos = isInspectionModeRef.current
-        ? new THREE.Vector3(0, 1.15, 2.5)
-        : new THREE.Vector3(0, 1.05, zoomDistance);
+      // Camera dolly lerp between standard view and inspection zoom
+      const targetY = isInspectionModeRef.current ? 1.35 : 0.95;
+      const targetZ = isInspectionModeRef.current ? 2.35 : 3.4;
+      camera.position.y += (targetY - camera.position.y) * 0.06;
+      camera.position.z += (targetZ - camera.position.z) * 0.06;
+
       const targetLookAt = isInspectionModeRef.current
-        ? new THREE.Vector3(0, 1.0, 0)
-        : new THREE.Vector3(0, 0.72, 0);
-
-      camera.position.lerp(targetCamPos, 0.08);
-      currentLookAt.lerp(targetLookAt, 0.08);
+        ? new THREE.Vector3(0, 1.35, 0)
+        : new THREE.Vector3(0, 0.92, 0);
+      currentLookAt.lerp(targetLookAt, 0.06);
       camera.lookAt(currentLookAt);
+
+      spotLight.intensity = isInspectionModeRef.current ? 4.2 : 3.0;
 
       renderer.render(scene, camera);
     };
@@ -444,223 +389,216 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
     window.addEventListener('resize', handleResize);
 
     return () => {
-      isDisposed = true;
       cancelAnimationFrame(animId);
-      container.removeEventListener('mousedown', handleMouseDown);
-      container.removeEventListener('wheel', handleWheel);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      container.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('resize', handleResize);
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
       }
-      roomEnv.dispose();
-      pmrem.dispose();
       renderer.dispose();
+      dracoLoader.dispose();
     };
-  }, [activeSuit, characterId]);
+  }, [activeSuit]);
 
-  const handleClick = () => {
-    soundFx.playHydroPressureSwoosh();
-    if (onInteract) onInteract();
+  const handleSuitSelect = (suit: SuitOption) => {
+    soundFx.playClick(900);
+    setActiveSuit(suit);
+    if (onSuitChange) onSuitChange(suit);
   };
 
-  const currentConfig = SUIT_CONFIGS[activeSuit];
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // Only trigger inspect modal if user didn't perform a 360° drag
+    if (onInteract) {
+      soundFx.playHydroPressureSwoosh();
+      onInteract();
+    }
+  };
 
   return (
     <div
+      ref={mountRef}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="astronaut-rim-highlight"
       style={{
         width: '100%',
-        maxWidth: '820px',
-        height: isInspectionMode ? 'calc(100vh - 190px)' : '100%',
-        maxHeight: isInspectionMode ? '740px' : '100%',
+        maxWidth: '780px',
+        height: 'calc(100vh - 240px)',
+        maxHeight: '610px',
         position: 'relative',
+        cursor: 'grab',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 14,
         userSelect: 'none',
+        transform: isInspectionMode ? 'scale(1.08)' : 'scale(1.0)',
+        transition: 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
+      title="Drag 360° to Rotate Astronaut • Click to Inspect Gear"
     >
-      {/* 3D Canvas Viewport */}
-      <div
-        ref={mountRef}
-        onClick={handleClick}
-        className="astronaut-rim-highlight"
-        style={{
-          width: '100%',
-          height: '100%',
-          position: 'relative',
-          cursor: 'grab',
-        }}
-        title="Click & Drag to Rotate 360° • Scroll to Zoom • Click to Inspect"
-      />
-
-      {/* Model Loading State */}
-      {isLoadingModel && (
+      {/* Loading Spinner */}
+      {isLoading && (
         <div
           style={{
             position: 'absolute',
-            top: '40%',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(7, 9, 14, 0.85)',
+            border: '1px solid #00d2ff',
+            borderRadius: '12px',
+            padding: '12px 24px',
+            color: '#00d2ff',
+            fontSize: '12px',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 800,
+            letterSpacing: '0.08em',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            background: 'rgba(8, 14, 26, 0.92)',
-            border: '1px solid rgba(56, 189, 248, 0.4)',
-            borderRadius: '8px',
-            padding: '8px 16px',
-            fontFamily: 'var(--font-mono, monospace)',
-            fontSize: '11px',
-            color: '#38bdf8',
-            backdropFilter: 'blur(16px)',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.8)',
+            gap: '10px',
+            boxShadow: '0 0 25px rgba(0, 210, 255, 0.4)',
             zIndex: 30,
+            pointerEvents: 'none',
           }}
         >
-          <span
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#38bdf8',
-              boxShadow: '0 0 10px #38bdf8',
-              animation: 'pulse 1.2s infinite',
-            }}
-          />
-          STREAMING NASA 3D ASSET: {currentConfig.name.split('(')[0]}...
+          <span style={{ animation: 'spin 1.5s linear infinite' }}>⚙</span>
+          <span>CALIBRATING 3D SPACESUIT...</span>
         </div>
       )}
 
-      {/* Model Load Error Fallback */}
-      {loadError && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '40%',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-            borderRadius: '8px',
-            padding: '8px 16px',
-            fontFamily: 'var(--font-mono, monospace)',
-            fontSize: '11px',
-            color: '#f87171',
-            backdropFilter: 'blur(12px)',
-            zIndex: 30,
-          }}
-        >
-          ⚠️ {loadError}
-        </div>
-      )}
-
-      {/* Interactive 3D Model Switcher Bar */}
+      {/* Top Authentic NASA Suit Badge */}
       <div
-        data-ui="true"
         style={{
           position: 'absolute',
-          top: '12px',
+          top: '6px',
+          background: 'rgba(7, 9, 14, 0.88)',
+          border: '1px solid rgba(0, 210, 255, 0.45)',
+          borderRadius: '20px',
+          padding: '5px 16px',
+          fontSize: '10px',
+          fontFamily: 'var(--font-mono)',
+          color: '#38bdf8',
+          letterSpacing: '0.08em',
+          pointerEvents: 'none',
+          backdropFilter: 'blur(8px)',
+          opacity: isHovered || isInspectionMode ? 1 : 0.85,
+          transition: 'opacity 0.2s ease',
           display: 'flex',
           alignItems: 'center',
-          gap: '4px',
-          background: 'var(--color-paper-2)',
-          padding: '6px 8px',
-          zIndex: 25,
-        }}
-      >
-        {(['LM', 'ROVER', 'SATELLITE', 'EMU'] as const).map((suitKey) => {
-          const isActive = activeSuit === suitKey;
-          const config = SUIT_CONFIGS[suitKey];
-          return (
-            <button
-              key={suitKey}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveSuit(suitKey);
-                soundFx.playClick(850);
-              }}
-              style={{
-                padding: '6px 12px',
-                border: 'none',
-                background: isActive ? 'var(--color-accent)' : 'transparent',
-                color: isActive ? 'var(--color-accent-ink)' : 'var(--color-ink-2)',
-                fontSize: '13.5px',
-                fontWeight: 700,
-                fontFamily: 'var(--font-body)',
-                letterSpacing: '0.02em',
-                cursor: 'pointer',
-              }}
-              title={config.name}
-            >
-              {config.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Dynamic Telemetry Status Plaque */}
-      <div
-        data-ui="true"
-        style={{
-          position: 'absolute',
-          bottom: '10px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          background: 'var(--color-paper-2)',
-          padding: '10px 20px',
+          gap: '8px',
+          boxShadow: '0 4px 15px rgba(0, 210, 255, 0.25)',
           zIndex: 20,
         }}
       >
-        <div style={{ textAlign: 'left' }}>
-          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-ink)', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>{currentConfig.badge}</span>
-            <span>{currentConfig.name.split('(')[0].toUpperCase()}</span>
-          </div>
-          <div style={{ fontSize: '13.5px', color: 'var(--color-muted)', fontFamily: 'var(--font-body)', marginTop: '2px' }}>
-            {currentConfig.telemetry}
-          </div>
-        </div>
+        <span style={{ color: '#10b981', animation: 'pulse 1.8s infinite' }}>●</span>
+        <span>
+          {isInspectionMode
+            ? `INSPECTION MODE · ${astronautName.toUpperCase()}`
+            : 'AUTHENTIC NASA EMU SPACESUIT · ARTEMIS FLIGHT GEAR'}
+        </span>
+      </div>
 
-        {onInteract && (
-          <button
-            onClick={handleClick}
+      {/* Bottom Tactical HUD Controls: Drag Hint & Suit Switcher Tabs */}
+      {!isInspectionMode && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px',
+            zIndex: 25,
+            pointerEvents: 'auto',
+          }}
+        >
+          {/* Drag & Inspect Callout */}
+          <div
+            onClick={handleContainerClick}
             style={{
-              background: 'var(--color-accent)',
-              border: 'none',
-              color: 'var(--color-accent-ink)',
-              fontFamily: 'var(--font-body)',
-              fontSize: '13.5px',
-              fontWeight: 700,
-              padding: '8px 16px',
+              background: 'rgba(7, 9, 14, 0.90)',
+              border: '1px solid #ff9e1b',
+              clipPath:
+                'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
+              padding: '6px 20px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 800,
+              color: '#ff9e1b',
+              letterSpacing: '0.08em',
               cursor: 'pointer',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
+              backdropFilter: 'blur(10px)',
+              opacity: isHovered ? 1 : 0.85,
+              transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 0 20px rgba(255, 158, 27, 0.45)',
             }}
           >
-            Inspect
-          </button>
-        )}
-      </div>
+            <span>DRAG 360° TO ROTATE</span>
+            <span style={{ color: '#00d2ff' }}>•</span>
+            <span style={{ color: '#00d2ff' }}>CLICK TO INSPECT GEAR</span>
+            <span style={{ color: '#ff9e1b' }}>▶</span>
+          </div>
 
-      {/* Orbit & Zoom Instruction Tag */}
-      <div
-        data-ui="true"
-        style={{
-          position: 'absolute',
-          bottom: '72px',
-          background: 'var(--color-paper-2)',
-          padding: '4px 14px',
-          fontFamily: 'var(--font-body)',
-          fontSize: '13.5px',
-          color: 'var(--color-muted)',
-          pointerEvents: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-        }}
-      >
-        Drag to rotate 360° · Scroll to zoom · Click to inspect
-      </div>
+          {/* Authentic Spacesuit Model Switcher Pills */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(7, 9, 14, 0.88)',
+              border: '1px solid rgba(0, 210, 255, 0.35)',
+              borderRadius: '24px',
+              padding: '4px 8px',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 18px rgba(0, 0, 0, 0.8)',
+            }}
+          >
+            {SUIT_OPTIONS.map((suit) => {
+              const isSelected = activeSuit === suit.id;
+              return (
+                <button
+                  key={suit.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSuitSelect(suit.id);
+                  }}
+                  style={{
+                    background: isSelected
+                      ? `linear-gradient(135deg, ${suit.color}33, rgba(15, 23, 42, 0.95))`
+                      : 'transparent',
+                    border: isSelected
+                      ? `1px solid ${suit.color}`
+                      : '1px solid transparent',
+                    borderRadius: '16px',
+                    padding: '4px 12px',
+                    color: isSelected ? '#ffffff' : '#94a3b8',
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: isSelected ? 800 : 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isSelected ? `0 0 12px ${suit.color}55` : 'none',
+                  }}
+                  title={suit.subLabel}
+                >
+                  <span>{suit.icon}</span>
+                  <span>{suit.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2,8 +2,8 @@
  * astronautRanks.ts
  * ─────────────────────────────────────────────────────────────────────────────
  * Official NASA-inspired Cadet Rank Hierarchy & Progression System for Jr_AstroCamp.
- * Aligned with NASA Astronaut Candidate (ASCAN) training protocols, Johnson Space
- * Center (JSC) milestones, and Artemis Deep Space Expedition roles.
+ * Divides astronaut qualifications from beginner children (Junior Stargazer)
+ * up to the highest supreme interplanetary post (Supreme Interplanetary Commander).
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -12,7 +12,7 @@ export interface AstronautRank {
   id: string;
   titleEn: string;
   titleBn: string;
-  badgeCode: string;
+  badgeEmoji: string;
   badgeName: string;
   color: string;
   bgGradient: string;
@@ -31,163 +31,163 @@ export const ASTRONAUT_RANKS: AstronautRank[] = [
     level: 1,
     id: 'rank-1-stargazer',
     titleEn: 'Junior Stargazer & Space Scout',
-    titleBn: 'Junior Stargazer & Space Scout (Level 1)',
-    badgeCode: 'STR-01',
-    badgeName: 'Bronze Stargazer Insignia',
+    titleBn: 'জুনিয়র স্টারগেজার ও স্পেস স্কাউট (লেভেল ১)',
+    badgeEmoji: '🔭',
+    badgeName: 'Bronze Stargazer Crest',
     color: '#38bdf8',
     bgGradient: 'linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(2, 132, 199, 0.25))',
     glowColor: 'rgba(56, 189, 248, 0.5)',
     minXp: 0,
-    ageGroup: 'Ages 6–9 (Elementary Cadets)',
-    nasaEquivalent: 'NASA Space Science Explorer / Earth Observer',
-    summary: 'The inaugural gateway into astronautics. Cadets master nocturnal constellations, locate lunar maria, track planetary orbits, and absorb core astrophysics fundamentals.',
+    ageGroup: '৬ – ৯ বছর (শিশুদের প্রাথমিক মহাকাশ যাত্রা)',
+    nasaEquivalent: 'NASA Junior Space Scout / Earth Observer',
+    summary: 'মহাকাশ অভিযানের প্রথম হাতেখড়ি। রাতের আকাশের নক্ষত্রমণ্ডল, চাঁদ ও সৌরজগতের গ্রহগুলোর সাথে পরিচয় এবং প্রাথমিক সায়েন্স জ্ঞান অর্জন।',
     responsibilities: [
-      'Identify principal celestial constellations (Orion, Ursa Major, Cassiopeia)',
-      'Map lunar landmarks including Mare Tranquillitatis and Shackleton Crater',
-      'Complete STEM graphic novel chapters on orbital mechanics basics',
-      'Attend foundational ground school lectures on spaceflight safety'
+      'রাতের আকাশের প্রধান নক্ষত্রমণ্ডল (কালপুরুষ, সপ্তর্ষিমণ্ডল ইত্যাদি) চেনা',
+      'চাঁদের প্রধান গহ্বর ও শান্তিসমুদ্রের (Sea of Tranquility) অবস্থান শনাক্ত করা',
+      'STEM Graphic Novels (সায়েন্স কমিক বই ১-২) পড়ে প্রাথমিক ধারণা নেওয়া',
+      'গ্রাউন্ড স্কুলের বেসিক অডিও-ভিডিও লেকচারে অংশ নেওয়া'
     ],
     unlockedGear: [
-      'Refractor Optical Stargazer Telescope (70mm aperture)',
-      'Lunar Surface Cartography & Ephemeris Star Map',
-      'Cadet Flight Log & Technical Science Journal'
+      '🔭 অপটিক্যাল স্টারগেজার টেলিস্কোপ',
+      '🗺️ লুনার সারফেস ও কন্সটেলেশন স্কাই ম্যাপ',
+      '📓 ক্যাডেট মিশন ফিল্ড নোটবুক'
     ],
-    promotionCriteria: 'Study Curriculum Modules 1–2 and complete one certification quiz to earn 250 XP.'
+    promotionCriteria: 'সায়েন্স কমিক ১-২ পড়া ও যেকোনো ১টি কুইজে অংশ নিয়ে ২৫০ এক্সপি অর্জন।'
   },
   {
     level: 2,
     id: 'rank-2-ascan',
     titleEn: 'ASCAN — Astronaut Candidate',
-    titleBn: 'ASCAN — Astronaut Candidate (Level 2)',
-    badgeCode: 'ASC-02',
+    titleBn: 'এসক্যান — শিক্ষানবিস মহাকাশচারী (লেভেল ২)',
+    badgeEmoji: '🪖',
     badgeName: 'Silver Candidate Wings',
     color: '#a78bfa',
     bgGradient: 'linear-gradient(135deg, rgba(167, 139, 250, 0.25), rgba(124, 58, 237, 0.25))',
     glowColor: 'rgba(167, 139, 250, 0.5)',
     minXp: 250,
-    ageGroup: 'Ages 9–12 (Middle School Cadets)',
-    nasaEquivalent: 'Astronaut Candidate, NASA Johnson Space Center (JSC)',
-    summary: 'Official NASA flight training entrant. Candidates undergo underwater spacewalk trials at the Neutral Buoyancy Lab (NBL), endure centrifuge high-G conditioning, and pass Earth Ground School.',
+    ageGroup: '৯ – ১২ বছর (মিডল স্কুল ক্যাডেট)',
+    nasaEquivalent: 'Houston Astronaut Candidate (Johnson Space Center)',
+    summary: 'নাসার অফিশিয়াল ফ্লাইট ট্রেইনিং প্রার্থী। হিউস্টন পুলে স্কুবা ডাইভিং, সেন্ট্রিফিউজে রকেটের জি-ফোর্স সহ্য করা এবং গ্রাউন্ড একাডেমি পরীক্ষার প্রস্তুতি।',
     responsibilities: [
-      'Log simulated EVA runs in the 6.2-million-gallon Neutral Buoyancy Lab',
-      'Master the Anti-G Straining Maneuver (AGSM) under 4G to 9G acceleration',
-      'Pass desert and arctic analog wilderness survival training trials',
-      'Earn passing scores on the Earth Ground Academy qualifying examination'
+      'Houston NBL স্পেসওয়াক পুলে ডাইভিং (পানির নিচে ৭ ঘণ্টা কাজ = মহাকাশে ১ ঘণ্টা স্পেসওয়াক)',
+      'সেন্ট্রিফিউজ রিগে 4G থেকে 9G পর্যন্ত তীব্র মহাকর্ষীয় টান ও চাপ সহ্য করার অনুশীলন',
+      'মরুভূমি, গুহা ও তুষার অঞ্চলে সারভাইভাল ট্রেনিং সম্পন্ন করা',
+      'Earth Ground Academy কোয়ালিফাইং এক্সামে পাস করে অফিশিয়াল ফ্লাইট পিন অর্জন'
     ],
     unlockedGear: [
-      'LCVG Liquid Cooling & Ventilation Undergarment (91m tubing)',
-      'Communications Carrier Assembly ("Snoopy Cap") dual audio headset',
-      'T-38 Supersonic Jet Flight Avionics Trainer Simulator Key'
+      '❄️ LCVG লিকুইড কুলিং অ্যান্ড ভেন্টিলেশন আন্ডারগার্মেন্ট',
+      '🎧 স্নুপি ক্যাপ ডুয়াল কমিউনিকেশন হেডসেট (CCA)',
+      '✈️ T-38 সুপারসনিক জেট ফ্লাইট সিমুলেটর কোড'
     ],
-    promotionCriteria: 'Score ≥75% on the Earth Ground Academy Qualifying Exam to reach 600 XP.'
+    promotionCriteria: 'Earth Ground Academy এক্সামে পাস করা ও ৬০০ এক্সপি অর্জন।'
   },
   {
     level: 3,
     id: 'rank-3-specialist',
     titleEn: 'Flight Engineer & Mission Specialist',
-    titleBn: 'Flight Engineer & Mission Specialist (Level 3)',
-    badgeCode: 'ENG-03',
+    titleBn: 'ফ্লাইট ইঞ্জিনিয়ার ও মিশন স্পেশালিস্ট (লেভেল ৩)',
+    badgeEmoji: '🛠️',
     badgeName: 'Gold Spacewalk Specialist Wings',
     color: '#10b981',
     bgGradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.25))',
     glowColor: 'rgba(16, 185, 129, 0.5)',
     minXp: 600,
-    ageGroup: 'Ages 12–15 (Junior High / High School)',
+    ageGroup: '১২ – ১৫ বছর (হাইস্কুল ক্যাডেট)',
     nasaEquivalent: 'Active ISS / Lunar Gateway Mission Specialist',
-    summary: 'Fully certified orbital astronaut qualified for open-vacuum extravehicular activities (EVA), robotic arm berthing, and closed-loop environmental life-support engineering.',
+    summary: 'মহাকাশে ভাসমান স্পেস স্টেশনের বাইরে স্পেসওয়াক (EVA) এবং লাইফ সাপোর্ট ইঞ্জিনিয়ারিং পরিচালনাকারী সার্টিফাইড মহাকাশচারী।',
     responsibilities: [
-      'Execute open-space microgravity spacewalks outside orbital habitat modules',
-      'Operate 17-meter Canadarm2 robotic arms to capture visiting resupply crafts',
-      'Manage catalytic Sabatier reactors turning exhaled CO2 into potable water and methane',
-      'Perform rapid depressurization leak mitigation and airlock pressure cycle repairs'
+      'মহাকাশের শূন্যতায় (ভ্যাকুয়াম) সরাসরি স্পেসওয়াক (EVA) পরিচালনা',
+      'রোবোটিক কানাডার্ম আর্ম দিয়ে কার্গো ক্যাপসুল সফলভাবে ক্যাপচার করা',
+      'Sabatier কেমিক্যাল রিঅ্যাক্টরে কার্বন ডাই অক্সাইড ও হাইড্রোজেন থেকে পানি ও মিথেন উৎপাদন',
+      'প্রেসারাইজড স্যুট ও এয়ারলকের প্রেশার ড্রপ ইমার্জেন্সি মেরামত'
     ],
     unlockedGear: [
-      'PLSS Portable Life Support System Backpack (8.5-hr pure O2 capacity)',
-      '14-Layer Thermal Micrometeoroid Garment (TMG) with pure vapor-gold visor',
-      'Phase VI Resistive-Heated Pressurized Gloves & SAFER Emergency Jetpack'
+      '🎒 PLSS পোর্টেবল লাইফ সাপোর্ট ব্যাকপ্যাক (৮.৫ ঘণ্টা অক্সিজেন)',
+      '🛡️ 14-লেয়ার TMG মাইক্রোমেটিওরয়েড শিল্ড ও গোল্ড ভাইজর',
+      '🧤 ফেজ-VI ইলেকট্রিক হিটেড গ্লাভস ও SAFER ইমার্জেন্সি জেটপ্যাক'
     ],
-    promotionCriteria: 'Complete 5 flight simulation modules and reach 1,200 XP.'
+    promotionCriteria: '৫টি ফ্লাইট মডিউল সম্পন্ন করা ও ১,২০০ এক্সপি অর্জন।'
   },
   {
     level: 4,
     id: 'rank-4-navigator',
     titleEn: 'Lunar Surface Navigator & Rover Pilot',
-    titleBn: 'Lunar Surface Navigator & Rover Pilot (Level 4)',
-    badgeCode: 'NAV-04',
-    badgeName: 'Lunar Rover Golden Wheel Insignia',
+    titleBn: 'লুনার সারফেস নেভিগেটর ও রোভার পাইলট (লেভেল ৪)',
+    badgeEmoji: '🚜',
+    badgeName: 'Lunar Rover Golden Wheel Crest',
     color: '#f97316',
     bgGradient: 'linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(194, 65, 12, 0.25))',
     glowColor: 'rgba(249, 115, 22, 0.5)',
     minXp: 1200,
-    ageGroup: 'Ages 14–18 (Senior Flight Academy)',
-    nasaEquivalent: 'NASA Artemis Surface Rover Pilot / Lunar Geologist',
-    summary: 'Specialist pilot navigating rugged terrain around Shackleton Crater at the lunar South Pole. Expert in driving rover chassis across steep 18-degree crater slopes in -250°C permanent shadows.',
+    ageGroup: 'সিনিয়র স্পেস একাডেমি ক্যাডেট',
+    nasaEquivalent: 'Artemis Lunar Surface Rover Pilot',
+    summary: 'চাঁদের দক্ষিণ মেরুর শেকলটন খাদের ধার ঘেঁষে রোভার চালানো এবং মাইনাস ২৫০ ডিগ্রি ঠান্ডায় চির-অন্ধকার খাঁদ থেকে বরফ ও খনিজ উত্তোলক এক্সপার্ট।',
     responsibilities: [
-      'Pilot multi-terrain surface rovers through Permanently Shadowed Regions (PSRs)',
-      'Operate rotary-percussive core drills to extract cryogenic volatile ice samples',
-      'Calculate wheel slip ratios, regolith shear stress, and terramechanics angles',
-      'Conduct ultraviolet and Raman laser spectrometry on excavated sub-surface minerals'
+      'শেকলটন ক্র্যাটারের চির-অন্ধকার খাদে (PSR) রোভার সাবধানে ড্রাইভ করা',
+      'রোটারি পারকাসিভ ড্রিল দিয়ে ৩ মিটার মাটির গভীর থেকে প্রিমিটিভ আইস-কোর স্যাম্পল উত্তোলন',
+      'টাইটানিয়াম মেশ হুইল ও লুনার টেরামেকানিক্স কন্ট্রোল করা',
+      'SHERLOC আল্ট্রাভায়োলেট লেজার দিয়ে খনিজ ও বরফের আণবিক বিশ্লেষণ সম্পন্ন করা'
     ],
     unlockedGear: [
-      'Artemis MK-IV Surface Terrain Vehicle Master Pilot Certification',
-      'SHERLOC Laser Raman Spectrometer & Percussive Core Drill Array',
-      'Indium Knife-Edge Hermetic Vacuum Sample Caching Flasks'
+      '🚜 Artemis MK-IV লুনার সারফেস রোভারের ফুল পাইলট লাইসেন্স',
+      '🔬 Rotary Percussive Deep Ice Core Drill ও SHERLOC স্পেকট্রোমিটার',
+      '🧪 Indium Knife-Edge Hermetic স্যাম্পল রিটার্ন ফ্লাস্ক'
     ],
-    promotionCriteria: 'Extract ice cores on lunar rover surface sorties and earn 2,500 XP.'
+    promotionCriteria: 'রোভার এক্সপ্লোরেশন মিশনে ড্রিলিং করা ও ২,৫০০ এক্সপি অর্জন।'
   },
   {
     level: 5,
     id: 'rank-5-commander',
     titleEn: 'Lunar Outpost Commander',
-    titleBn: 'Lunar Outpost Commander (Level 5)',
-    badgeCode: 'CMD-05',
+    titleBn: 'লুনার আউটপোস্ট কমান্ডার (লেভেল ৫)',
+    badgeEmoji: '👑',
     badgeName: 'Artemis Base Commander Wreath',
     color: '#f59e0b',
     bgGradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.25))',
     glowColor: 'rgba(245, 158, 11, 0.5)',
     minXp: 2500,
-    ageGroup: 'Elite Flight Leaders',
+    ageGroup: 'এলিট মিশন লিডার',
     nasaEquivalent: 'Commander, Artemis Base Camp (South Pole Station)',
-    summary: 'Chief commander of humanity’s first permanent extraterrestrial habitat. Oversees life support, fission power distribution, and survival across the grueling 354-hour lunar night.',
+    summary: 'চাঁদের প্রথম স্থায়ী মানব বসতির প্রধান। ১২টি ক্যাম্পাসের অবকাঠামো পরিচালনা, বিদ্যুৎ উৎপাদন এবং ৩৫৪ ঘণ্টার প্রতিকূল লুনার নাইটে ক্রুদের বাঁচিয়ে রাখার সর্বোচ্চ অভিভাবক।',
     responsibilities: [
-      'Sustain zero-casualty crew safety through 14-day lunar nights and solar storms',
-      'Balance electrical loads across 10 kWe Kilopower fission reactors and solar masts',
-      'Supervise coordinated operations across 12 academy habitats and scientific depots',
-      'Deploy sintered regolith radiation shelters and megawatt energy storage arrays'
+      'চাঁদের টানা ৩৫৪ ঘণ্টার হিমাঙ্কিত রাত ও সোলার স্টর্মে ক্রুদের শূন্য ক্যাজুয়ালটিতে বাঁচিয়ে রাখা',
+      'কিলোপাওয়ার ১০ কিলোওয়াট নিউক্লিয়ার ফিশন রিঅ্যাক্টর ও এনার্জি গ্রিড স্বয়ংক্রিয় ব্যালান্সিং',
+      '১২টি অ্যাকাডেমি ও ডিপো ফ্যাসিলিটির সমন্বিত কার্যক্রম পর্যবেক্ষণ',
+      'রেগোলিথ ৩ডি প্রিন্টিং ও মেগাওয়াট পাওয়ার রেডিয়েশন বাঙ্কার নিয়ন্ত্রণ'
     ],
     unlockedGear: [
-      '12-Station Artemis Surface Base Architectural Master Schematic',
-      'Kilopower 10 kWe Fission Reactor Primary Supervisory Command Access',
-      'Ka-Band Deployable Deep Space Network (DSN) Earth High-Gain Array'
+      '🏛️ ফুল ১২-স্টেশন আর্টেমিস অ্যাকাডেমি মাস্টার ব্লুপ্রিন্ট',
+      '⚛️ Kilopower 10 kWe নিউক্লিয়ার ফিশন প্রাইমারি পাওয়ার কি',
+      '📡 Ka-Band ডিপ স্পেস হাই-গেইন আর্থ কমিউনিকেশনস মাস্ট'
     ],
-    promotionCriteria: 'Survive 30 lunar sols with nominal outpost reserves and reach 4,000 XP.'
+    promotionCriteria: 'চাঁদে ৩০ সল (Sol 30) বেঁচে থাকা ও ৪,০০০ এক্সপি অর্জন।'
   },
   {
     level: 6,
     id: 'rank-6-supreme',
     titleEn: 'Supreme Interplanetary Commander',
-    titleBn: 'Supreme Interplanetary Commander (Level 6)',
-    badgeCode: 'SUP-06',
+    titleBn: 'ডিপ স্পেস পায়োনিয়ার ও সুপ্রিম কমান্ডার (সর্বোচ্চ পদবী - লেভেল ৬)',
+    badgeEmoji: '🌌',
     badgeName: 'Diamond Nebula Grand Cross',
     color: '#e11d48',
     bgGradient: 'linear-gradient(135deg, rgba(225, 29, 72, 0.25), rgba(159, 18, 57, 0.25))',
     glowColor: 'rgba(225, 29, 72, 0.6)',
     minXp: 4000,
-    ageGroup: 'Master of Spaceflight (Supreme Rank)',
+    ageGroup: 'মাস্টার অফ স্পেস এক্সপ্লোরেশন (Supreme Rank)',
     nasaEquivalent: 'Chief of the NASA Astronaut Office / Mars Mission Director',
-    summary: 'The pinnacle rank of the space program. Directs human colonization at Jezero Crater on Mars, commands the fleet of 76 historic and future NASA flights, and mentors the next generation.',
+    summary: 'সমগ্র মহাকাশ অভিযানের অভিভাবক ও সর্বোচ্চ সম্মানিত পদবী। মঙ্গল গ্রহের জেজেরো খাদে আর্টেমিস থেকে এরেস বেস নির্মাণ এবং পরবর্তী প্রজন্মের নতুন মহাকাশচারীদের পথপ্রদর্শক।',
     responsibilities: [
-      'Direct crew landings and base construction at Jezero Crater on Mars',
-      'Exercise master command over 76 historical and deep-space mission campaigns',
-      'Mentor and train incoming cadet classes across global aerospace institutions',
-      'Authorize interplanetary trajectories and interstellar propulsion blueprints'
+      'মঙ্গলে জেজেরো খাদের এরেস আউটপোস্টে ল্যান্ডিং ও হিউম্যান কলোনাইজেশন পরিচালনা',
+      'নাসার ৭৬টি ঐতিহাসিক ও ভবিষ্যত মহাকাশ অভিযানের মাস্টার চিফ হিসেবে কমান্ড দেওয়া',
+      'পরবর্তী প্রজন্মের তরুণ শিশু-কিশোর ও ক্যাডেটদের মেন্টর ও মহাকাশ লিডার হিসেবে গড়ে তোলা',
+      'ডিপ স্পেস ইন্টারপ্ল্যানেটারি ট্র্যাজেক্টরি ও ইন্টারস্টেলার প্রজেক্ট নির্ধারণ'
     ],
     unlockedGear: [
-      'Orion Deep Space Interplanetary Starship Command Flag',
-      'Diamond Nebula Grand Cross & Supreme Spaceflight Medal of Honor',
-      'NASA International Space Apps Hall of Fame Permanent Legend Status'
+      '🚀 Orion Deep Space Interplanetary Starship',
+      '💎 Diamond Nebula Grand Cross & Supreme Space Medal',
+      '🏆 NASA International Space Apps Hall of Fame Permanent Legend Status'
     ],
-    promotionCriteria: 'Maximum Rank Attained. You are now a commanding mentor for the next generation.'
+    promotionCriteria: 'সর্বোচ্চ পদবী অর্জিত! আপনি এখন পরবর্তী প্রজন্মের পথপ্রদর্শক।'
   }
 ];
 

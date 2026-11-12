@@ -21,28 +21,28 @@ const CHARACTER_PHOTOS: Record<SpeakerRole, {
     img: '/cinematic/maya.jpg',
     name: 'Cadet Maya',
     callsign: 'CALLSIGN: ASTRA-01',
-    role: 'Junior Astronaut / EVA Specialist',
+    role: 'Junior Astronaut · EVA Specialist',
     color: '#38bdf8',
     side: 'LEFT',
-    bio: 'BPM 78 / O2 98% / SUIT NOMINAL',
+    bio: 'BPM 78 · O2 98% · SUIT NOMINAL',
   },
   COMMANDER_DADU: {
     img: '/cinematic/commander.jpg',
     name: 'Commander Dadu',
     callsign: 'CALLSIGN: VANGUARD-LEAD',
-    role: 'Veteran Flight Commander / Mission Lead',
+    role: 'Veteran Flight Commander · Mission Lead',
     color: '#10b981',
     side: 'RIGHT',
-    bio: 'BPM 68 / O2 96% / CORE STABLE',
+    bio: 'BPM 68 · O2 96% · CORE STABLE',
   },
   HOUSTON_CAPCOM: {
     img: '/cinematic/capcom.jpg',
-    name: 'CapCom / Houston',
+    name: 'CapCom · Houston',
     callsign: 'JSC FLIGHT CONTROL',
-    role: 'NASA Flight Director / Deep Space Comms',
+    role: 'NASA Flight Director · Deep Space Comms',
     color: '#f59e0b',
     side: 'RIGHT',
-    bio: 'KU-BAND LINK: 296.8 MHz / DELAY 1.3s',
+    bio: 'KU-BAND LINK: 296.8 MHz · DELAY 1.3s',
   },
   SYSTEM_AI: {
     img: '/cinematic/ai.jpg',
@@ -51,7 +51,7 @@ const CHARACTER_PHOTOS: Record<SpeakerRole, {
     role: 'Onboard Autonomous Life Support & Navigation',
     color: '#ef4444',
     side: 'LEFT',
-    bio: 'QUANTUM STATE: OPTIMAL / TELEMETRY 100%',
+    bio: 'QUANTUM STATE: OPTIMAL · TELEMETRY 100%',
   },
 };
 
@@ -62,19 +62,16 @@ const CHARACTER_PHOTOS: Record<SpeakerRole, {
 interface SpaceBackdropProps {
   type: IllustrationType;
   urgency: string;
-  destination?: 'MOON' | 'MARS';
 }
 
-const SpaceBackdrop: React.FC<SpaceBackdropProps> = ({ type, urgency, destination = 'MOON' }) => {
+const SpaceBackdrop: React.FC<SpaceBackdropProps> = ({ type, urgency }) => {
   const isCritical = urgency === 'CRITICAL';
   const isHigh = urgency === 'HIGH';
 
-  // Determine photorealistic image source based on destination and scenario
-  let bgImage = destination === 'MARS' ? '/cinematic/mars_jezero.jpg' : '/cinematic/lunar_shackleton.jpg';
-  if (type === 'SUN_FLARE' || type === 'LUNAR_NIGHT') {
+  // Determine photorealistic image source based on scenario
+  let bgImage = '/cinematic/lunar_shackleton.jpg';
+  if (type === 'SUN_FLARE' || type === 'LUNAR_NIGHT' || type === 'DUST_STORM') {
     bgImage = '/cinematic/gargantua.jpg';
-  } else if (type === 'DUST_STORM' && destination === 'MARS') {
-    bgImage = '/cinematic/mars_jezero.jpg';
   }
 
   return (
@@ -334,7 +331,6 @@ const AstronautCard: React.FC<AstronautCardProps> = ({ role, isTalking, size = 1
 interface CinematicSceneProps {
   panels: ComicPanelData[];
   urgency?: 'INFO' | 'MODERATE' | 'HIGH' | 'CRITICAL';
-  destination?: 'MOON' | 'MARS';
   isTheaterMode?: boolean;
   onToggleTheaterMode?: () => void;
 }
@@ -342,7 +338,6 @@ interface CinematicSceneProps {
 export const CinematicScene: React.FC<CinematicSceneProps> = ({
   panels,
   urgency = 'INFO',
-  destination = 'MOON',
   isTheaterMode = false,
   onToggleTheaterMode,
 }) => {
@@ -477,7 +472,7 @@ export const CinematicScene: React.FC<CinematicSceneProps> = ({
         title={typing ? 'Click to fast-forward text' : undefined}
       >
         {/* Real Space Background */}
-        <SpaceBackdrop type={panel.illustrationType} urgency={urgency} destination={destination} />
+        <SpaceBackdrop type={panel.illustrationType} urgency={urgency} />
 
         {/* Top 2.39:1 Cinematic Letterbox Bar & HUD Telemetry */}
         <div
@@ -522,7 +517,7 @@ export const CinematicScene: React.FC<CinematicSceneProps> = ({
                 ? 'HIGH THREAT TELEMETRY'
                 : urgency === 'MODERATE'
                 ? 'CAUTION: ANOMALY DETECTED'
-                : 'INTERSTELLAR LIVE FEED / NOMINAL'}
+                : 'INTERSTELLAR LIVE FEED · NOMINAL'}
             </span>
           </div>
 
@@ -536,7 +531,7 @@ export const CinematicScene: React.FC<CinematicSceneProps> = ({
                 letterSpacing: '0.08em',
               }}
             >
-              UTC 14:22:09 / LAT 89.9°S / ALT 1840m
+              UTC 14:22:09 · LAT 89.9°S · ALT 1840m
             </span>
 
             {onToggleTheaterMode && (
@@ -652,7 +647,7 @@ export const CinematicScene: React.FC<CinematicSceneProps> = ({
             >
               {meta.name}
             </span>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>/</span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>·</span>
             <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
               {meta.role}
             </span>
@@ -801,7 +796,7 @@ export const CinematicScene: React.FC<CinematicSceneProps> = ({
                 color: '#64748b',
               }}
             >
-              TRANSMISSION {idx + 1} OF {panels.length} / ENCRYPTED CHANNEL
+              TRANSMISSION {idx + 1} OF {panels.length} · ENCRYPTED CHANNEL
             </span>
           </div>
 

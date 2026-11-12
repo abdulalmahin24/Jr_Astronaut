@@ -7,32 +7,6 @@ This document details the NASA open datasets, mission telemetry bounds, historic
 
 ---
 
-## 0. Current Data Integrity Notes
-
-### NASA DONKI space weather
-
-- **Source:** NASA Space Weather Database of Notifications, Knowledge, Information (DONKI), [API documentation](https://api.nasa.gov/) and [DONKI catalog](https://kauai.ccmc.gsfc.nasa.gov/DONKI/).
-- **Endpoints used:** CME, FLR, SEP, and GST.
-- **Runtime labels:** successful API records are labelled **LIVE**; bundled snapshot records are labelled **ARCHIVED** with their fetch timestamp.
-- **Snapshot generation:** `npm run fetch:donki` writes `public/data/donki_snapshot.json`. It reads `NASA_API_KEY` or `VITE_NASA_API_KEY` from the environment and falls back to NASA's public `DEMO_KEY`. Keys must not be committed.
-- **Current snapshot:** empty until a successful fetch. The game then uses an explicitly labelled **GAME SIMULATION** solar-storm scenario rather than implying that missing or fabricated data is real.
-- **Simplification:** approximate travel time is `1 AU / reported CME speed`; the game ignores CME acceleration, direction, width, and solar-wind interactions. Flare class is shown as a rough event-size cue, not a dose forecast. Resource deltas are game values.
-
-### Radiation budget meter
-
-The outpost simulation displays radiation as a **simulated percentage of mission dose budget**, not mSv or mGy. Reaching 100% is a game-over rule, not a medical threshold. NASA dose measurements cited in educational content retain their source units and are not converted into this meter.
-
-### Archived astronaut finding
-
-The debrief's static NASA Twins Study card is labelled **ARCHIVED NASA RESEARCH FINDING** and links to the 2019 *Science* paper, DOI [10.1126/science.aau8650](https://doi.org/10.1126/science.aau8650), and the [NASA OSDR portal](https://osdr.nasa.gov/). It is historical research, not live telemetry or a universal prediction.
-
-### Shackleton Ice Run terrain and sample readings
-
-- **Reference context:** NASA LRO LOLA polar elevation models ([PDS Geosciences Node](https://pds-geosciences.wustl.edu/missions/lro/lola.htm)).
-- **Current implementation:** the prototype's generated relief, slopes, hydrogen signals, ice-likelihood readings, battery use, and water/fuel rewards are all **GAME SIMULATION VALUES**.
-- **Important limitation:** the route is not sampled from a LOLA DEM. The NASA citation provides lunar surface context only; it does not validate the prototype's slope values. Do not describe the current practice terrain as real LOLA slope data.
-- **Storm timer:** a NASA DONKI event may supply the warning-time input, but its displayed short-run countdown is time-compressed game behavior and is labelled accordingly.
-
 ## 1. NASA Mission Catalog & Historical Datasets
 * **Mission Dataset:** 76 historical NASA missions compiled in [`nasa_missions_catalog.csv`](file:///Users/md.mehedihasan/Documents/NASAC-2026/nasa_missions_catalog.csv) and [`nasaMissionCatalog.ts`](file:///Users/md.mehedihasan/Documents/NASAC-2026/src/data/nasaMissionCatalog.ts).
 * **Programs Covered:**

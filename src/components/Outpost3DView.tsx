@@ -245,7 +245,7 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
   const [completedZones, setCompletedZones] = useState<Set<string>>(new Set()); // zones that have been used
   const lastZoneCheckRef = useRef<string | null>(null);
 
-  // ── ASTRONAUT SURFACE EVA TPS EXPLORATION STATE ──
+  // ── PUBG / FREE FIRE TACTICAL TPS STATE ──
   const [isPointerLocked, setIsPointerLocked] = useState(false);
   const [isAiming, setIsAiming] = useState(false);
   const [activeTool, setActiveTool] = useState<'LASER' | 'SCANNER' | 'FLAG'>('LASER');
@@ -257,8 +257,6 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
     { id: 1, text: 'TACTICAL RADAR & EVA SUIT ONLINE', type: 'info' },
     { id: 2, text: 'MINING LASER EQUIPPED [SLOT 1]', type: 'info' }
   ]);
-
-  const [isTouchDevice] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
 
   // Joystick state for touch/drag control
   const joystickRef = useRef<{ active: boolean; dx: number; dy: number }>({ active: false, dx: 0, dy: 0 });
@@ -1573,9 +1571,7 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
       >
         <div style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981' }} />
         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9.5px', color: '#38bdf8', letterSpacing: '0.08em', fontWeight: 700 }}>
-          {mission?.destination === 'MARS'
-            ? 'ASTROCAMP MARS OUTPOST · JEZERO CRATER 18.4°N · ELEV -2500m · EVA SUIT ACTIVE'
-            : 'ARTEMIS BASE CAMP · SHACKLETON RIM 89.9°S · ELEV 1840m · EVA SUIT ACTIVE'}
+          {mission ? `${mission.name.toUpperCase()} · ${mission.destination.toUpperCase()}` : 'SHACKLETON RIM 89.9°S'} · ELEV 1840m · EVA SUIT ACTIVE
         </span>
       </div>
 
@@ -2032,8 +2028,8 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
         </div>
       )}
 
-      {/* 5. Mobile Virtual Joystick & Directional D-Pad (Touch Devices Only) */}
-      {cameraMode === 'TPS_ASTRONAUT' && isTouchDevice && (
+      {/* 5. PUBG Mobile Virtual Joystick & Directional D-Pad (Bottom Left) */}
+      {cameraMode === 'TPS_ASTRONAUT' && (
         <div
           style={{
             position: 'absolute',
@@ -2183,8 +2179,8 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
         </div>
       )}
 
-      {/* 6. Mobile Action Buttons (Touch Devices Only) */}
-      {cameraMode === 'TPS_ASTRONAUT' && isTouchDevice && (
+      {/* 6. PUBG Action Buttons (Bottom Right: JUMP, SPRINT, HEADLAMP, CAMERA ROTATE) */}
+      {cameraMode === 'TPS_ASTRONAUT' && (
         <div
           style={{
             position: 'absolute',
@@ -2531,7 +2527,7 @@ export const Outpost3DView: React.FC<Outpost3DViewProps> = ({
       >
         <div style={{ display: 'flex', gap: '6px' }}>
           {[
-            { id: 'TPS_ASTRONAUT', label: '🧑‍🚀 Astronaut EVA (Third-Person)', desc: 'Explore lunar surface with WASD / Mouse' },
+            { id: 'TPS_ASTRONAUT', label: '🧑‍🚀 Player Mode (PUBG TPS)', desc: 'Move astronaut with WASD / Joystick' },
             { id: 'ROVER', label: '🚜 Drive Rover SEV', desc: 'Drive exploration vehicle with WASD' },
             { id: 'ORBIT', label: '🎬 Cinematic Flyby', desc: 'Sweeping crater establishing view' },
             { id: 'EARTHRISE', label: '🌍 Earthrise Cam', desc: 'Earth hanging over crater ridge' },

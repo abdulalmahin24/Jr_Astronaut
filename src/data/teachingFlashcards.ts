@@ -59,7 +59,7 @@ export const TEACHING_FLASHCARDS: TeachingFlashcard[] = [
     title: 'Lunar Regolith Radiation Attenuation',
     category: 'RADIATION',
     emoji: '🛡️',
-    equationOrFormula: 'I = I₀ × e^(-μ × x)  |  ρ ≈ 1.8 g/cm³  |  x = 200 cm',
+    equationOrFormula: 'I = I₀ · e^(-μ·x)  |  ρ ≈ 1.8 g/cm³  |  x = 200 cm',
     shortSummary: 'Natural lunar soil blocks dangerous galactic cosmic rays and solar storm protons.',
     audioScript: 'The Moon has no thick atmosphere like Earth. But lunar dirt, called regolith, is full of minerals! Two meters of compacted regolith shields astronauts just like a two-foot concrete bomb shelter.',
     ageAdaptations: {
@@ -155,7 +155,7 @@ export const TEACHING_FLASHCARDS: TeachingFlashcard[] = [
     title: 'Europa Subsurface Ocean Hydrothermal Systems',
     category: 'ASTROBIOLOGY',
     emoji: '🧊',
-    equationOrFormula: 'Tidal Flexing: Q = (21/2) × (ρ × n⁵ × R⁷ × e² / μ)',
+    equationOrFormula: 'Tidal Flexing: Q = (21/2) · (ρ · n⁵ · R⁷ · e² / μ)',
     shortSummary: 'Gravitational tidal tugging from Jupiter heats a warm global ocean beneath 20km ice.',
     audioScript: 'How can an ocean stay liquid 500 million miles from the Sun? Jupiter’s immense gravity constantly squeezes and flexes Europa like a rubber ball, creating hydrothermal vents at the ocean floor!',
     ageAdaptations: {

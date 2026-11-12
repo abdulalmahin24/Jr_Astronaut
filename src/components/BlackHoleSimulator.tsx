@@ -490,53 +490,56 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
       <header
         style={{
           height: '56px',
-          background: 'var(--color-paper-2)',
-          borderBottom: 'var(--rule-hair)',
+          background: 'linear-gradient(180deg, rgba(14, 20, 36, 0.98) 0%, rgba(8, 12, 22, 0.92) 100%)',
+          borderBottom: '1px solid rgba(0, 210, 255, 0.35)',
           padding: '0 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          backdropFilter: 'blur(16px)',
           zIndex: 30,
           flexShrink: 0,
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.6)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div
             style={{
-              width: '32px',
-              height: '32px',
-              border: 'var(--rule-hair)',
-              background: 'var(--color-paper-3)',
+              width: '34px',
+              height: '34px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #a855f7, #00d2ff)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: '0 0 16px rgba(0, 210, 255, 0.4)',
             }}
           >
-            <Sparkles size={16} color="var(--color-accent)" />
+            <Sparkles size={18} color="#ffffff" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-accent)', letterSpacing: '0.08em' }}>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 900, color: '#00d2ff', letterSpacing: '0.08em' }}>
                 SPACEENGINE / RELATIVISTIC ASTROPHYSICS LAB
               </span>
               <span
                 style={{
-                  fontSize: '9px',
+                  fontSize: '9.5px',
                   fontFamily: 'var(--font-mono)',
-                  fontWeight: 700,
-                  background: 'var(--color-paper-3)',
-                  border: 'var(--rule-hair)',
-                  color: 'var(--color-accent-amber)',
+                  fontWeight: 800,
+                  background: 'rgba(255, 158, 27, 0.2)',
+                  border: '1px solid #ff9e1b',
+                  color: '#ffb03a',
                   padding: '1px 6px',
-                  letterSpacing: '0.04em',
+                  borderRadius: '3px',
                 }}
               >
                 EINSTEIN LENSING
               </span>
             </div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-ink)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>Kerr Black Hole & Gravitational Ray Deflection</span>
-              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-muted)', fontWeight: 600 }}>
+              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#94a3b8', fontWeight: 600 }}>
                 [ M = {blackHoleMass >= 1e6 ? `${(blackHoleMass / 1e6).toFixed(1)}M M☉` : `${blackHoleMass} M☉`} ]
               </span>
             </div>
@@ -548,10 +551,11 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '2px',
-            background: 'var(--color-paper)',
-            border: 'var(--rule-hair)',
-            padding: '2px',
+            gap: '4px',
+            background: 'rgba(15, 23, 42, 0.85)',
+            border: '1px solid rgba(0, 210, 255, 0.25)',
+            borderRadius: '8px',
+            padding: '3px',
           }}
         >
           {(['TELEMETRY', 'PHYSICS', 'PRESETS'] as const).map((tab) => (
@@ -563,15 +567,15 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
               }}
               style={{
                 padding: '4px 14px',
+                borderRadius: '6px',
                 border: 'none',
-                borderRadius: 0,
-                background: activeTab === tab ? 'var(--color-accent)' : 'transparent',
-                color: activeTab === tab ? 'var(--color-paper)' : 'var(--color-muted)',
+                background: activeTab === tab ? '#00d2ff' : 'transparent',
+                color: activeTab === tab ? '#07090e' : '#cbd5e1',
                 fontSize: '11px',
-                fontWeight: 700,
+                fontWeight: 900,
                 fontFamily: 'var(--font-mono)',
                 cursor: 'pointer',
-                letterSpacing: '0.04em',
+                transition: 'all 0.15s ease',
               }}
             >
               {tab}
@@ -588,17 +592,17 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
             }}
             style={{
               padding: '6px 12px',
-              borderRadius: 0,
-              border: 'var(--rule-hair)',
-              background: showOverlays ? 'var(--color-paper-3)' : 'var(--color-paper)',
-              color: showOverlays ? 'var(--color-accent)' : 'var(--color-muted)',
+              borderRadius: '6px',
+              border: '1px solid rgba(0, 210, 255, 0.3)',
+              background: showOverlays ? 'rgba(0, 210, 255, 0.15)' : 'rgba(15, 23, 42, 0.6)',
+              color: showOverlays ? '#00d2ff' : '#94a3b8',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               fontSize: '11px',
               fontFamily: 'var(--font-mono)',
-              fontWeight: 700,
+              fontWeight: 800,
             }}
             title="Toggle Telemetry HUD Overlays"
           >
@@ -610,10 +614,10 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
             onClick={() => setSoundEnabled((v) => !v)}
             style={{
               padding: '6px 10px',
-              borderRadius: 0,
-              border: 'var(--rule-hair)',
-              background: 'var(--color-paper)',
-              color: soundEnabled ? 'var(--color-accent)' : 'var(--color-muted)',
+              borderRadius: '6px',
+              border: '1px solid rgba(148, 163, 184, 0.25)',
+              background: 'rgba(15, 23, 42, 0.6)',
+              color: soundEnabled ? '#00d2ff' : '#94a3b8',
               cursor: 'pointer',
             }}
             title="Toggle Sound"
@@ -625,17 +629,17 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
             onClick={onClose}
             style={{
               padding: '6px 14px',
-              borderRadius: 0,
-              border: '1px solid var(--color-error)',
-              background: 'var(--color-paper)',
-              color: 'var(--color-error)',
+              borderRadius: '6px',
+              border: '1px solid rgba(239, 68, 68, 0.5)',
+              background: 'rgba(239, 68, 68, 0.18)',
+              color: '#fca5a5',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               fontSize: '11px',
               fontFamily: 'var(--font-mono)',
-              fontWeight: 700,
+              fontWeight: 900,
             }}
           >
             <X size={14} />
@@ -658,75 +662,78 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                 top: '16px',
                 left: '16px',
                 width: '320px',
-                background: 'var(--color-paper-2)',
-                border: 'var(--rule-hair)',
+                background: 'rgba(11, 17, 30, 0.88)',
+                border: '1px solid rgba(0, 210, 255, 0.35)',
+                clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
                 padding: '14px',
+                backdropFilter: 'blur(12px)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)',
                 zIndex: 20,
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 'var(--rule-hair)', paddingBottom: '8px', marginBottom: '10px' }}>
-                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Activity size={14} color="var(--color-accent)" />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 210, 255, 0.25)', paddingBottom: '8px', marginBottom: '10px' }}>
+                <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 900, color: '#00d2ff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Activity size={14} color="#00d2ff" />
                   RELATIVISTIC METRIC TELEMETRY
                 </span>
-                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', background: 'var(--color-paper-3)', color: 'var(--color-accent-green)', border: 'var(--rule-hair)', padding: '1px 5px', fontWeight: 700 }}>
+                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', border: '1px solid #10b981', padding: '1px 5px', borderRadius: '3px', fontWeight: 800 }}>
                   ACTIVE
                 </span>
               </div>
 
               {/* Time Dilation Gauge */}
-              <div style={{ background: 'var(--color-paper)', border: 'var(--rule-hair)', padding: '10px', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-accent-amber)', fontWeight: 700 }}>
+              <div style={{ background: 'rgba(17, 24, 39, 0.9)', border: '1px solid rgba(148, 163, 184, 0.25)', borderRadius: '6px', padding: '10px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#ffb03a', fontWeight: 800 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Clock size={13} />
                     Time Dilation (t'/t):
                   </span>
-                  <span style={{ fontSize: '12px', color: 'var(--color-accent-amber)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ fontSize: '12px', color: '#ff9e1b', fontWeight: 900 }}>
                     {timeDilationRatio.toFixed(3)}
                   </span>
                 </div>
-                <div style={{ width: '100%', height: '4px', background: 'var(--color-paper-3)', overflow: 'hidden', marginTop: '6px' }}>
+                <div style={{ width: '100%', height: '6px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden', marginTop: '6px' }}>
                   <div
                     style={{
                       height: '100%',
                       width: `${Math.min(100, (1.0 - timeDilationRatio) * 100)}%`,
-                      background: 'var(--color-accent-amber)',
+                      background: 'linear-gradient(90deg, #10b981, #ff9e1b, #ef4444)',
                     }}
                   />
                 </div>
-                <div style={{ fontSize: '9.5px', color: 'var(--color-muted)', marginTop: '6px', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ fontSize: '9.5px', color: '#94a3b8', marginTop: '6px', fontFamily: 'var(--font-mono)' }}>
                   {timeDilationRatio < 0.5
-                    ? 'Extreme Spacetime Warp: 1 hr here = years on Earth!'
+                    ? '⚠️ Extreme Spacetime Warp: 1 hr here = years on Earth!'
                     : 'Subtle gravitational redshift at current orbit radius.'}
                 </div>
               </div>
 
               {/* Telemetry Metrics Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '10.5px', fontFamily: 'var(--font-mono)' }}>
-                <div style={{ background: 'var(--color-paper)', border: 'var(--rule-hair)', padding: '6px 8px' }}>
-                  <div style={{ color: 'var(--color-muted)', fontSize: '9px' }}>Schwarzschild (R_s)</div>
-                  <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '4px', padding: '6px 8px' }}>
+                  <div style={{ color: '#94a3b8', fontSize: '9px' }}>Schwarzschild (R_s)</div>
+                  <div style={{ color: '#00d2ff', fontWeight: 900, marginTop: '2px' }}>
                     {schwarzschildRadiusKm > 1e6 ? `${(schwarzschildRadiusKm / 1e6).toFixed(2)}M km` : `${schwarzschildRadiusKm.toFixed(0)} km`}
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--color-paper)', border: 'var(--rule-hair)', padding: '6px 8px' }}>
-                  <div style={{ color: 'var(--color-muted)', fontSize: '9px' }}>Photon Ring (1.5 R_s)</div>
-                  <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '4px', padding: '6px 8px' }}>
+                  <div style={{ color: '#94a3b8', fontSize: '9px' }}>Photon Ring (1.5 R_s)</div>
+                  <div style={{ color: '#00d2ff', fontWeight: 900, marginTop: '2px' }}>
                     {(schwarzschildRadiusKm * 1.5) > 1e6 ? `${((schwarzschildRadiusKm * 1.5) / 1e6).toFixed(2)}M km` : `${(schwarzschildRadiusKm * 1.5).toFixed(0)} km`}
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--color-paper)', border: 'var(--rule-hair)', padding: '6px 8px' }}>
-                  <div style={{ color: 'var(--color-muted)', fontSize: '9px' }}>Kerr Spin (a/M)</div>
-                  <div style={{ color: 'var(--color-accent-2)', fontWeight: 700, marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '4px', padding: '6px 8px' }}>
+                  <div style={{ color: '#94a3b8', fontSize: '9px' }}>Kerr Spin (a/M)</div>
+                  <div style={{ color: '#a855f7', fontWeight: 900, marginTop: '2px' }}>
                     {spinParameter.toFixed(3)} c
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--color-paper)', border: 'var(--rule-hair)', padding: '6px 8px' }}>
-                  <div style={{ color: 'var(--color-muted)', fontSize: '9px' }}>Hawking Temp</div>
-                  <div style={{ color: 'var(--color-ink)', fontWeight: 700, marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '4px', padding: '6px 8px' }}>
+                  <div style={{ color: '#94a3b8', fontSize: '9px' }}>Hawking Temp</div>
+                  <div style={{ color: '#f8fafc', fontWeight: 900, marginTop: '2px' }}>
                     {hawkingTempKelvin.toExponential(2)} K
                   </div>
                 </div>
@@ -740,23 +747,25 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                 bottom: '16px',
                 left: '16px',
                 maxWidth: '340px',
-                background: 'var(--color-paper-2)',
-                border: 'var(--rule-hair)',
+                background: 'rgba(11, 17, 30, 0.88)',
+                border: '1px solid rgba(0, 210, 255, 0.3)',
+                borderRadius: '8px',
                 padding: '12px 14px',
+                backdropFilter: 'blur(12px)',
                 fontSize: '11px',
-                color: 'var(--color-muted)',
+                color: '#cbd5e1',
                 zIndex: 20,
               }}
             >
-              <div style={{ color: 'var(--color-accent)', fontWeight: 700, fontFamily: 'var(--font-mono)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Info size={14} color="var(--color-accent)" />
+              <div style={{ color: '#00d2ff', fontWeight: 900, fontFamily: 'var(--font-mono)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Info size={14} color="#00d2ff" />
                 HOW TO READ THIS 3D SIMULATION:
               </div>
               <ul style={{ margin: 0, paddingLeft: '16px', lineHeight: '1.45', fontSize: '10.5px' }}>
-                <li><strong style={{ color: 'var(--color-ink)' }}>Central Shadow:</strong> The event horizon where spacetime curvature traps light forever.</li>
-                <li><strong style={{ color: 'var(--color-accent-amber)' }}>Warped Accretion Disk:</strong> Gravitational lensing bends light from the rear into upper/lower rings!</li>
-                <li><strong style={{ color: 'var(--color-accent)' }}>Doppler Boosting:</strong> Approaching gas blueshifts and brightens; receding gas redshifts.</li>
-                <li><strong style={{ color: 'var(--color-ink)' }}>Interaction:</strong> Drag with Left Mouse to orbit 360°. Scroll wheel to zoom in/out.</li>
+                <li><strong style={{ color: '#f8fafc' }}>Central Shadow:</strong> The event horizon where spacetime curvature traps light forever.</li>
+                <li><strong style={{ color: '#ffb03a' }}>Warped Accretion Disk:</strong> Gravitational lensing bends light from the rear into upper/lower rings!</li>
+                <li><strong style={{ color: '#00d2ff' }}>Doppler Boosting:</strong> Approaching gas blueshifts and brightens; receding gas redshifts.</li>
+                <li><strong style={{ color: '#f8fafc' }}>Interaction:</strong> Drag with Left Mouse to orbit 360°. Scroll wheel to zoom in/out.</li>
               </ul>
             </div>
 
@@ -767,18 +776,21 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                 top: '16px',
                 right: '16px',
                 width: '310px',
-                background: 'var(--color-paper-2)',
-                border: 'var(--rule-hair)',
+                background: 'rgba(11, 17, 30, 0.92)',
+                border: '1px solid rgba(0, 210, 255, 0.35)',
+                borderRadius: '8px',
                 padding: '16px',
+                backdropFilter: 'blur(14px)',
                 zIndex: 20,
                 maxHeight: 'calc(100vh - 120px)',
                 overflowY: 'auto',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8)',
               }}
             >
               {activeTab === 'PRESETS' ? (
                 <div>
-                  <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-accent)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Zap size={14} color="var(--color-accent)" />
+                  <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 900, color: '#00d2ff', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Zap size={14} color="#00d2ff" />
                     FAMOUS BLACK HOLE PRESETS
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -789,24 +801,25 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                         style={{
                           textAlign: 'left',
                           padding: '10px 12px',
-                          borderRadius: 0,
-                          border: selectedPreset === idx ? '1px solid var(--color-accent)' : 'var(--rule-hair)',
-                          background: selectedPreset === idx ? 'var(--color-paper-3)' : 'var(--color-paper)',
-                          color: 'var(--color-ink)',
+                          borderRadius: '6px',
+                          border: selectedPreset === idx ? '1px solid #00d2ff' : '1px solid rgba(148, 163, 184, 0.25)',
+                          background: selectedPreset === idx ? 'rgba(0, 210, 255, 0.18)' : 'rgba(15, 23, 42, 0.7)',
+                          color: '#f8fafc',
                           cursor: 'pointer',
+                          transition: 'all 0.15s ease',
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-accent)' }}>{p.name}</span>
-                          <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', background: 'var(--color-paper-3)', color: 'var(--color-muted)', padding: '1px 5px', border: 'var(--rule-hair)' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 900, color: '#00d2ff' }}>{p.name}</span>
+                          <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', background: 'rgba(148, 163, 184, 0.2)', color: '#94a3b8', padding: '1px 5px', borderRadius: '3px' }}>
                             {p.type.split(' ')[0]}
                           </span>
                         </div>
-                        <div style={{ fontSize: '10.5px', color: 'var(--color-muted)', lineHeight: '1.35', marginBottom: '4px' }}>
+                        <div style={{ fontSize: '10.5px', color: '#cbd5e1', lineHeight: '1.35', marginBottom: '4px' }}>
                           {p.description}
                         </div>
-                        <div style={{ fontSize: '9.5px', color: 'var(--color-accent-amber)' }}>
-                          {p.funFact}
+                        <div style={{ fontSize: '9.5px', color: '#ffb03a', fontStyle: 'italic' }}>
+                          💡 {p.funFact}
                         </div>
                       </button>
                     ))}
@@ -814,26 +827,26 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                 </div>
               ) : activeTab === 'PHYSICS' ? (
                 <div>
-                  <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-accent)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Compass size={14} color="var(--color-accent)" />
+                  <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 900, color: '#00d2ff', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Compass size={14} color="#00d2ff" />
                     GENERAL RELATIVITY CONCEPTS
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '11px', color: 'var(--color-muted)' }}>
-                    <div style={{ background: 'var(--color-paper)', border: 'var(--rule-hair)', padding: '10px' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--color-accent)', marginBottom: '3px' }}>Einstein Ring</div>
-                      <p style={{ margin: 0, fontSize: '10.5px', color: 'var(--color-muted)', lineHeight: '1.4' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '11px', color: '#cbd5e1' }}>
+                    <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '6px', padding: '10px' }}>
+                      <div style={{ fontWeight: 900, color: '#00d2ff', marginBottom: '3px' }}>Einstein Ring</div>
+                      <p style={{ margin: 0, fontSize: '10.5px', color: '#94a3b8', lineHeight: '1.4' }}>
                         Gravitational deflection bends null geodesics (light paths) around the mass center, producing a circular Einstein ring when aligned with observer.
                       </p>
                     </div>
-                    <div style={{ background: 'var(--color-paper)', border: 'var(--rule-hair)', padding: '10px' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--color-accent-amber)', marginBottom: '3px' }}>ISCO & Accretion Infall</div>
-                      <p style={{ margin: 0, fontSize: '10.5px', color: 'var(--color-muted)', lineHeight: '1.4' }}>
+                    <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '6px', padding: '10px' }}>
+                      <div style={{ fontWeight: 900, color: '#ff9e1b', marginBottom: '3px' }}>ISCO & Accretion Infall</div>
+                      <p style={{ margin: 0, fontSize: '10.5px', color: '#94a3b8', lineHeight: '1.4' }}>
                         The Innermost Stable Circular Orbit defines the boundary where friction heats gas to X-ray temperatures before plunging across the event horizon.
                       </p>
                     </div>
-                    <div style={{ background: 'var(--color-paper)', border: 'var(--rule-hair)', padding: '10px' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--color-accent-2)', marginBottom: '3px' }}>Frame Dragging (Ergosphere)</div>
-                      <p style={{ margin: 0, fontSize: '10.5px', color: 'var(--color-muted)', lineHeight: '1.4' }}>
+                    <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid rgba(148, 163, 184, 0.2)', borderRadius: '6px', padding: '10px' }}>
+                      <div style={{ fontWeight: 900, color: '#a855f7', marginBottom: '3px' }}>Frame Dragging (Ergosphere)</div>
+                      <p style={{ margin: 0, fontSize: '10.5px', color: '#94a3b8', lineHeight: '1.4' }}>
                         Rotating Kerr black holes drag spacetime itself in the direction of spin (Lense-Thirring effect), powering relativistic plasma jets.
                       </p>
                     </div>
@@ -843,7 +856,7 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                 /* SIMULATION TUNERS */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-accent)' }}>
+                    <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 900, color: '#00d2ff' }}>
                       SIMULATION TUNERS
                     </span>
                     <button
@@ -858,7 +871,7 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: 'var(--color-muted)',
+                        color: '#94a3b8',
                         fontSize: '10px',
                         cursor: 'pointer',
                         display: 'flex',
@@ -873,8 +886,8 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                   {/* Lensing Strength Slider */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--color-muted)' }}>Gravitational Lensing:</span>
-                      <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{lensingStrength.toFixed(2)}x</span>
+                      <span style={{ color: '#cbd5e1' }}>Gravitational Lensing:</span>
+                      <span style={{ color: '#00d2ff', fontWeight: 900 }}>{lensingStrength.toFixed(2)}x</span>
                     </div>
                     <input
                       type="range"
@@ -883,15 +896,15 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                       step="0.05"
                       value={lensingStrength}
                       onChange={(e) => setLensingStrength(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: 'var(--color-accent)', cursor: 'pointer' }}
+                      style={{ width: '100%', accentColor: '#00d2ff', cursor: 'pointer' }}
                     />
                   </div>
 
                   {/* Accretion Disk Brightness */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--color-muted)' }}>Accretion Disk Flux:</span>
-                      <span style={{ color: 'var(--color-accent-amber)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{diskBrightness.toFixed(2)}x</span>
+                      <span style={{ color: '#cbd5e1' }}>Accretion Disk Flux:</span>
+                      <span style={{ color: '#ff9e1b', fontWeight: 900 }}>{diskBrightness.toFixed(2)}x</span>
                     </div>
                     <input
                       type="range"
@@ -900,15 +913,15 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                       step="0.05"
                       value={diskBrightness}
                       onChange={(e) => setDiskBrightness(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: 'var(--color-accent-amber)', cursor: 'pointer' }}
+                      style={{ width: '100%', accentColor: '#ff9e1b', cursor: 'pointer' }}
                     />
                   </div>
 
                   {/* Observer Distance */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--color-muted)' }}>Observer Orbit Distance:</span>
-                      <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{(cameraDistance / 2.2).toFixed(1)} R_s</span>
+                      <span style={{ color: '#cbd5e1' }}>Observer Orbit Distance:</span>
+                      <span style={{ color: '#00d2ff', fontWeight: 900 }}>{(cameraDistance / 2.2).toFixed(1)} R_s</span>
                     </div>
                     <input
                       type="range"
@@ -917,15 +930,15 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                       step="0.5"
                       value={cameraDistance}
                       onChange={(e) => setCameraDistance(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: 'var(--color-accent)', cursor: 'pointer' }}
+                      style={{ width: '100%', accentColor: '#00d2ff', cursor: 'pointer' }}
                     />
                   </div>
 
                   {/* Kerr Spin */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--color-muted)' }}>Kerr Spin Parameter (a):</span>
-                      <span style={{ color: 'var(--color-accent-2)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{spinParameter.toFixed(3)}</span>
+                      <span style={{ color: '#cbd5e1' }}>Kerr Spin Parameter (a):</span>
+                      <span style={{ color: '#a855f7', fontWeight: 900 }}>{spinParameter.toFixed(3)}</span>
                     </div>
                     <input
                       type="range"
@@ -934,15 +947,15 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                       step="0.005"
                       value={spinParameter}
                       onChange={(e) => setSpinParameter(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: 'var(--color-accent-2)', cursor: 'pointer' }}
+                      style={{ width: '100%', accentColor: '#a855f7', cursor: 'pointer' }}
                     />
                   </div>
 
                   {/* Auto Orbit Velocity */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'var(--font-mono)', marginBottom: '4px' }}>
-                      <span style={{ color: 'var(--color-muted)' }}>Auto Orbit Speed:</span>
-                      <span style={{ color: 'var(--color-muted)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{orbitSpeed.toFixed(2)} rad/s</span>
+                      <span style={{ color: '#cbd5e1' }}>Auto Orbit Speed:</span>
+                      <span style={{ color: '#94a3b8', fontWeight: 900 }}>{orbitSpeed.toFixed(2)} rad/s</span>
                     </div>
                     <input
                       type="range"
@@ -951,7 +964,7 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
                       step="0.05"
                       value={orbitSpeed}
                       onChange={(e) => setOrbitSpeed(parseFloat(e.target.value))}
-                      style={{ width: '100%', accentColor: 'var(--color-accent)', cursor: 'pointer' }}
+                      style={{ width: '100%', accentColor: '#00d2ff', cursor: 'pointer' }}
                     />
                   </div>
                 </div>
@@ -965,26 +978,26 @@ export const BlackHoleSimulator: React.FC<BlackHoleSimulatorProps> = ({ isOpen, 
       <footer
         style={{
           height: '36px',
-          background: 'var(--color-paper-2)',
-          borderTop: 'var(--rule-hair)',
+          background: '#07090e',
+          borderTop: '1px solid rgba(0, 210, 255, 0.25)',
           padding: '0 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           fontSize: '10.5px',
           fontFamily: 'var(--font-mono)',
-          color: 'var(--color-muted)',
+          color: '#94a3b8',
           flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ width: '6px', height: '6px', background: 'var(--color-accent-green)', display: 'inline-block' }} />
-          <span style={{ color: 'var(--color-accent-green)', fontWeight: 700 }}>EINSTEIN RELATIVISTIC RENDERER: 60 FPS NOMINAL</span>
-          <span style={{ color: 'var(--rule-subtle)' }}>/</span>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
+          <span style={{ color: '#10b981', fontWeight: 800 }}>EINSTEIN RELATIVISTIC RENDERER: 60 FPS NOMINAL</span>
+          <span>·</span>
           <span>KERR-SCHWARZSCHILD PHOTON DEFLECTION GEOMETRY</span>
         </div>
         <div>
-          <span>NASA ADS / EVENT HORIZON TELESCOPE (EHT) CALIBRATION</span>
+          <span>NASA ADS & EVENT HORIZON TELESCOPE (EHT) CALIBRATION</span>
         </div>
       </footer>
     </div>

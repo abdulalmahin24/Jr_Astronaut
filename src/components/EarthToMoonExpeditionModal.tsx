@@ -26,7 +26,6 @@ import {
   Layers,
   ChevronRight,
   Radio,
-  Play,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { spaceMusicEngine } from '../utils/spaceMusicEngine';
@@ -1918,8 +1917,8 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
       <header
         style={{
           padding: '8px 20px',
-          background: 'var(--color-paper-2)',
-          borderBottom: '1px solid var(--rule-subtle)',
+          background: 'rgba(11, 19, 43, 0.98)',
+          borderBottom: '1px solid rgba(56, 189, 248, 0.3)',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
@@ -1932,46 +1931,44 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
               style={{
                 width: '36px',
                 height: '36px',
-                borderRadius: 0,
-                background: 'var(--color-paper-3)',
-                border: '1px solid var(--rule-subtle)',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #ea580c, #dc2626)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                boxShadow: '0 0 16px rgba(234, 88, 12, 0.6)',
               }}
             >
-              <Rocket size={18} style={{ color: 'var(--color-accent)' }} />
+              <Rocket size={20} className="text-white" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-ink)', letterSpacing: '0.04em', fontFamily: 'var(--font-space)' }}>
+                <span style={{ fontSize: '15px', fontWeight: 900, color: '#f8fafc', letterSpacing: '0.06em', fontFamily: 'var(--font-space)' }}>
                   {currentProfile.title.toUpperCase()}
                 </span>
                 <span
                   style={{
-                    fontSize: '9px',
-                    fontWeight: 700,
+                    fontSize: '9.5px',
+                    fontWeight: 800,
                     padding: '2px 8px',
-                    borderRadius: 0,
-                    background: 'var(--color-paper-3)',
-                    border: '1px solid var(--rule-subtle)',
-                    color: 'var(--color-accent)',
+                    borderRadius: '4px',
+                    background: 'rgba(239, 68, 68, 0.2)',
+                    border: '1px solid rgba(239, 68, 68, 0.5)',
+                    color: '#f87171',
                     fontFamily: 'var(--font-mono)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
                   }}
                 >
-                  {currentProfile.badge}
+                  🔒 {currentProfile.badge}
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--color-ink-faint)', fontFamily: 'var(--font-mono)' }}>
-                {currentProfile.craft} / <span style={{ color: 'var(--color-accent-2)' }}>{currentProfile.destination}</span> / {currentProfile.crew}
+              <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+                {currentProfile.craft} · <span style={{ color: '#38bdf8' }}>{currentProfile.destination}</span> · {currentProfile.crew}
               </div>
             </div>
           </div>
 
           {/* Right Action Icons: Video, Trajectory toggle, Music, Voice, Sound, Close */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {currentProfile.youtubeId && (
               <button
                 onClick={() => {
@@ -1980,23 +1977,22 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
                 }}
                 style={{
                   padding: '6px 12px',
-                  borderRadius: 0,
-                  background: 'var(--color-paper-3)',
-                  border: '1px solid var(--rule-subtle)',
-                  color: 'var(--color-accent)',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(220, 38, 38, 0.38))',
+                  border: '1px solid rgba(239, 68, 68, 0.6)',
+                  color: '#fca5a5',
                   cursor: 'pointer',
                   fontSize: '11px',
-                  fontWeight: 700,
+                  fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   fontFamily: 'var(--font-mono)',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
+                  boxShadow: '0 0 14px rgba(239, 68, 68, 0.35)',
                 }}
                 title="Watch Official YouTube Flight Profile: Space & Back in 10 Minutes"
               >
-                <Play size={12} />
+                <span style={{ fontSize: '13px' }}>▶️</span>
                 <span>FLIGHT VIDEO (10 MIN)</span>
               </button>
             )}
@@ -2008,19 +2004,17 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
               }}
               style={{
                 padding: '6px 11px',
-                borderRadius: 0,
-                background: showTrajectoryPlan ? 'var(--color-paper-3)' : 'transparent',
-                border: showTrajectoryPlan ? '1px solid var(--color-accent)' : '1px solid var(--rule-subtle)',
-                color: showTrajectoryPlan ? 'var(--color-accent)' : 'var(--color-ink-muted)',
+                borderRadius: '6px',
+                background: showTrajectoryPlan ? 'rgba(245, 158, 11, 0.25)' : 'rgba(30, 41, 59, 0.8)',
+                border: '1px solid rgba(245, 158, 11, 0.5)',
+                color: showTrajectoryPlan ? '#fbbf24' : '#94a3b8',
                 cursor: 'pointer',
                 fontSize: '11px',
-                fontWeight: 700,
+                fontWeight: 800,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
                 fontFamily: 'var(--font-mono)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
               }}
               title="Toggle Authentic Orbital Flight Trajectory Planner"
             >
@@ -2032,18 +2026,16 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
               onClick={toggleMusic}
               style={{
                 padding: '6px 10px',
-                borderRadius: 0,
-                background: musicActive ? 'var(--color-paper-3)' : 'transparent',
-                border: musicActive ? '1px solid var(--color-accent)' : '1px solid var(--rule-subtle)',
-                color: musicActive ? 'var(--color-accent)' : 'var(--color-ink-muted)',
+                borderRadius: '6px',
+                background: musicActive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                color: musicActive ? '#38bdf8' : '#94a3b8',
                 cursor: 'pointer',
                 fontSize: '11px',
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontFamily: 'var(--font-mono)',
-                textTransform: 'uppercase',
               }}
               title="Toggle Background Space Music"
             >
@@ -2058,18 +2050,16 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
               }}
               style={{
                 padding: '6px 10px',
-                borderRadius: 0,
-                background: voiceEnabled ? 'var(--color-paper-3)' : 'transparent',
-                border: voiceEnabled ? '1px solid var(--color-accent-green)' : '1px solid var(--rule-subtle)',
-                color: voiceEnabled ? 'var(--color-accent-green)' : 'var(--color-ink-muted)',
+                borderRadius: '6px',
+                background: voiceEnabled ? 'rgba(16, 185, 129, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: voiceEnabled ? '#34d399' : '#94a3b8',
                 cursor: 'pointer',
                 fontSize: '11px',
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontFamily: 'var(--font-mono)',
-                textTransform: 'uppercase',
               }}
               title="Toggle Houston Capcom Radio Voice"
             >
@@ -2086,14 +2076,13 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
               }}
               style={{
                 padding: '6px 10px',
-                borderRadius: 0,
-                background: soundEnabled ? 'var(--color-paper-3)' : 'transparent',
-                border: soundEnabled ? '1px solid var(--color-accent-2)' : '1px solid var(--rule-subtle)',
-                color: soundEnabled ? 'var(--color-accent-2)' : 'var(--color-ink-muted)',
+                borderRadius: '6px',
+                background: soundEnabled ? 'rgba(59, 130, 246, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                color: soundEnabled ? '#60a5fa' : '#94a3b8',
                 cursor: 'pointer',
                 fontSize: '11px',
                 fontWeight: 700,
-                fontFamily: 'var(--font-mono)',
               }}
               title="Toggle Rocket Audio Effects"
             >
@@ -2102,30 +2091,29 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
 
             <button
               onClick={onClose}
-              aria-label="Close"
               style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: 0,
-                border: '1px solid var(--rule-subtle)',
-                background: 'transparent',
-                color: 'var(--color-ink-muted)',
+                width: '32px',
+                height: '32px',
+                borderRadius: '6px',
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                background: 'rgba(30, 41, 59, 0.8)',
+                color: '#f8fafc',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <X size={15} />
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        {/* ── ADVANCED ASTRONAUT MISSIONS SELECTOR BAR ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--rule-subtle)', paddingTop: '6px', flexWrap: 'wrap', gap: '8px' }}>
+        {/* ── ADVANCED ASTRONAUT MISSIONS SELECTOR BAR (6 ICONIC DEEP SPACE EXPEDITIONS) ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '6px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto' }}>
-            <span style={{ fontSize: '10px', color: 'var(--color-accent)', fontFamily: 'var(--font-mono)', fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              PROFILE:
+            <span style={{ fontSize: '10px', color: '#f59e0b', fontFamily: 'var(--font-mono)', fontWeight: 800, whiteSpace: 'nowrap' }}>
+              🎖️ SELECT FLIGHT:
             </span>
             {ADVANCED_PROFILES.map((prof) => {
               const isSelected = prof.id === selectedProfileId;

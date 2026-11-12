@@ -5,7 +5,6 @@
 
 export type ActionCategory = 
   | 'MISSION_COMPLETED' 
-  | 'MISSION_ATTEMPTED'
   | 'SOL_SURVIVED' 
   | 'EXAM_PASSED' 
   | 'EQUIPMENT_PURCHASED' 
@@ -29,7 +28,7 @@ export interface StudentActivityLog {
   durationFormatted?: string; // e.g., "04m 18s"
   scoreXp: number; // e.g., +180 XP
   coinsEarned: number; // e.g., +250 Coins
-  outcomeStatus: 'SUCCESS' | 'EXCELLENT' | 'NOMINAL' | 'LEARNING' | 'PURCHASED' | 'UNLOCKED';
+  outcomeStatus: 'SUCCESS' | 'EXCELLENT' | 'NOMINAL' | 'PURCHASED' | 'UNLOCKED';
   notes?: string;
 }
 
@@ -243,7 +242,7 @@ export const studentActivityService = {
     durationSeconds?: number;
     scoreXp?: number;
     coinsEarned?: number;
-    outcomeStatus?: 'SUCCESS' | 'EXCELLENT' | 'NOMINAL' | 'LEARNING' | 'PURCHASED' | 'UNLOCKED';
+    outcomeStatus?: 'SUCCESS' | 'EXCELLENT' | 'NOMINAL' | 'PURCHASED' | 'UNLOCKED';
     notes?: string;
   }): StudentActivityLog {
     const ts = Date.now();
@@ -265,8 +264,8 @@ export const studentActivityService = {
       destination: data.destination || 'MOON',
       durationSeconds: data.durationSeconds || 0,
       durationFormatted: data.durationSeconds ? formatDuration(data.durationSeconds) : 'Instant',
-      scoreXp: data.scoreXp ?? 100,
-      coinsEarned: data.coinsEarned ?? 150,
+      scoreXp: data.scoreXp || 100,
+      coinsEarned: data.coinsEarned || 150,
       outcomeStatus: data.outcomeStatus || 'SUCCESS',
       notes: data.notes,
     };

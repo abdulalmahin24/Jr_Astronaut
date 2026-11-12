@@ -6,7 +6,7 @@ export interface ResourceState {
   water: number;      // 0 - 100 (%) or Liters
   oxygen: number;     // 0 - 100 (%)
   food: number;       // Sols of rations remaining
-  radiation: number;  // Simulated percentage of mission dose budget (0-100+%)
+  radiation: number;  // Cumulative mSv exposure (0 = safe, 100+ = danger)
   science: number;    // Accumulated Research Points (Goal: 300)
   crewHealth: number; // 0 - 100 (%)
 }
@@ -79,13 +79,6 @@ export interface MissionEvent {
   title: string;
   urgency: 'INFO' | 'MODERATE' | 'HIGH' | 'CRITICAL';
   weatherNotice?: string;
-  dataAttribution?: {
-    label: 'LIVE' | 'ARCHIVED' | 'GAME SIMULATION';
-    recordId?: string;
-    sourceUrl?: string;
-    fetchedAt?: string;
-    error?: string;
-  };
   nasaCitation: {
     title: string;
     docNumber: string;
@@ -164,3 +157,4 @@ export interface GameState {
   solarOutputKw?: number;
   isLunarNight?: boolean;
 }
+

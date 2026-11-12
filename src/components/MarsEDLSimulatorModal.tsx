@@ -414,11 +414,11 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
         position: 'relative',
         width: '100%',
         maxWidth: '1200px',
-        height: '92dvh',
-        backgroundColor: 'var(--color-paper)',
-        borderRadius: 0,
-        border: '1px solid var(--rule-light)',
-        boxShadow: '0 24px 48px rgba(0, 0, 0, 0.8)',
+        height: '92vh',
+        backgroundColor: '#090d16',
+        borderRadius: '20px',
+        border: '1px solid rgba(239, 68, 68, 0.45)',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.9), 0 0 40px rgba(239, 68, 68, 0.25)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -429,49 +429,47 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '14px 24px',
-          borderBottom: '1px solid var(--rule-subtle)',
-          background: 'var(--color-paper-2)',
+          borderBottom: '1px solid rgba(239, 68, 68, 0.3)',
+          background: 'linear-gradient(90deg, rgba(24, 10, 8, 0.95), rgba(15, 23, 42, 0.95))',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: 0,
-              background: 'var(--color-paper-3)',
-              border: '1px solid var(--rule-subtle)',
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #ea580c, #ef4444)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: '0 0 18px rgba(239, 68, 68, 0.5)',
             }}>
-              <Flame size={18} style={{ color: 'var(--color-nasa-red)' }} />
+              <Flame size={24} color="#ffffff" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-ink)', margin: 0, letterSpacing: '-0.01em' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
                   NASA Mars 2020: 7 Minutes of Terror (EDL)
                 </h2>
                 <span style={{
                   padding: '2px 8px',
-                  borderRadius: 0,
-                  background: 'var(--color-paper-3)',
-                  border: '1px solid var(--rule-subtle)',
-                  color: 'var(--color-accent)',
-                  fontSize: '10px',
+                  borderRadius: '9999px',
+                  background: 'rgba(239, 68, 68, 0.25)',
+                  border: '1px solid rgba(239, 68, 68, 0.5)',
+                  color: '#f87171',
+                  fontSize: '11px',
                   fontWeight: 700,
                   fontFamily: 'var(--font-mono)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
                 }}>
                   {stage} PHASE
                 </span>
               </div>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-ink-faint)', fontFamily: 'var(--font-mono)' }}>
-                Perseverance Entry, Descent &amp; Landing Interactive Engineering Simulator
+              <p style={{ margin: 0, fontSize: '0.78rem', color: '#cbd5e1' }}>
+                Official NASA Perseverance Entry, Descent &amp; Landing (EDL) Interactive Simulator
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               onClick={resetSimulation}
               style={{
@@ -479,39 +477,32 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
                 alignItems: 'center',
                 gap: '6px',
                 padding: '7px 14px',
-                borderRadius: 0,
-                background: 'var(--color-paper-3)',
-                border: '1px solid var(--rule-subtle)',
-                color: 'var(--color-ink)',
+                borderRadius: '8px',
+                background: 'rgba(30, 41, 59, 0.8)',
+                border: '1px solid rgba(148, 163, 184, 0.3)',
+                color: '#e2e8f0',
                 cursor: 'pointer',
                 fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
+                fontSize: '12px',
               }}
               title="Restart EDL Sequence from Atmospheric Entry"
             >
-              <RotateCcw size={13} />
+              <RotateCcw size={14} />
               <span>Restart Entry</span>
             </button>
 
             <button
               onClick={() => { onClose(); soundFx.playClick(500); }}
-              aria-label="Close"
               style={{
-                background: 'transparent',
-                border: '1px solid var(--rule-subtle)',
-                borderRadius: 0,
-                padding: '6px',
-                color: 'var(--color-ink-muted)',
+                background: 'rgba(30, 41, 59, 0.6)',
+                border: '1px solid rgba(148, 163, 184, 0.2)',
+                borderRadius: '8px',
+                padding: '8px',
+                color: '#94a3b8',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           </div>
         </div>
@@ -525,41 +516,42 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
             position: 'absolute',
             top: '16px',
             left: '16px',
-            background: 'var(--color-paper-2)',
-            border: '1px solid var(--rule-subtle)',
-            borderRadius: 0,
+            background: 'rgba(9, 14, 26, 0.9)',
+            border: '1px solid rgba(239, 68, 68, 0.45)',
+            borderRadius: '12px',
             padding: '14px 18px',
+            backdropFilter: 'blur(12px)',
             display: 'flex',
             flexDirection: 'column',
             gap: '8px',
             fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
+            fontSize: '12px',
             minWidth: '240px',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.8)',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
               <span>ALTITUDE:</span>
-              <strong style={{ color: 'var(--color-accent-2)', fontVariantNumeric: 'tabular-nums' }}>{altitudeKm} km</strong>
+              <strong style={{ color: '#38bdf8', fontSize: '13px' }}>{altitudeKm} km</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
               <span>ENTRY VELOCITY:</span>
-              <strong style={{ color: 'var(--color-accent)', fontVariantNumeric: 'tabular-nums' }}>{velocityKms} km/s</strong>
+              <strong style={{ color: '#f59e0b' }}>{velocityKms} km/s</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
               <span>DESCENT RATE:</span>
-              <strong style={{ color: descentRateMs > 3.5 ? 'var(--color-error)' : 'var(--color-accent-green)', fontVariantNumeric: 'tabular-nums' }}>{descentRateMs} m/s</strong>
+              <strong style={{ color: descentRateMs > 3.5 ? '#f87171' : '#34d399' }}>{descentRateMs} m/s</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
               <span>HEAT SHIELD TEMP:</span>
-              <strong style={{ color: 'var(--color-error)', fontVariantNumeric: 'tabular-nums' }}>{heatShieldTempC}°C</strong>
+              <strong style={{ color: '#ef4444' }}>{heatShieldTempC}°C</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
               <span>TRN TERRAIN SAFETY:</span>
-              <strong style={{ color: 'var(--color-accent-green)', fontVariantNumeric: 'tabular-nums' }}>{trnSafeRating}% HAZARD-FREE</strong>
+              <strong style={{ color: '#34d399' }}>{trnSafeRating}% HAZARD-FREE</strong>
             </div>
           </div>
 
-          {/* Action Trigger Button Top Right */}
+          {/* Action Trigger Button Top Right (Makes it 100% interactive!) */}
           <div style={{
             position: 'absolute',
             top: '16px',
@@ -572,20 +564,19 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
               <button
                 onClick={triggerNextStageAction}
                 style={{
-                  padding: '10px 18px',
-                  borderRadius: 0,
-                  background: 'var(--color-accent)',
-                  border: '1px solid var(--color-accent)',
-                  color: '#000000',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
+                  padding: '12px 20px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                  border: '1px solid #fdba74',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
                   fontFamily: 'var(--font-mono)',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
                   cursor: 'pointer',
+                  boxShadow: '0 0 25px rgba(249, 115, 22, 0.5)',
                 }}
               >
-                Deploy Supersonic Parachute [SPACE]
+                🪂 DEPLOY SUPERSONIC CHUTE (SPACE)
               </button>
             )}
 
@@ -593,20 +584,19 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
               <button
                 onClick={triggerNextStageAction}
                 style={{
-                  padding: '10px 18px',
-                  borderRadius: 0,
-                  background: 'var(--color-accent)',
-                  border: '1px solid var(--color-accent)',
-                  color: '#000000',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
+                  padding: '12px 20px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                  border: '1px solid #7dd3fc',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
                   fontFamily: 'var(--font-mono)',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
                   cursor: 'pointer',
+                  boxShadow: '0 0 25px rgba(2, 132, 199, 0.5)',
                 }}
               >
-                Jettison Heat Shield &amp; Activate TRN [SPACE]
+                🛡️ JETTISON HEAT SHIELD &amp; ACTIVATE TRN
               </button>
             )}
 
@@ -614,20 +604,19 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
               <button
                 onClick={triggerNextStageAction}
                 style={{
-                  padding: '10px 18px',
-                  borderRadius: 0,
-                  background: 'var(--color-accent)',
-                  border: '1px solid var(--color-accent)',
-                  color: '#000000',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
+                  padding: '12px 20px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #a855f7, #7e22ce)',
+                  border: '1px solid #d8b4fe',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
                   fontFamily: 'var(--font-mono)',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
                   cursor: 'pointer',
+                  boxShadow: '0 0 25px rgba(168, 85, 247, 0.5)',
                 }}
               >
-                Ignite Sky Crane Retro Engines [SPACE]
+                🚀 IGNITE SKY CRANE RETRO ENGINES
               </button>
             )}
 
@@ -635,20 +624,19 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
               <button
                 onClick={triggerNextStageAction}
                 style={{
-                  padding: '10px 18px',
-                  borderRadius: 0,
-                  background: 'var(--color-accent-green)',
-                  border: '1px solid var(--color-accent-green)',
-                  color: '#000000',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
+                  padding: '12px 20px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  border: '1px solid #6ee7b7',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
                   fontFamily: 'var(--font-mono)',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
                   cursor: 'pointer',
+                  boxShadow: '0 0 25px rgba(16, 185, 129, 0.5)',
                 }}
               >
-                Lower Tether &amp; Confirm Touchdown [SPACE]
+                🏁 LOWER TETHER &amp; CONFIRM TOUCHDOWN
               </button>
             )}
           </div>
@@ -659,7 +647,7 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
             bottom: '84px',
             left: '20px',
             display: 'flex',
-            gap: '6px',
+            gap: '8px',
           }}>
             <button
               onMouseDown={() => (simRef.current.keys['arrowleft'] = true)}
@@ -667,13 +655,13 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
               onTouchStart={() => (simRef.current.keys['arrowleft'] = true)}
               onTouchEnd={() => (simRef.current.keys['arrowleft'] = false)}
               style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: 0,
-                background: 'var(--color-paper-2)',
-                border: '1px solid var(--rule-subtle)',
-                color: 'var(--color-ink)',
-                fontSize: '16px',
+                width: '44px',
+                height: '44px',
+                borderRadius: '10px',
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#fff',
+                fontSize: '18px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -688,13 +676,13 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
               onTouchStart={() => (simRef.current.keys['arrowright'] = true)}
               onTouchEnd={() => (simRef.current.keys['arrowright'] = false)}
               style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: 0,
-                background: 'var(--color-paper-2)',
-                border: '1px solid var(--rule-subtle)',
-                color: 'var(--color-ink)',
-                fontSize: '16px',
+                width: '44px',
+                height: '44px',
+                borderRadius: '10px',
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#fff',
+                fontSize: '18px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -713,36 +701,36 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
             right: '20px',
             maxWidth: '820px',
             margin: '0 auto',
-            background: 'var(--color-paper-2)',
-            border: '1px solid var(--rule-subtle)',
-            borderRadius: 0,
+            background: 'rgba(15, 23, 42, 0.94)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '12px',
             padding: '12px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Radio size={16} style={{ color: 'var(--color-accent-2)' }} />
+              <Radio size={18} color="#38bdf8" />
               <div>
-                <span style={{ fontSize: '10px', color: 'var(--color-accent-2)', fontFamily: 'var(--font-mono)', fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <span style={{ fontSize: '10px', color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 700, display: 'block' }}>
                   NASA JPL CAPCOM LIVE TELEMETRY
                 </span>
-                <span style={{ fontSize: '12px', color: 'var(--color-ink)', fontWeight: 600 }}>
+                <span style={{ fontSize: '13px', color: '#f8fafc', fontWeight: 600 }}>
                   {capcomCallout}
                 </span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-accent)' }}>
-              <kbd style={{ background: 'var(--color-paper-3)', padding: '3px 6px', borderRadius: 0, color: 'var(--color-ink)', border: '1px solid var(--rule-subtle)' }}>A / D (◀ / ▶)</kbd>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#fbbf24' }}>
+              <kbd style={{ background: '#334155', padding: '3px 6px', borderRadius: '4px', color: '#fff' }}>A / D (◀ / ▶)</kbd>
               <span>Steer</span>
-              <kbd style={{ background: 'var(--color-paper-3)', padding: '3px 6px', borderRadius: 0, color: 'var(--color-ink)', border: '1px solid var(--rule-subtle)' }}>SPACE</kbd>
+              <kbd style={{ background: '#334155', padding: '3px 6px', borderRadius: '4px', color: '#fff' }}>SPACE</kbd>
               <span>Action</span>
             </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
   );
 };

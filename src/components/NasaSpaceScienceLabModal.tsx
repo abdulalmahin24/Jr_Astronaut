@@ -22,7 +22,6 @@ import {
   Sun,
   Globe,
   Dna,
-  FlaskConical,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 
@@ -218,49 +217,49 @@ export const NasaSpaceScienceLabModal: React.FC<NasaSpaceScienceLabProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '16px 28px',
-            background: 'var(--color-paper-2)',
-            borderBottom: '1px solid var(--rule-subtle)',
+            padding: '12px 28px',
+            background: 'rgba(15, 23, 42, 0.95)',
+            borderBottom: '1.5px solid rgba(16, 185, 129, 0.4)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
             flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div
               style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: 0,
-                background: 'var(--color-paper-3)',
-                border: '1px solid var(--rule-subtle)',
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #059669, #0284c7)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                fontSize: '22px',
+                boxShadow: '0 0 16px rgba(16, 185, 129, 0.4)',
               }}
             >
-              <FlaskConical size={20} style={{ color: 'var(--color-accent)' }} />
+              🔬
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-ink)', margin: 0, letterSpacing: '-0.01em' }}>
-                  NASA Space Science &amp; Biology Laboratory
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#f8fafc', margin: 0, letterSpacing: '0.02em' }}>
+                  NASA SPACE SCIENCE &amp; BIOLOGY LABORATORY
                 </h2>
                 <span
                   style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    fontFamily: 'var(--font-mono)',
-                    border: '1px solid var(--color-accent-green)',
-                    color: 'var(--color-accent-green)',
+                    fontSize: '9.5px',
+                    fontWeight: 900,
+                    background: 'rgba(16, 185, 129, 0.2)',
+                    border: '1px solid #10b981',
+                    color: '#10b981',
                     padding: '2px 8px',
-                    borderRadius: 0,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
+                    borderRadius: '10px',
                   }}
                 >
-                  Aerospace Curriculum Verified
+                  OFFICIAL AEROSPACE CURRICULUM
                 </span>
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-ink-faint)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8' }}>
                 Interactive Simulation of Human Microgravity Physiology, Orbital Physics, Radiation, ISRU &amp; Deep Space Comms
               </div>
             </div>
@@ -272,47 +271,47 @@ export const NasaSpaceScienceLabModal: React.FC<NasaSpaceScienceLabProps> = ({
                 soundFx.playClick(600);
                 onClose();
               }}
-              aria-label="Close Laboratory"
               style={{
-                background: 'transparent',
-                border: '1px solid var(--rule-subtle)',
-                color: 'var(--color-ink-muted)',
-                width: '32px',
-                height: '32px',
-                borderRadius: 0,
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: '#f8fafc',
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                fontSize: '18px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                transition: 'all 0.15s ease',
               }}
             >
-              <X size={16} />
+              ✕
             </button>
           )}
         </div>
       )}
 
-      {/* ── 5 MODULE TABS NAVIGATION ── */}
+      {/* ── 5 MODULE TABS NAVIGATION (100% ENGLISH) ── */}
       <div
         style={{
           display: 'flex',
-          gap: '4px',
-          padding: embedded ? '10px 16px' : '8px 24px',
-          background: 'var(--color-paper-3)',
-          borderBottom: '1px solid var(--rule-subtle)',
+          gap: '8px',
+          padding: embedded ? '14px 20px' : '12px 28px',
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
           overflowX: 'auto',
           flexShrink: 0,
         }}
       >
         {[
-          { id: 'PHYSIOLOGY', label: '1. Human Physiology', sub: 'Microgravity Bio Transformations', icon: Dna },
-          { id: 'ORBITAL', label: '2. Orbital Mechanics', sub: "Kepler's Laws & Hohmann Transfer", icon: Globe },
-          { id: 'RADIATION', label: '3. Radiation & Shielding', sub: 'Van Allen, SPE Flare & EMU Suit', icon: Shield },
-          { id: 'ISRU', label: '4. In-Situ Utilization', sub: 'Sabatier, Regolith & Water-Ice', icon: Flame },
-          { id: 'DSN', label: '5. Deep Space Comms', sub: 'Speed-of-Light Lag & DSN Dishes', icon: Radio },
+          { id: 'PHYSIOLOGY', label: '1. Human Space Physiology', sub: 'Microgravity Biological Transformations', icon: '🧬' },
+          { id: 'ORBITAL', label: '2. Orbital Mechanics & Navigation', sub: "Kepler's Laws & Hohmann Transfer", icon: '🪐' },
+          { id: 'RADIATION', label: '3. Radiation & Deep Space Shielding', sub: 'Van Allen, SPE Flare & EMU Suit', icon: '🛡️' },
+          { id: 'ISRU', label: '4. In-Situ Resource Utilization (ISRU)', sub: 'Sabatier, Regolith & Water-Ice', icon: '⚗️' },
+          { id: 'DSN', label: '5. Deep Space Comms & Light Latency', sub: 'Speed-of-Light Lag & DSN 70m Dishes', icon: '📡' },
         ].map((tab) => {
           const active = activeTab === tab.id;
-          const Icon = tab.icon;
           return (
             <button
               key={tab.id}
@@ -322,25 +321,27 @@ export const NasaSpaceScienceLabModal: React.FC<NasaSpaceScienceLabProps> = ({
               }}
               style={{
                 flex: 1,
-                minWidth: '200px',
-                padding: '8px 14px',
-                borderRadius: 0,
-                border: active ? '1px solid var(--color-accent)' : '1px solid transparent',
-                background: active ? 'var(--color-paper-2)' : 'transparent',
-                color: active ? 'var(--color-accent)' : 'var(--color-ink-muted)',
+                minWidth: '220px',
+                padding: '10px 14px',
+                borderRadius: '12px',
+                border: active ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                background: active ? 'linear-gradient(135deg, rgba(5,150,105,0.3), rgba(2,132,199,0.3))' : 'rgba(15, 23, 42, 0.6)',
+                color: active ? '#ffffff' : '#94a3b8',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
                 textAlign: 'left',
+                transition: 'all 0.15s ease',
+                boxShadow: active ? '0 0 16px rgba(16, 185, 129, 0.3)' : 'none',
               }}
             >
-              <Icon size={18} style={{ color: active ? 'var(--color-accent)' : 'var(--color-ink-muted)', flexShrink: 0 }} />
+              <span style={{ fontSize: '22px' }}>{tab.icon}</span>
               <div>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.04em', color: active ? 'var(--color-accent)' : 'var(--color-ink)' }}>
+                <div style={{ fontSize: '11.5px', fontWeight: 900, color: active ? '#4ade80' : '#f8fafc' }}>
                   {tab.label}
                 </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--color-ink-faint)' }}>{tab.sub}</div>
+                <div style={{ fontSize: '9.5px', color: '#64748b' }}>{tab.sub}</div>
               </div>
             </button>
           );
@@ -1438,7 +1439,8 @@ export const NasaSpaceScienceLabModal: React.FC<NasaSpaceScienceLabProps> = ({
         position: 'fixed',
         inset: 0,
         zIndex: 10000,
-        background: 'var(--color-paper)',
+        background: 'rgba(2, 6, 23, 0.96)',
+        backdropFilter: 'blur(20px)',
         display: 'flex',
         flexDirection: 'column',
       }}

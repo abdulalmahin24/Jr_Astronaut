@@ -74,65 +74,80 @@ export const AudioTeachingFlashcard: React.FC<AudioTeachingFlashcardProps> = ({
       <div
         className="modal-container"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          maxWidth: '620px',
-          overflow: 'hidden',
-          padding: 0,
-          backgroundColor: 'var(--color-paper-2)',
-          border: 'var(--rule-hair) solid var(--color-rule)',
-          borderRadius: '0px',
-        }}
+        style={{ maxWidth: '620px', overflow: 'hidden', padding: 0 }}
       >
-        {/* Top Header Banner */}
+        {/* Top Gradient Banner */}
         <div style={{
-          backgroundColor: 'var(--color-paper-3)',
-          borderBottom: 'var(--rule-hair) solid var(--color-rule)',
-          padding: '16px 20px',
+          background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)',
+          padding: '20px 24px',
+          color: '#070a0e',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '2rem' }}>{card.emoji}</span>
+            <span style={{ fontSize: '2.4rem' }}>{card.emoji}</span>
             <div>
-              <div style={{ fontSize: '11px', fontFamily: 'var(--font-outlier)', color: 'var(--color-accent-2)' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#082f49' }}>
                 NASA SCIENCE FLASHCARD · {card.category}
               </div>
-              <h2 style={{ margin: '2px 0 0 0', fontSize: '1.2rem', fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--color-ink)' }}>
+              <h2 style={{ margin: '2px 0 0 0', fontSize: '1.25rem', fontWeight: 900, color: '#070a0e' }}>
                 {card.title}
               </h2>
             </div>
           </div>
-          <button onClick={onClose} className="modal-close-btn">
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(0,0,0,0.15)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#070a0e'
+            }}
+          >
             <X size={18} />
           </button>
         </div>
 
         {/* Card Body */}
-        <div style={{ padding: '20px 24px' }}>
+        <div style={{ padding: '24px' }}>
           {/* Audio Voiceover Bar */}
           <div style={{
-            backgroundColor: 'var(--color-paper-card)',
-            border: 'var(--rule-hair) solid var(--color-rule)',
-            padding: '10px 14px',
+            backgroundColor: 'rgba(56, 189, 248, 0.08)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            borderRadius: '10px',
+            padding: '10px 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: '16px'
+            marginBottom: '18px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Volume2 size={16} color={isSpeaking ? 'var(--color-accent-green)' : 'var(--color-accent-2)'} />
-              <span style={{ fontSize: '12px', color: 'var(--color-ink-2)' }}>
+              <Volume2 size={16} className={isSpeaking ? 'text-emerald-400 animate-bounce' : 'text-cyan-400'} />
+              <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
                 {isSpeaking ? 'Voice Teacher is speaking...' : 'Listen to CapCom voice lesson'}
               </span>
             </div>
             <button
               onClick={handleSpeak}
-              className={isSpeaking ? 'hm-btn-secondary' : 'hm-btn-primary'}
               style={{
-                padding: '6px 12px',
-                fontSize: '11px',
-                fontFamily: 'var(--font-outlier)',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: isSpeaking ? '#ef4444' : '#38bdf8',
+                color: isSpeaking ? '#fff' : '#070a0e',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
               }}
             >
               {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
@@ -143,50 +158,49 @@ export const AudioTeachingFlashcard: React.FC<AudioTeachingFlashcardProps> = ({
           {/* Equation or Formula Pill (if available) */}
           {card.equationOrFormula && (
             <div style={{
-              backgroundColor: 'var(--color-paper-3)',
-              border: 'var(--rule-hair) solid var(--color-rule)',
+              backgroundColor: 'rgba(15, 23, 42, 0.8)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '8px',
               padding: '10px 14px',
-              fontFamily: 'var(--font-outlier)',
-              fontSize: '13px',
-              color: 'var(--color-accent-2)',
+              fontFamily: 'monospace',
+              fontSize: '0.84rem',
+              color: '#38bdf8',
               marginBottom: '16px',
               textAlign: 'center',
-              fontWeight: 700
+              fontWeight: 600
             }}>
               {card.equationOrFormula}
             </div>
           )}
 
           {/* Age-Tier Adapted Lesson */}
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-accent)', fontSize: '11px', fontWeight: 700, fontFamily: 'var(--font-outlier)', marginBottom: '6px' }}>
-              <Sparkles size={13} />
+          <div style={{ marginBottom: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '0.72rem', fontWeight: 700, marginBottom: '6px' }}>
+              <Sparkles size={13} className="text-amber-400" />
               <span>THE SCIENCE LESSON:</span>
             </div>
-            <p style={{ fontSize: '13.5px', color: 'var(--color-ink-2)', lineHeight: 1.55, margin: 0 }}>
+            <p style={{ fontSize: '0.9rem', color: '#f1f5f9', lineHeight: '1.6', margin: 0 }}>
               {currentTierContent.text}
             </p>
           </div>
 
           {/* Key Takeaway Box */}
           <div style={{
-            backgroundColor: 'var(--color-paper-3)',
-            borderLeft: '2px solid var(--color-accent-green)',
-            borderTop: 'var(--rule-hair) solid var(--color-rule)',
-            borderRight: 'var(--rule-hair) solid var(--color-rule)',
-            borderBottom: 'var(--rule-hair) solid var(--color-rule)',
-            padding: '12px 14px',
+            backgroundColor: 'rgba(67, 255, 160, 0.1)',
+            border: '1px solid rgba(67, 255, 160, 0.3)',
+            borderRadius: '8px',
+            padding: '12px 16px',
             display: 'flex',
             alignItems: 'flex-start',
             gap: '10px',
-            marginBottom: '18px'
+            marginBottom: '20px'
           }}>
-            <HelpCircle size={16} color="var(--color-accent-green)" style={{ marginTop: '2px', flexShrink: 0 }} />
+            <HelpCircle size={18} className="text-emerald-400 shrink-0" style={{ marginTop: '2px' }} />
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-accent-green)', fontFamily: 'var(--font-outlier)' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#43ffa0', textTransform: 'uppercase' }}>
                 Key STEM Takeaway:
               </div>
-              <div style={{ fontSize: '13px', color: 'var(--color-ink)', fontWeight: 600, marginTop: '2px' }}>
+              <div style={{ fontSize: '0.84rem', color: '#e2e8f0', fontWeight: 600, marginTop: '2px' }}>
                 {currentTierContent.keyTakeaway}
               </div>
             </div>
@@ -194,13 +208,12 @@ export const AudioTeachingFlashcard: React.FC<AudioTeachingFlashcardProps> = ({
 
           {/* NASA Document Citation */}
           <div style={{
-            fontSize: '11px',
-            color: 'var(--color-muted)',
-            fontFamily: 'var(--font-outlier)',
+            fontSize: '0.72rem',
+            color: '#64748b',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            marginBottom: '18px'
+            marginBottom: '22px'
           }}>
             <FileText size={13} />
             <span>Ref: {card.nasaDocReference}</span>
@@ -208,19 +221,27 @@ export const AudioTeachingFlashcard: React.FC<AudioTeachingFlashcardProps> = ({
 
           {/* Action Footer */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <button onClick={onClose} className="hm-btn-secondary" style={{ padding: '6px 14px', fontSize: '11px', fontFamily: 'var(--font-outlier)' }}>
+            <button onClick={onClose} className="nav-link-btn" style={{ padding: '8px 16px' }}>
               Close Card
             </button>
             <button
               onClick={handleSave}
-              className={isSaved || justSaved ? 'hm-btn-secondary' : 'hm-btn-primary'}
               style={{
-                padding: '8px 16px',
-                fontSize: '11px',
-                fontFamily: 'var(--font-outlier)',
+                padding: '8px 18px',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                backgroundColor: isSaved || justSaved ? '#10b981' : '#38bdf8',
+                color: isSaved || justSaved ? '#ffffff' : '#070a0e',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
               }}
             >
-              {isSaved || justSaved ? <Check size={14} /> : <BookMarked size={14} />}
+              {isSaved || justSaved ? <Check size={15} /> : <BookMarked size={15} />}
               <span>{isSaved || justSaved ? 'Saved in Flight Notebook' : 'Save to Flight Notebook'}</span>
             </button>
           </div>

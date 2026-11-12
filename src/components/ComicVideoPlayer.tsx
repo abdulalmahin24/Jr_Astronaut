@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { ComicVisualArtwork } from './ComicVisualArtwork';
-import { GOOGLE_FLOW_ARCHIVAL_VIDEOS } from '../utils/googleFlowComicService';
 
 // Curated official NASA archival video resources for each STEM mission issue
 export const NASA_ARCHIVAL_VIDEOS: Record<number, {
@@ -94,26 +93,6 @@ export const NASA_ARCHIVAL_VIDEOS: Record<number, {
     summary: 'Voyager’s historic planetary flybys of Jupiter, Saturn, Uranus, and Neptune, carrying humanity’s Golden Record across the heliopause into interstellar space.',
     keyTimestamp: 'Pale Blue Dot & Golden Record',
     nasaCredit: 'NASA JPL / Smithsonian National Air and Space Museum'
-  },
-  7: {
-    title: 'NASA Official: Artemis II Crew Mission & Orion Lunar Trajectory',
-    year: '2025-2026',
-    youtubeId: 'W3bJ9dflmP8',
-    nasaGovUrl: 'https://www.nasa.gov/mission/artemis-ii/',
-    duration: '3:50',
-    summary: 'NASA introduces the Artemis II crew—Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen—as they prepare for the first crewed deep-space journey to the Moon in over 50 years aboard Orion and the Space Launch System.',
-    keyTimestamp: 'Trans-Lunar Injection & Lunar Flyby',
-    nasaCredit: 'NASA Johnson Space Center / Exploration Ground Systems'
-  },
-  8: {
-    title: 'NASA Goddard: 29 Days on the Edge — Deploying James Webb Space Telescope',
-    year: '2021-Present',
-    youtubeId: '1C_nu35GcAQ',
-    nasaGovUrl: 'https://webb.nasa.gov/',
-    duration: '4:45',
-    summary: 'The thrilling engineering saga of deploying Webb’s tennis-court-sized 5-layer sunshield, secondary mirror, and 18 gold-beryllium hexagonal primary mirrors at Sun-Earth L2 Lagrange Point.',
-    keyTimestamp: '344 Single-Point Failures Overcome',
-    nasaCredit: 'NASA Goddard Space Flight Center / Space Telescope Science Institute'
   }
 };
 
@@ -156,7 +135,7 @@ export const ComicVideoPlayer: React.FC<ComicVideoPlayerProps> = ({
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const currentScene = allScenes[currentSceneIdx] || allScenes[0];
-  const nasaVideo = GOOGLE_FLOW_ARCHIVAL_VIDEOS[issue.issueNumber] || NASA_ARCHIVAL_VIDEOS[issue.issueNumber] || NASA_ARCHIVAL_VIDEOS[1];
+  const nasaVideo = NASA_ARCHIVAL_VIDEOS[issue.issueNumber] || NASA_ARCHIVAL_VIDEOS[1];
   const totalEstimatedDurationSec = allScenes.length * 9; // ~9s per panel dialogue
 
   // Voiceover audio speech synthesis

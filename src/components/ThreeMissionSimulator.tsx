@@ -270,7 +270,6 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const [activeRole, setActiveRole] = useState<CrewRole>(assignedRole);
   const [modelLoading, setModelLoading] = useState<boolean>(true);
   const [moonquakeAlert, setMoonquakeAlert] = useState<{ mag: number; depth: number; site: string } | null>(null);
-  const [showDiagnosticsOverlay, setShowDiagnosticsOverlay] = useState<boolean>(false);
 
   // Astronaut Academy Age & Difficulty Tier (Cadet 6-10 / Officer 11-15 / Commander 16+)
   const [ageTier, setAgeTier] = useState<AstronautAgeTier>(() => {
@@ -719,42 +718,6 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           handleSimAction('dock_latch');
         }
       }
-      if (e.key === 'F3' || k === 'f3') {
-        e.preventDefault();
-        setShowDiagnosticsOverlay((prev) => !prev);
-        soundFx.playClick(1000);
-      }
-
-      // Couch Co-Op Player 2 Secondary Controls (FDO / EECOM / CAPCOM)
-      if (roomState?.isSplitScreen) {
-        if (k === 'arrowleft') {
-          multiplayerMissionService.fireRcsPulse('x', -1);
-          audioSynthRef.current.playRcsPuff();
-        } else if (k === 'arrowright') {
-          multiplayerMissionService.fireRcsPulse('x', 1);
-          audioSynthRef.current.playRcsPuff();
-        } else if (k === 'arrowup') {
-          multiplayerMissionService.fireRcsPulse('y', 1);
-          audioSynthRef.current.playRcsPuff();
-        } else if (k === 'arrowdown') {
-          multiplayerMissionService.fireRcsPulse('y', -1);
-          audioSynthRef.current.playRcsPuff();
-        } else if (k === '[' || k === 'bracketleft') {
-          multiplayerMissionService.setPumpPressure(simStateRef.current.pumpPressure > 1.05 ? 1.0 : 1.2);
-          soundFx.playReactorStart();
-        } else if (k === ']' || k === 'bracketright') {
-          multiplayerMissionService.toggleRadiator();
-          soundFx.playClick(850);
-        } else if (k === '\\' || k === 'backslash') {
-          multiplayerMissionService.toggleDsnLock();
-          audioSynthRef.current.playQuindarBeep();
-        } else if (k === 'enter') {
-          audioSynthRef.current.playQuindarBeep();
-          soundFx.playRadioChirp();
-          multiplayerMissionService.sendChat('P2 Systems: Telemetry nominal. Guidance corridor verified.');
-        }
-      }
-
       if (k === 'a' || k === 'd' || k === 'w' || k === 's' || k === 'arrowup' || k === 'arrowdown' || k === 'arrowleft' || k === 'arrowright') {
         if (mission.gameType === 'rover' && simStateRef.current.roverLandingPhase !== 'landed') {
           handleSkipToDrive();
@@ -6317,47 +6280,13 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
             backdropFilter: 'blur(10px)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '9px', color: hudTheme.primary, fontWeight: 800 }}>
               CO-OP FLIGHT CREW
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <button
-                onClick={() => {
-                  multiplayerMissionService.setSplitScreen(!roomState?.isSplitScreen);
-                  soundFx.playClick(1000);
-                }}
-                style={{
-                  background: roomState?.isSplitScreen ? 'rgba(34, 197, 94, 0.4)' : 'rgba(15, 23, 42, 0.7)',
-                  border: `1px solid ${roomState?.isSplitScreen ? '#22c55e' : 'rgba(255,255,255,0.15)'}`,
-                  color: roomState?.isSplitScreen ? '#86efac' : '#cbd5e1',
-                  borderRadius: '4px',
-                  padding: '2px 5px',
-                  fontSize: '8px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-                title="Toggle 2-Player Couch Co-Op Split-Screen mode"
-              >
-                ⚡ {roomState?.isSplitScreen ? 'SPLIT ON' : 'SPLIT'}
-              </button>
-              <button
-                onClick={() => setShowDiagnosticsOverlay((prev) => !prev)}
-                style={{
-                  background: showDiagnosticsOverlay ? 'rgba(56, 189, 248, 0.35)' : 'rgba(15, 23, 42, 0.7)',
-                  border: `1px solid ${showDiagnosticsOverlay ? '#38bdf8' : 'rgba(255,255,255,0.15)'}`,
-                  color: showDiagnosticsOverlay ? '#7dd3fc' : '#94a3b8',
-                  borderRadius: '4px',
-                  padding: '2px 5px',
-                  fontSize: '8px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-                title="Co-Op Flight Inspector & Invariants Diagnostic Panel (Hotkey: F3)"
-              >
-                📡 F3
-              </button>
-            </div>
+            <span style={{ fontSize: '9px', color: '#94a3b8' }}>
+              {roomState ? `Room: ${roomState.roomId}` : 'SOLO / AI BRIDGE'}
+            </span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
@@ -7646,215 +7575,6 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
             >
               LOG DISCOVERY & RESUME FLIGHT
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── COUCH CO-OP: PLAYER 2 SYSTEMS & DYNAMICS CONSOLE (SPLIT-SCREEN ACTIVE) ─── */}
-      {roomState?.isSplitScreen && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '60px',
-            right: '20px',
-            width: '360px',
-            background: 'rgba(7, 13, 27, 0.92)',
-            border: '1.5px solid #22c55e',
-            borderRadius: '12px',
-            padding: '12px 14px',
-            boxShadow: '0 0 25px rgba(34, 197, 94, 0.3), 0 10px 30px rgba(0, 0, 0, 0.8)',
-            backdropFilter: 'blur(12px)',
-            zIndex: 45,
-            color: '#f8fafc',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '14px' }}>🎮</span>
-              <span style={{ fontSize: '11px', fontWeight: 900, color: '#86efac', letterSpacing: '0.04em' }}>
-                PLAYER 2 STATION (SYSTEMS & DYNAMICS)
-              </span>
-            </div>
-            <span style={{ fontSize: '9px', background: '#022c22', color: '#86efac', padding: '1px 6px', borderRadius: '4px', border: '1px solid #22c55e', fontWeight: 700 }}>
-              COUCH CO-OP
-            </span>
-          </div>
-
-          <div style={{ fontSize: '9px', color: '#94a3b8', lineHeight: 1.3 }}>
-            <strong>P2 Controls:</strong> [Arrows] RCS Trans · [ ] ] Radiator · [ [ ] Turbopump · [ \ ] DSN Lock · [Enter] Radio Call
-          </div>
-
-          {/* Quick Interactive Actions for Player 2 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-            <button
-              onClick={() => {
-                multiplayerMissionService.setPumpPressure(simStateRef.current.pumpPressure > 1.05 ? 1.0 : 1.2);
-                soundFx.playReactorStart();
-              }}
-              style={{
-                background: simStateRef.current.pumpPressure > 1.05 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(251, 191, 36, 0.25)',
-                border: `1px solid ${simStateRef.current.pumpPressure > 1.05 ? '#ef4444' : '#fbbf24'}`,
-                color: simStateRef.current.pumpPressure > 1.05 ? '#fca5a5' : '#fbbf24',
-                padding: '6px',
-                borderRadius: '6px',
-                fontSize: '9.5px',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
-            >
-              ⚡ PUMP: {Math.round(simStateRef.current.pumpPressure * 100)}% [ [ ]
-            </button>
-
-            <button
-              onClick={() => {
-                multiplayerMissionService.toggleRadiator();
-                soundFx.playClick(850);
-              }}
-              style={{
-                background: simStateRef.current.radiatorDeployed ? 'rgba(34, 197, 94, 0.25)' : 'rgba(15, 23, 42, 0.8)',
-                border: `1px solid ${simStateRef.current.radiatorDeployed ? '#22c55e' : '#475569'}`,
-                color: simStateRef.current.radiatorDeployed ? '#86efac' : '#cbd5e1',
-                padding: '6px',
-                borderRadius: '6px',
-                fontSize: '9.5px',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
-            >
-              ❄️ RADIATOR {simStateRef.current.radiatorDeployed ? 'DEPLOYED' : 'RETRACTED'} [ ] ]
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button
-              onClick={() => {
-                multiplayerMissionService.fireRcsPulse('x', -1);
-                audioSynthRef.current.playRcsPuff();
-              }}
-              style={{ flex: 1, padding: '5px', background: '#0f172a', border: '1px solid #34d399', color: '#34d399', borderRadius: '4px', fontSize: '9px', fontWeight: 800, cursor: 'pointer' }}
-            >
-              ◀ RCS PORT [←]
-            </button>
-            <button
-              onClick={() => {
-                multiplayerMissionService.fireRcsPulse('x', 1);
-                audioSynthRef.current.playRcsPuff();
-              }}
-              style={{ flex: 1, padding: '5px', background: '#0f172a', border: '1px solid #34d399', color: '#34d399', borderRadius: '4px', fontSize: '9px', fontWeight: 800, cursor: 'pointer' }}
-            >
-              RCS STBD [→] ▶
-            </button>
-            <button
-              onClick={() => {
-                multiplayerMissionService.toggleDsnLock();
-                audioSynthRef.current.playQuindarBeep();
-              }}
-              style={{ flex: 1, padding: '5px', background: 'rgba(192, 132, 252, 0.2)', border: '1px solid #c084fc', color: '#e9d5ff', borderRadius: '4px', fontSize: '9px', fontWeight: 800, cursor: 'pointer' }}
-            >
-              📡 DSN LOCK [ \ ]
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── CO-OP ANYTHING: FLIGHT RECORDER & DESYNC INSPECTOR (F3 MODAL) ─── */}
-      {showDiagnosticsOverlay && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'rgba(7, 13, 27, 0.95)',
-            border: '1.5px solid #38bdf8',
-            borderRadius: '16px',
-            padding: '20px 24px',
-            maxWidth: '680px',
-            width: '92%',
-            boxShadow: '0 0 40px rgba(56, 189, 248, 0.4), 0 20px 50px rgba(0, 0, 0, 0.9)',
-            backdropFilter: 'blur(16px)',
-            zIndex: 70,
-            color: '#f8fafc',
-            fontFamily: 'monospace',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>📡</span>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 900, color: '#38bdf8' }}>
-                  CO-OP FLIGHT INSPECTOR & INVARIANTS ORACLE
-                </div>
-                <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>
-                  Architecture derived from cranebeaker/coop-anything (tools/flight + tools/ownership)
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowDiagnosticsOverlay(false)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: 'none',
-                borderRadius: '6px',
-                color: '#cbd5e1',
-                padding: '4px 10px',
-                cursor: 'pointer',
-                fontSize: '12px',
-              }}
-            >
-              ✕ CLOSE [F3]
-            </button>
-          </div>
-
-          {/* Sync Stats Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
-            <div style={{ background: '#0f172a', padding: '8px 10px', borderRadius: '6px', border: '1px solid #334155' }}>
-              <div style={{ fontSize: '8.5px', color: '#94a3b8' }}>SYNC PROTOCOL</div>
-              <div style={{ fontSize: '11px', fontWeight: 900, color: '#38bdf8' }}>P2P BROADCAST</div>
-            </div>
-            <div style={{ background: '#0f172a', padding: '8px 10px', borderRadius: '6px', border: '1px solid #334155' }}>
-              <div style={{ fontSize: '8.5px', color: '#94a3b8' }}>AUTHORITY EPOCH</div>
-              <div style={{ fontSize: '11px', fontWeight: 900, color: '#fbbf24' }}>#{roomState?.epoch || 1}</div>
-            </div>
-            <div style={{ background: '#0f172a', padding: '8px 10px', borderRadius: '6px', border: '1px solid #334155' }}>
-              <div style={{ fontSize: '8.5px', color: '#94a3b8' }}>DESYNC DIVERGENCE</div>
-              <div style={{ fontSize: '11px', fontWeight: 900, color: '#22c55e' }}>0.00% [LOCKED]</div>
-            </div>
-            <div style={{ background: '#0f172a', padding: '8px 10px', borderRadius: '6px', border: '1px solid #334155' }}>
-              <div style={{ fontSize: '8.5px', color: '#94a3b8' }}>TICK RATE</div>
-              <div style={{ fontSize: '11px', fontWeight: 900, color: '#38bdf8' }}>60 HZ (TICK)</div>
-            </div>
-          </div>
-
-          {/* Subsystem Authority Ownership Matrix */}
-          <div style={{ background: '#0f172a', padding: '10px 12px', borderRadius: '8px', border: '1px solid #334155' }}>
-            <div style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: 700, marginBottom: '6px' }}>
-              SUBSYSTEM AUTHORITY MATRIX (ACTOR-OWNERSHIP MODEL)
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '10px' }}>
-              {(Object.keys(CREW_ROLES) as CrewRole[]).map((rk) => {
-                const p = roomState?.players.find((pl) => pl.role === rk);
-                const rData = CREW_ROLES[rk];
-                return (
-                  <div key={rk} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', background: '#020617', borderRadius: '4px', borderLeft: `3px solid ${rData.color}` }}>
-                    <span style={{ color: rData.color, fontWeight: 800 }}>[{rk}] {rData.subsystem.split(' ')[0]}</span>
-                    <span style={{ color: p?.isAi ? '#94a3b8' : '#86efac' }}>{p ? p.name : 'AI Copilot'} {p?.isAi ? '(AI)' : '(HUMAN)'}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Invariant Verification */}
-          <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '8px 12px', borderRadius: '8px', border: '1px solid #22c55e', fontSize: '9.5px', color: '#86efac', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>✓ INVARIANTS: SINGLE AUTHORITY / MONOTONIC EPOCHS / CONSERVED CONSUMABLES</span>
-            <span style={{ fontWeight: 800, background: '#022c22', padding: '2px 6px', borderRadius: '4px' }}>PASSING</span>
           </div>
         </div>
       )}

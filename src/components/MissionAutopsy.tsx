@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import type { GameState } from '../types/game';
 import type { NasaMission } from '../data/nasaMissions';
-import { OSDR_ASTRONAUT_FINDING } from '../data/nasaDatasets';
 import {
   Award,
   AlertOctagon,
@@ -119,9 +118,9 @@ export const MissionAutopsy: React.FC<MissionAutopsyProps> = ({ gameState, onRes
             </div>
 
             <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>MISSION DOSE BUDGET · SIMULATED</div>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>CUMULATIVE RADIATION</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 800, color: res.radiation < 50 ? '#43ffa0' : '#f59e0b' }}>
-                {res.radiation}% {res.radiation < 50 ? '(under 50% goal)' : '(elevated)'}
+                {res.radiation} mSv {res.radiation < 50 ? '(ALARA Safe)' : '(Elevated)'}
               </div>
             </div>
           </div>
@@ -200,25 +199,6 @@ export const MissionAutopsy: React.FC<MissionAutopsyProps> = ({ gameState, onRes
             ))}
           </div>
         </div>
-
-        <aside style={{ margin: '0 24px 20px', padding: '16px', background: 'var(--color-paper-2)', border: '1px solid var(--color-rule)' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--color-accent-2)' }}>
-            {OSDR_ASTRONAUT_FINDING.label}
-          </div>
-          <h3 style={{ margin: '6px 0', fontSize: '1rem', color: 'var(--color-ink)' }}>
-            {OSDR_ASTRONAUT_FINDING.title}
-          </h3>
-          <p style={{ margin: '0 0 8px', color: 'var(--color-ink-2)', fontSize: '0.85rem', lineHeight: 1.5 }}>
-            {OSDR_ASTRONAUT_FINDING.finding}
-          </p>
-          <a href={OSDR_ASTRONAUT_FINDING.sourceUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--color-accent-2)', fontSize: '0.8rem' }}>
-            {OSDR_ASTRONAUT_FINDING.sourceName} · Study DOI
-          </a>
-          {' · '}
-          <a href={OSDR_ASTRONAUT_FINDING.repositoryUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--color-accent-2)', fontSize: '0.8rem' }}>
-            NASA OSDR
-          </a>
-        </aside>
 
         {/* Lessons Learned & Recommendations */}
         <div style={{ padding: '20px 24px', backgroundColor: 'rgba(10, 15, 26, 0.95)', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>

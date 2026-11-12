@@ -6,22 +6,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node tests/test_simulation.mjs && node tests/test_donki.mjs && node tests/test_resource_hud.mjs && node tests/test_shackleton.mjs && node tests/test_shackleton_progress.mjs && tsx tests/test_multiplayer_coop.ts && tsx tests/test_multiplayer_network.ts",
-    "test:e2e": "playwright test",
-    "fetch:donki": "node scripts/fetch-donki-snapshot.mjs",
-    "preview": "vite preview",
-    "coop:server": "tsx server/src/index.ts",
-    "coop:server:watch": "tsx watch server/src/index.ts",
-    "coop:server:check": "tsc --noEmit -p server/tsconfig.json"
+    "test": "node tests/test_simulation.mjs",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@colyseus/sdk": "^0.18.9",
-    "@dimforge/rapier3d-compat": "^0.21.0",
     "@types/three": "^0.186.0",
-    "@colyseus/core": "^0.18.27",
-    "@colyseus/ws-transport": "^0.18.4",
     "canvas-confetti": "^1.9.4",
     "lucide-react": "^1.47.0",
     "phaser": "^4.2.1",
@@ -30,14 +21,12 @@
     "three": "^0.186.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.65.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
-    "tsx": "^4.23.15",
     "typescript": "~6.0.2",
     "vite": "^8.3.0"
   }

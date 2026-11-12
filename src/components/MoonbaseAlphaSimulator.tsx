@@ -685,7 +685,8 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
         position: 'fixed',
         inset: 0,
         zIndex: 99999,
-        background: 'var(--color-paper)',
+        background: 'rgba(3, 7, 18, 0.96)',
+        backdropFilter: 'blur(16px)',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -697,48 +698,48 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 24px',
-          background: 'var(--color-paper-2)',
-          borderBottom: '1px solid var(--rule-subtle)',
+          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 28, 0.85) 100%)',
+          borderBottom: '1px solid rgba(0, 210, 255, 0.3)',
           zIndex: 20,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '36px', height: '36px', borderRadius: 0, background: 'var(--color-paper-3)', border: '1px solid var(--rule-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Shield size={18} style={{ color: 'var(--color-accent)' }} />
+          <div style={{ width: '36px', height: '36px', borderRadius: '4px', background: 'rgba(0, 210, 255, 0.15)', border: '1px solid #00d2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+            🌕
           </div>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-ink)', fontFamily: 'var(--font-space)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>NASA MOONBASE ALPHA // EMERGENCY EVA</span>
-              <span style={{ fontSize: '9px', background: 'var(--color-error)', color: '#000', padding: '1px 6px', borderRadius: 0, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>CRISIS ACTIVE</span>
+              <span style={{ fontSize: '9px', background: '#ef4444', color: '#fff', padding: '1px 6px', borderRadius: '2px', fontWeight: 900 }}>CRISIS ACTIVE</span>
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--color-ink-faint)', fontFamily: 'var(--font-mono)' }}>
-              Site: Shackleton Outpost Sector 4 / Gravity: 1.62 m/s² / Lunar Night Approaching
+            <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+              Site: Shackleton Outpost Sector 4 · Gravity: 1.62 m/s² · Lunar Night Approaching
             </div>
           </div>
         </div>
 
         {/* Central Telemetry Meters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
           {/* O2 Countdown */}
-          <div style={{ background: oxygenSeconds < 60 ? 'rgba(239, 68, 68, 0.2)' : 'var(--color-paper-3)', border: `1px solid ${oxygenSeconds < 60 ? 'var(--color-error)' : 'var(--rule-subtle)'}`, borderRadius: 0, padding: '6px 14px', textAlign: 'center' }}>
-            <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-faint)', fontWeight: 700 }}>SUIT OXYGEN TIME</div>
-            <div style={{ fontSize: '15px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: oxygenSeconds < 60 ? 'var(--color-error)' : 'var(--color-accent-2)', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ background: oxygenSeconds < 60 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(22, 30, 46, 0.9)', border: `1px solid ${oxygenSeconds < 60 ? '#ef4444' : 'rgba(0, 210, 255, 0.4)'}`, borderRadius: '4px', padding: '6px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#94a3b8', fontWeight: 800 }}>SUIT OXYGEN TIME</div>
+            <div style={{ fontSize: '16px', fontFamily: 'var(--font-mono)', fontWeight: 900, color: oxygenSeconds < 60 ? '#ef4444' : '#00d2ff' }}>
               {Math.floor(oxygenSeconds / 60)}:{(oxygenSeconds % 60).toString().padStart(2, '0')}
             </div>
           </div>
 
           {/* Base Integrity */}
-          <div style={{ background: 'var(--color-paper-3)', border: '1px solid var(--rule-subtle)', borderRadius: 0, padding: '6px 14px', textAlign: 'center' }}>
-            <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-faint)', fontWeight: 700 }}>BASE INTEGRITY</div>
-            <div style={{ fontSize: '15px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: baseIntegrity > 75 ? 'var(--color-accent-green)' : 'var(--color-accent)', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ background: 'rgba(22, 30, 46, 0.9)', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '4px', padding: '6px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#94a3b8', fontWeight: 800 }}>BASE INTEGRITY</div>
+            <div style={{ fontSize: '16px', fontFamily: 'var(--font-mono)', fontWeight: 900, color: baseIntegrity > 75 ? '#10b981' : '#f59e0b' }}>
               {baseIntegrity}%
             </div>
           </div>
 
           {/* Solar Power */}
-          <div style={{ background: 'var(--color-paper-3)', border: '1px solid var(--rule-subtle)', borderRadius: 0, padding: '6px 14px', textAlign: 'center' }}>
-            <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-faint)', fontWeight: 700 }}>POWER BUS</div>
-            <div style={{ fontSize: '15px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-accent)', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ background: 'rgba(22, 30, 46, 0.9)', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '4px', padding: '6px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#94a3b8', fontWeight: 800 }}>POWER BUS</div>
+            <div style={{ fontSize: '16px', fontFamily: 'var(--font-mono)', fontWeight: 900, color: '#fbbf24' }}>
               {solarPowerKw} kW
             </div>
           </div>
@@ -748,24 +749,23 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={() => setCameraView((prev) => (prev === '3RD_PERSON' ? '1ST_PERSON' : '3RD_PERSON'))}
-            style={{ background: 'var(--color-paper-3)', border: '1px solid var(--rule-subtle)', color: 'var(--color-ink)', padding: '6px 12px', borderRadius: 0, fontSize: '11px', fontFamily: 'var(--font-mono)', cursor: 'pointer', fontWeight: 700, textTransform: 'uppercase' }}
+            style={{ background: 'rgba(22, 30, 46, 0.85)', border: '1px solid rgba(148, 163, 184, 0.25)', color: '#e2e8f0', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontFamily: 'var(--font-mono)', cursor: 'pointer', fontWeight: 800 }}
           >
-            {cameraView === '3RD_PERSON' ? '3RD PERSON [V]' : '1ST PERSON [V]'}
+            {cameraView === '3RD_PERSON' ? '🎥 3RD PERSON [V]' : '👁️ 1ST PERSON [V]'}
           </button>
 
           <button
             onClick={() => setHeadlightOn((prev) => !prev)}
-            style={{ background: headlightOn ? 'var(--color-paper-3)' : 'transparent', border: `1px solid ${headlightOn ? 'var(--color-accent)' : 'var(--rule-subtle)'}`, color: headlightOn ? 'var(--color-accent)' : 'var(--color-ink-muted)', padding: '6px 12px', borderRadius: 0, fontSize: '11px', fontFamily: 'var(--font-mono)', cursor: 'pointer', fontWeight: 700, textTransform: 'uppercase' }}
+            style={{ background: headlightOn ? 'rgba(245, 158, 11, 0.2)' : 'rgba(22, 30, 46, 0.85)', border: `1px solid ${headlightOn ? '#f59e0b' : 'rgba(148, 163, 184, 0.25)'}`, color: headlightOn ? '#fbbf24' : '#94a3b8', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontFamily: 'var(--font-mono)', cursor: 'pointer', fontWeight: 800 }}
           >
-            HEADLIGHT [F]
+            🔦 HEADLIGHT [F]
           </button>
 
           <button
             onClick={onClose}
-            aria-label="Close"
-            style={{ width: '32px', height: '32px', borderRadius: 0, background: 'transparent', border: '1px solid var(--rule-subtle)', color: 'var(--color-ink-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            style={{ width: '34px', height: '34px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
       </header>
@@ -781,41 +781,42 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
               top: '20%',
               left: '50%',
               transform: 'translateX(-50%)',
-              background: 'var(--color-paper-2)',
-              border: `1px solid ${activeBreachNear.requiredTool === selectedTool ? 'var(--color-accent)' : 'var(--color-error)'}`,
-              borderRadius: 0,
+              background: 'rgba(17, 22, 34, 0.94)',
+              border: `1.5px solid ${activeBreachNear.requiredTool === selectedTool ? '#00d2ff' : '#ef4444'}`,
+              clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
               padding: '14px 24px',
               textAlign: 'center',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.85)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.85)',
               zIndex: 30,
             }}
           >
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-ink)', fontFamily: 'var(--font-space)' }}>
-              {activeBreachNear.name}
+            <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)' }}>
+              ⚠️ {activeBreachNear.name}
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
               {activeBreachNear.desc}
             </div>
 
             <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               {activeBreachNear.requiredTool === selectedTool ? (
-                <div style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ color: '#00d2ff', fontWeight: 900, fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
                   HOLD <strong>[E]</strong> TO WELD &amp; REPAIR ({repairProgress}%)
                 </div>
               ) : (
-                <div style={{ color: 'var(--color-error)', fontWeight: 700, fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}>
-                  WRONG TOOL: SWITCH TO [{activeBreachNear.requiredTool}] (Press 1, 2, or 3)
+                <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}>
+                  WRONG TOOL! SWITCH TO [{activeBreachNear.requiredTool}] (Press 1, 2, or 3)
                 </div>
               )}
             </div>
 
             {/* Repair Progress Bar */}
-            <div style={{ width: '100%', height: '4px', background: 'var(--color-paper-3)', borderRadius: 0, marginTop: '8px', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${activeBreachNear.progress}%`,
                   height: '100%',
-                  background: 'var(--color-accent)',
+                  background: 'linear-gradient(90deg, #ff9e1b, #00d2ff)',
                   transition: 'width 0.1s linear',
                 }}
               />
@@ -830,19 +831,20 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
             bottom: '90px',
             left: '24px',
             width: '380px',
-            background: 'var(--color-paper-2)',
-            border: '1px solid var(--rule-subtle)',
-            borderRadius: 0,
+            background: 'rgba(10, 15, 24, 0.88)',
+            border: '1px solid rgba(0, 210, 255, 0.25)',
+            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
             padding: '10px 14px',
+            backdropFilter: 'blur(8px)',
             zIndex: 25,
           }}
         >
-          <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--color-accent-2)', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Radio size={12} />
+          <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#00d2ff', fontWeight: 900, letterSpacing: '0.08em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Radio size={12} className="animate-pulse" />
             <span>MOONBASE ALPHA // TELEMETRY COMMS LOG</span>
           </div>
           {radioLog.map((log, idx) => (
-            <div key={idx} style={{ fontSize: '10.5px', color: idx === radioLog.length - 1 ? 'var(--color-ink)' : 'var(--color-ink-faint)', fontFamily: 'var(--font-mono)', lineHeight: 1.4 }}>
+            <div key={idx} style={{ fontSize: '10.5px', color: idx === radioLog.length - 1 ? '#f8fafc' : '#94a3b8', fontFamily: 'var(--font-mono)', lineHeight: 1.4 }}>
               {log}
             </div>
           ))}
@@ -854,22 +856,23 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
             position: 'absolute',
             bottom: '90px',
             right: '24px',
-            background: 'var(--color-paper-2)',
-            border: '1px solid var(--rule-subtle)',
-            borderRadius: 0,
+            background: 'rgba(10, 15, 24, 0.88)',
+            border: '1px solid rgba(148, 163, 184, 0.2)',
+            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
             padding: '10px 14px',
+            backdropFilter: 'blur(8px)',
             zIndex: 25,
             fontSize: '10.5px',
             fontFamily: 'var(--font-mono)',
-            color: 'var(--color-ink-muted)',
+            color: '#cbd5e1',
           }}
         >
-          <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>EVA ASTRONAUT CONTROLS:</div>
+          <div style={{ color: '#ff9e1b', fontWeight: 900, marginBottom: '4px' }}>EVA ASTRONAUT CONTROLS:</div>
           <div>• <strong>WASD / Arrows</strong>: Walk in 1/6th gravity</div>
           <div>• <strong>Space</strong>: Low-gravity Lunar Hop</div>
           <div>• <strong>E</strong>: Use Equipped Repair Tool</div>
           <div>• <strong>1 / 2 / 3</strong>: Switch Welder / Wrench / Multimeter</div>
-          <div>• <strong>V</strong>: 1st / 3rd Person / <strong>F</strong>: Headlight</div>
+          <div>• <strong>V</strong>: 1st / 3rd Person Camera · <strong>F</strong>: Headlight</div>
         </div>
 
         {/* Mission Outcome Banner */}
@@ -878,7 +881,7 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(0, 0, 0, 0.85)',
+              background: 'rgba(3, 7, 18, 0.85)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -887,22 +890,22 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
           >
             <div
               style={{
-                background: 'var(--color-paper)',
-                border: `1px solid ${missionOutcome === 'SUCCESS' ? 'var(--color-accent-green)' : 'var(--color-error)'}`,
+                background: '#111622',
+                border: `2px solid ${missionOutcome === 'SUCCESS' ? '#10b981' : '#ef4444'}`,
                 padding: '32px 48px',
-                borderRadius: 0,
+                borderRadius: '8px',
                 textAlign: 'center',
                 maxWidth: '480px',
-                boxShadow: '0 24px 48px rgba(0, 0, 0, 0.8)',
+                boxShadow: '0 12px 48px rgba(0,0,0,0.9)',
               }}
             >
-              <div style={{ display: 'inline-flex', padding: '10px', border: '1px solid var(--rule-subtle)', marginBottom: '12px', background: 'var(--color-paper-2)' }}>
-                {missionOutcome === 'SUCCESS' ? <Shield size={28} style={{ color: 'var(--color-accent-green)' }} /> : <AlertTriangle size={28} style={{ color: 'var(--color-error)' }} />}
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+                {missionOutcome === 'SUCCESS' ? '🏆' : '💀'}
               </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: missionOutcome === 'SUCCESS' ? 'var(--color-accent-green)' : 'var(--color-error)', fontFamily: 'var(--font-space)' }}>
-                {missionOutcome === 'SUCCESS' ? 'MOONBASE ALPHA RESTORED' : 'MISSION FAILED: O2 DEPLETED'}
+              <h2 style={{ fontSize: '24px', fontWeight: 900, color: missionOutcome === 'SUCCESS' ? '#10b981' : '#ef4444', fontFamily: 'var(--font-space)' }}>
+                {missionOutcome === 'SUCCESS' ? 'MOONBASE ALPHA RESTORED!' : 'MISSION FAILED — O2 DEPLETED'}
               </h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--color-ink-muted)', margin: '12px 0 24px 0', lineHeight: 1.6 }}>
+              <p style={{ fontSize: '13px', color: '#cbd5e1', margin: '12px 0 24px 0', lineHeight: 1.5 }}>
                 {missionOutcome === 'SUCCESS'
                   ? 'All 3 critical life support breaches were sealed before oxygen ran out. The lunar habitat crew is safe and Kilopower grid is fully operational!'
                   : 'Suit oxygen fell to zero before all severed lines could be welded. Remember to switch tools rapidly and leap across lunar craters using 1/6th gravity.'}
@@ -918,13 +921,13 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
                       b.progress = 0;
                     });
                   }}
-                  style={{ background: 'var(--color-paper-3)', border: '1px solid var(--rule-subtle)', color: 'var(--color-ink)', padding: '10px 20px', borderRadius: 0, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                  style={{ background: '#334155', border: '1px solid #94a3b8', color: '#fff', padding: '10px 20px', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
                 >
-                  <RotateCcw size={12} style={{ display: 'inline', marginRight: '6px' }} /> Retry EVA Repair
+                  🔄 Retry EVA Repair
                 </button>
                 <button
                   onClick={onClose}
-                  style={{ background: 'var(--color-accent)', border: '1px solid var(--color-accent)', color: '#000000', padding: '10px 24px', borderRadius: 0, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                  style={{ background: '#ff9e1b', border: 'none', color: '#000', padding: '10px 24px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
                 >
                   Return to Lobby
                 </button>
@@ -940,15 +943,15 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '12px',
+          gap: '16px',
           padding: '12px 24px',
-          background: 'var(--color-paper-2)',
-          borderTop: '1px solid var(--rule-subtle)',
+          background: 'linear-gradient(0deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 15, 28, 0.9) 100%)',
+          borderTop: '1px solid rgba(0, 210, 255, 0.25)',
           zIndex: 20,
         }}
       >
-        <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          EQUIPPED TOOL:
+        <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#94a3b8', fontWeight: 800 }}>
+          EQUIPPED EVA TOOL:
         </div>
 
         {/* Tool 1: Welder */}
@@ -958,19 +961,18 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 16px',
-            background: selectedTool === 'WELDER' ? 'var(--color-paper-3)' : 'transparent',
-            border: `1px solid ${selectedTool === 'WELDER' ? 'var(--color-accent)' : 'var(--rule-subtle)'}`,
-            borderRadius: 0,
-            color: selectedTool === 'WELDER' ? 'var(--color-accent)' : 'var(--color-ink-muted)',
+            padding: '8px 18px',
+            background: selectedTool === 'WELDER' ? 'rgba(0, 210, 255, 0.25)' : 'rgba(22, 30, 46, 0.8)',
+            border: `1.5px solid ${selectedTool === 'WELDER' ? '#00d2ff' : 'rgba(148, 163, 184, 0.25)'}`,
+            borderRadius: '4px',
+            color: selectedTool === 'WELDER' ? '#ffffff' : '#94a3b8',
             fontFamily: 'var(--font-mono)',
-            fontSize: '11.5px',
-            fontWeight: 700,
+            fontSize: '12px',
+            fontWeight: 800,
             cursor: 'pointer',
-            textTransform: 'uppercase',
           }}
         >
-          <Flame size={14} />
+          <span>🔥</span>
           <span>[1] Laser Pipe Welder</span>
         </button>
 
@@ -981,20 +983,19 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 16px',
-            background: selectedTool === 'WRENCH' ? 'var(--color-paper-3)' : 'transparent',
-            border: `1px solid ${selectedTool === 'WRENCH' ? 'var(--color-accent)' : 'var(--rule-subtle)'}`,
-            borderRadius: 0,
-            color: selectedTool === 'WRENCH' ? 'var(--color-accent)' : 'var(--color-ink-muted)',
+            padding: '8px 18px',
+            background: selectedTool === 'WRENCH' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(22, 30, 46, 0.8)',
+            border: `1.5px solid ${selectedTool === 'WRENCH' ? '#f59e0b' : 'rgba(148, 163, 184, 0.25)'}`,
+            borderRadius: '4px',
+            color: selectedTool === 'WRENCH' ? '#ffffff' : '#94a3b8',
             fontFamily: 'var(--font-mono)',
-            fontSize: '11.5px',
-            fontWeight: 700,
+            fontSize: '12px',
+            fontWeight: 800,
             cursor: 'pointer',
-            textTransform: 'uppercase',
           }}
         >
-          <Wrench size={14} />
-          <span>[2] Coupler Wrench</span>
+          <span>🔧</span>
+          <span>[2] Power Bus Coupler Wrench</span>
         </button>
 
         {/* Tool 3: Multimeter */}
@@ -1004,20 +1005,19 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '8px 16px',
-            background: selectedTool === 'MULTIMETER' ? 'var(--color-paper-3)' : 'transparent',
-            border: `1px solid ${selectedTool === 'MULTIMETER' ? 'var(--color-accent-green)' : 'var(--rule-subtle)'}`,
-            borderRadius: 0,
-            color: selectedTool === 'MULTIMETER' ? 'var(--color-accent-green)' : 'var(--color-ink-muted)',
+            padding: '8px 18px',
+            background: selectedTool === 'MULTIMETER' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(22, 30, 46, 0.8)',
+            border: `1.5px solid ${selectedTool === 'MULTIMETER' ? '#10b981' : 'rgba(148, 163, 184, 0.25)'}`,
+            borderRadius: '4px',
+            color: selectedTool === 'MULTIMETER' ? '#ffffff' : '#94a3b8',
             fontFamily: 'var(--font-mono)',
-            fontSize: '11.5px',
-            fontWeight: 700,
+            fontSize: '12px',
+            fontWeight: 800,
             cursor: 'pointer',
-            textTransform: 'uppercase',
           }}
         >
-          <Zap size={14} />
-          <span>[3] Hermetic Multimeter</span>
+          <span>⚡</span>
+          <span>[3] Hermetic Sensor Multimeter</span>
         </button>
       </footer>
     </div>

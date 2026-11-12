@@ -34,21 +34,21 @@ export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose })
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '880px',
-          maxHeight: '90dvh',
-          backgroundColor: 'var(--color-paper-2)',
-          border: 'var(--rule-hair) solid var(--color-rule)',
-          borderRadius: '0px',
+          maxHeight: '90vh',
+          backgroundColor: '#070b13',
+          border: '1px solid rgba(56, 189, 248, 0.4)',
+          borderRadius: '16px',
           overflowY: 'auto',
         }}
       >
-        <div className="modal-header" style={{ padding: '16px 24px', borderBottom: 'var(--rule-hair) solid var(--color-rule)' }}>
+        <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Database size={20} color="var(--color-accent-2)" />
+            <Database size={22} className="text-cyan-400" />
             <div>
-              <div style={{ fontSize: '11px', color: 'var(--color-accent-2)', fontFamily: 'var(--font-outlier)' }}>
+              <div style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 NASA Space Apps Challenge 2026 · Scientific Grounding
               </div>
-              <h2 className="modal-title" style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--color-ink)' }}>
+              <h2 className="modal-title" style={{ fontSize: '1.25rem', fontWeight: 800 }}>
                 Verified NASA Datasets, Sources &amp; Technical Reports
               </h2>
             </div>
@@ -59,12 +59,12 @@ export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose })
         </div>
 
         <div style={{ padding: '20px 24px' }}>
-          <p style={{ fontSize: '13.5px', color: 'var(--color-ink-2)', lineHeight: 1.5, marginBottom: '16px' }}>
+          <p style={{ fontSize: '0.88rem', color: '#cbd5e1', lineHeight: 1.5, marginBottom: '16px' }}>
             In strict compliance with NASA Space Apps Challenge judging criteria, all simulation constants, physical models, and environmental hazards in <strong>Jr_AstroCamp: Beyond Earth</strong> are mathematically grounded in the following peer-reviewed NASA technical publications and open scientific repositories.
           </p>
 
           {/* Category Filter Pills */}
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '16px' }}>
             {categories.map((c) => (
               <button
                 key={c.id}
@@ -72,11 +72,15 @@ export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose })
                   setSelectedCategory(c.id);
                   soundFx.playClick(850);
                 }}
-                className={selectedCategory === c.id ? 'hm-btn-primary' : 'hm-btn-secondary'}
                 style={{
                   padding: '6px 12px',
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-outlier)',
+                  borderRadius: '999px',
+                  border: selectedCategory === c.id ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                  backgroundColor: selectedCategory === c.id ? 'rgba(56, 189, 248, 0.15)' : 'rgba(15, 23, 42, 0.6)',
+                  color: selectedCategory === c.id ? '#38bdf8' : '#94a3b8',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -91,10 +95,10 @@ export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose })
               <div
                 key={ds.id}
                 style={{
-                  backgroundColor: 'var(--color-paper-card)',
-                  border: 'var(--rule-hair) solid var(--color-rule)',
-                  borderRadius: '0px',
-                  padding: '16px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '12px',
+                  padding: '18px',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
@@ -102,23 +106,23 @@ export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose })
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                       <span
                         style={{
-                          fontSize: '10px',
+                          fontSize: '0.68rem',
                           fontWeight: 700,
-                          padding: '4px 8px',
-                          backgroundColor: 'var(--color-paper-3)',
-                          color: 'var(--color-accent-green)',
-                          border: 'var(--rule-hair) solid var(--color-rule)',
-                          fontFamily: 'var(--font-outlier)',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                          color: '#43ffa0',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
                         }}
                       >
-                        REAL NASA DATA
+                        [REAL NASA DATA]
                       </span>
-                      <span style={{ fontSize: '11px', color: 'var(--color-muted)', fontFamily: 'var(--font-outlier)' }}>Verified: {ds.accessDate}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Verified: {ds.accessDate}</span>
                     </div>
 
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-ink)', fontFamily: 'var(--font-display)' }}>{ds.name}</h3>
-                    <div style={{ fontSize: '11px', color: 'var(--color-accent-2)', fontFamily: 'var(--font-outlier)', marginTop: '2px' }}>
-                      {ds.citationDoc} · <span style={{ color: 'var(--color-muted)' }}>{ds.agencyOrPublisher}</span>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f1f5f9' }}>{ds.name}</h3>
+                    <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontFamily: 'monospace', marginTop: '2px' }}>
+                      {ds.citationDoc} · <span style={{ color: '#94a3b8' }}>{ds.agencyOrPublisher}</span>
                     </div>
                   </div>
 
@@ -126,11 +130,17 @@ export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose })
                     href={ds.directUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hm-btn-secondary"
                     style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      color: '#38bdf8',
                       padding: '6px 12px',
-                      fontSize: '11px',
-                      fontFamily: 'var(--font-outlier)',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
                       textDecoration: 'none',
                     }}
                   >
@@ -139,25 +149,25 @@ export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose })
                   </a>
                 </div>
 
-                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
-                  <div style={{ color: 'var(--color-ink-2)', lineHeight: 1.45 }}>
-                    <strong style={{ color: 'var(--color-ink)' }}>Relevant Scientific Fact / Value: </strong>
+                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem' }}>
+                  <div style={{ color: '#cbd5e1', lineHeight: 1.45 }}>
+                    <strong style={{ color: '#e2e8f0' }}>Relevant Scientific Fact / Value: </strong>
                     {ds.relevantFactOrData}
                   </div>
 
-                  <div style={{ color: 'var(--color-muted)' }}>
-                    <strong style={{ color: 'var(--color-accent-2)' }}>Scientific Units: </strong>
-                    <span style={{ fontFamily: 'var(--font-outlier)' }}>{ds.units}</span>
+                  <div style={{ color: '#94a3b8' }}>
+                    <strong style={{ color: '#a78bfa' }}>Scientific Units: </strong>
+                    <span style={{ fontFamily: 'monospace' }}>{ds.units}</span>
                   </div>
 
-                  <div style={{ backgroundColor: 'var(--color-paper-3)', padding: '10px 12px', borderLeft: '2px solid var(--color-accent-2)' }}>
-                    <strong style={{ color: 'var(--color-accent-2)' }}>How Applied in Jr_AstroCamp: </strong>
-                    <span style={{ color: 'var(--color-ink-2)' }}>{ds.howUsedInGame}</span>
+                  <div style={{ backgroundColor: 'rgba(56, 189, 248, 0.05)', padding: '10px 12px', borderRadius: '8px', borderLeft: '3px solid #38bdf8' }}>
+                    <strong style={{ color: '#38bdf8' }}>How Applied in Jr_AstroCamp: </strong>
+                    <span style={{ color: '#cbd5e1' }}>{ds.howUsedInGame}</span>
                   </div>
 
-                  <div style={{ backgroundColor: 'var(--color-paper-3)', padding: '10px 12px', borderLeft: '2px solid var(--color-accent)' }}>
-                    <strong style={{ color: 'var(--color-accent)' }}>Game Simulation Simplification: </strong>
-                    <span style={{ color: 'var(--color-muted)' }}>{ds.limitationsOrSimplifications}</span>
+                  <div style={{ backgroundColor: 'rgba(245, 158, 11, 0.05)', padding: '10px 12px', borderRadius: '8px', borderLeft: '3px solid #f59e0b' }}>
+                    <strong style={{ color: '#fbbf24' }}>Game Simulation Simplification: </strong>
+                    <span style={{ color: '#94a3b8' }}>{ds.limitationsOrSimplifications}</span>
                   </div>
                 </div>
               </div>

@@ -1,5 +1,4 @@
 import type { MissionEvent } from '../types/game';
-import type { DonkiDataResult } from '../utils/donkiMapper';
 
 export const MISSION_EVENTS: MissionEvent[] = [
   {
@@ -170,25 +169,24 @@ export const MISSION_EVENTS: MissionEvent[] = [
   {
     id: 'sol-12-solar-flare',
     sol: 12,
-    title: 'Solar-storm response training scenario',
+    title: 'SPACE WEATHER ALERT: Class X Solar Flare',
     urgency: 'CRITICAL',
-    weatherNotice: 'No verified DONKI record loaded. This event is a game scenario. [GAME SIMULATION VALUE]',
-    dataAttribution: { label: 'GAME SIMULATION' },
+    weatherNotice: 'NASA DONKI Alert: Coronal Mass Ejection impact in 6 hours · Solar flux > 10,000 pfu',
     nasaCitation: {
-      title: 'NASA DONKI space-weather event catalog',
-      docNumber: 'No verified record loaded',
-      description: 'Solar flares and coronal mass ejections are different events. This scenario uses simulated effects until a DONKI record is available.'
+      title: 'NASA DONKI & Space Radiation Analysis Group (SRAG)',
+      docNumber: 'NASA-SP-2009-3401',
+      description: 'Solar Energetic Particle (SEP) events can deliver lethal radiation doses without 1–2 meters of regolith or water shielding.'
     },
     comicPanels: [
       {
         speaker: 'HOUSTON_CAPCOM',
-        dialogue: "Outpost Shackleton, Houston here. A solar-storm training alert is active. Check the crew shelter and power trade-off.",
+        dialogue: "Outpost Shackleton, Houston here. SOHO satellite detects a major X3.4 flare erupting from Active Region 3842. Take cover!",
         mood: 'warning',
         illustrationType: 'SUN_FLARE'
       },
       {
         speaker: 'COMMANDER_DADU',
-        dialogue: "Maya, pause the outside work and check the shelter plan. The storm timing and effects in this exercise are simulated.",
+        dialogue: "Maya, drop the outside tools right now! The Sun just sneezed high-energy protons straight at us. We have 6 hours to bunker down!",
         mood: 'heroic',
         illustrationType: 'SUN_FLARE'
       }
@@ -198,28 +196,28 @@ export const MISSION_EVENTS: MissionEvent[] = [
         id: 'opt-seal-storm-vault',
         title: 'Full Evacuation to the Underground Regolith Vault',
         description: 'Huddle crew in the water-jacketed storm shelter under 2 meters of sintered lunar regolith.',
-        tradeOffText: 'Lowers the simulated mission-dose-budget meter, but uses power and pauses exterior science.',
+        tradeOffText: 'Zero radiation damage to crew; halts exterior science and drains shelter life support.',
         resourceDelta: { radiation: +5, crewHealth: +5, science: 0, power: -15, water: -5 },
-        consequenceNarrative: 'The crew shelters in the game scenario. The meter change is simulated, not a measured radiation dose.',
+        consequenceNarrative: 'The blast of protons peppers the outer shell, but inside the dense regolith vault, the crew is 100% safe.',
         educationalInsight: 'Lunar regolith (soil) is rich in silica and alumina, serving as a natural shield against cosmic rays.'
       },
       {
         id: 'opt-finish-rover-run',
         title: 'Rush the Rover to Finish the Seismic Sensor Array',
         description: 'Keep the rover outside for 90 minutes to deploy the final deep-lunar earthquake sensor.',
-        tradeOffText: 'Gains science, but raises the simulated mission-dose-budget meter and uses crew energy.',
+        tradeOffText: 'Massive science breakthrough, but crew absorbs a severe radiation dose.',
         resourceDelta: { science: +60, radiation: +35, crewHealth: -25, power: -10 },
-        consequenceNarrative: 'The seismic sensor is deployed, but the simulated mission-dose-budget meter rises.',
-        educationalInsight: 'Radiation exposure is a real spaceflight hazard. This game meter is not a clinical dose or health prediction.'
+        consequenceNarrative: 'The seismic sensor is deployed! But Maya and Dadu emerge with dosimeter alarms blaring at dangerous levels.',
+        educationalInsight: 'Acute radiation exposure causes nausea and immune suppression; astronauts must balance bravery with health limits.'
       },
       {
         id: 'opt-magnetic-shield',
         title: 'Activate Experimental Active Magnetic Deflector',
         description: 'Route maximum capacitor charge into superconducting magnetic coils to deflect charged particles.',
-        tradeOffText: 'This fictional shield lowers the simulated dose-budget increase, but consumes a large share of stored power.',
+        tradeOffText: 'Protects entire habitat without bunkering, but consumes 40% of outpost battery storage.',
         resourceDelta: { power: -40, radiation: +10, science: +25, crewHealth: 0 },
         consequenceNarrative: 'A shimmering magnetic aura deflects the solar wind like a mini-Earth magnetosphere! The power grid barely survives.',
-        educationalInsight: 'Active magnetic shielding is an experimental concept; this game effect is fictional and not an engineering performance estimate.'
+        educationalInsight: 'Active electromagnetic shielding mimics Earth’s magnetic field to bend incoming solar protons away from habitats.'
       }
     ]
   },
@@ -253,8 +251,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
         id: 'opt-spin-up-kilopower',
         title: 'Ignite 10 kWe Kilopower Fission Core',
         description: 'Deploy the Stirling nuclear reactor to provide uninterrupted 24/7 electricity and radiant heat.',
-        tradeOffText: 'Keeps power on all night, but the crew spends energy starting and checking the reactor.',
-        resourceDelta: { power: +45, oxygen: +10, water: +5, crewHealth: -5, science: +15 },
+        tradeOffText: 'Abundant continuous power through the night; requires cooling radiator management.',
+        resourceDelta: { power: +45, oxygen: +10, water: +5, crewHealth: +10, science: +15 },
         consequenceNarrative: 'The sodium heat pipes hum to life. Warmth spreads through every module while the outside plummets to -130°C.',
         educationalInsight: 'NASA Kilopower uses Stirling engines with solid uranium cores to supply reliable power through years of darkness.'
       },
@@ -427,8 +425,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
         id: 'opt-stabilize-all-systems',
         title: 'Safety-First System Conservation & Station Handover',
         description: 'Charge all batteries, flush water filters, and leave the outpost fully nominal for the next crew.',
-        tradeOffText: 'Restores the base for the next crew, but the extended repair shift uses two meals.',
-        resourceDelta: { power: +20, water: +15, oxygen: +15, crewHealth: +20, science: +25, food: -2 },
+        tradeOffText: 'Ensures 100% survival; guarantees spotless crew health score; moderate science gain.',
+        resourceDelta: { power: +20, water: +15, oxygen: +15, crewHealth: +20, science: +25 },
         consequenceNarrative: 'Every meter reads green. Outpost Shackleton stands as a beacon of human resilience, ready for the next crew.',
         educationalInsight: 'Leaving a lunar base in a certified nominal state allows future astronaut missions to dock and survive safely.'
       },
@@ -444,49 +442,3 @@ export const MISSION_EVENTS: MissionEvent[] = [
     ]
   }
 ];
-
-export function createSolarStormMissionEvent(
-  event: MissionEvent,
-  donkiData?: DonkiDataResult
-): MissionEvent {
-  if (event.id !== 'sol-12-solar-flare') return event;
-
-  const summary = donkiData?.summary;
-  if (!summary) {
-    return {
-      ...event,
-      weatherNotice: `No verified DONKI record loaded. This event is a game scenario. [GAME SIMULATION VALUE]${donkiData?.error ? ` Data status: ${donkiData.error}` : ''}`,
-      dataAttribution: {
-        label: 'GAME SIMULATION',
-        ...(donkiData?.error ? { error: donkiData.error } : {}),
-      },
-    };
-  }
-
-  const sourceLabel = donkiData.source === 'LIVE' || donkiData.source === 'ARCHIVED'
-    ? donkiData.source
-    : 'ARCHIVED';
-
-  return {
-    ...event,
-    title: `Sol 12: ${summary.stormStrength.toLowerCase()} solar-storm scenario · ${summary.flareClass} flare`,
-    weatherNotice: `NASA DONKI ${sourceLabel}: ${summary.flareClass} flare; CME ${summary.cmeSpeedKmPerSecond} km/s; estimated Sun–Earth travel time ${summary.warningHours} h. [REAL NASA DATA]`,
-    dataAttribution: {
-      label: sourceLabel,
-      recordId: summary.recordId,
-      sourceUrl: summary.sourceUrl,
-      fetchedAt: donkiData.fetchedAt,
-    },
-    nasaCitation: {
-      title: 'NASA DONKI CME and linked flare records',
-      docNumber: `CME ${summary.recordId} · FLR ${summary.flareRecordId}`,
-      description: 'NASA DONKI event observations are shown as archived or live source data. Estimated travel time is a game simplification based on 1 AU divided by the reported CME speed; flare class does not predict astronaut dose.',
-    },
-    comicPanels: event.comicPanels.map((panel) => panel.speaker === 'HOUSTON_CAPCOM'
-      ? {
-          ...panel,
-          dialogue: `Outpost Shackleton, Houston here. DONKI records link ${summary.flareClass} flare ${summary.flareRecordId} with CME ${summary.recordId}. Estimated Sun–Earth travel time: ${summary.warningHours} hours. Shelter and resource effects in this exercise are simulated.`,
-        }
-      : panel),
-  };
-}

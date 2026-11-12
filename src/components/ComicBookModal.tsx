@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { 
   COMIC_BOOK_ISSUES, 
-  getMergedComicIssues,
   type ComicIssue, 
   type ComicPanelScene 
 } from '../data/comicBooks';
@@ -60,11 +59,9 @@ export const ComicBookModal: React.FC<ComicBookModalProps> = ({
     }
   }, [initialIssueId]);
 
-  const allIssues = React.useMemo(() => getMergedComicIssues(), [isOpen, selectedIssueId]);
-
-  const currentIssue: ComicIssue | undefined = allIssues.find(
+  const currentIssue: ComicIssue | undefined = COMIC_BOOK_ISSUES.find(
     (i) => i.id === selectedIssueId
-  ) || allIssues[0];
+  );
 
   const currentPage = currentIssue?.pages[currentPageIdx];
 
@@ -266,7 +263,7 @@ export const ComicBookModal: React.FC<ComicBookModalProps> = ({
 
               {/* Comic Book Shelf Grid */}
               <div className="comic-grid">
-                {allIssues.map((issue) => (
+                {COMIC_BOOK_ISSUES.map((issue) => (
                   <div
                     key={issue.id}
                     onClick={() => {
@@ -477,7 +474,7 @@ export const ComicBookModal: React.FC<ComicBookModalProps> = ({
                       cursor: 'pointer'
                     }}
                   >
-                    {allIssues.map((iss) => (
+                    {COMIC_BOOK_ISSUES.map((iss) => (
                       <option key={iss.id} value={iss.id}>
                         Issue #{iss.issueNumber}: {iss.title}
                       </option>

@@ -7,17 +7,13 @@ import {
   Award,
   CheckCircle2,
   ChevronRight,
-  BookOpen,
-  Film,
-  Layers,
-  GraduationCap,
 } from 'lucide-react';
 import { ASTRONAUT_CLASSES, type ClassroomLesson } from '../data/astronautClasses';
 import { soundFx } from '../utils/audioEffects';
 import { NasaSpaceScienceLabModal } from './NasaSpaceScienceLabModal';
 import { ComicVideoPlayer } from './ComicVideoPlayer';
 import { ComicBookModal } from './ComicBookModal';
-import { COMIC_BOOK_ISSUES, getMergedComicIssues, type ComicIssue } from '../data/comicBooks';
+import { COMIC_BOOK_ISSUES, type ComicIssue } from '../data/comicBooks';
 
 interface AstronautClassroomModalProps {
   isOpen: boolean;
@@ -35,7 +31,6 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
   initialComicIssueId,
 }) => {
   const [activeClassroomTab, setActiveClassroomTab] = useState<'LESSONS' | 'COMIC_VIDEOS' | 'SCIENCE_LAB'>(initialTab);
-  const classroomComicIssues = React.useMemo(() => getMergedComicIssues(), [isOpen]);
   const [selectedComicIssueId, setSelectedComicIssueId] = useState<string>(initialComicIssueId || COMIC_BOOK_ISSUES[0].id);
   const [isComicReaderOpen, setIsComicReaderOpen] = useState<boolean>(false);
   const [selectedClassId, setSelectedClassId] = useState<string>(ASTRONAUT_CLASSES[0].id);
@@ -451,22 +446,22 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
           maxWidth: '1280px',
           width: '96vw',
           maxHeight: '94vh',
-          backgroundColor: 'var(--color-paper-2)',
-          border: 'var(--rule-hair)',
-          borderRadius: 0,
+          backgroundColor: '#050814',
+          border: '1px solid rgba(167, 139, 250, 0.45)',
+          borderRadius: '20px',
           display: 'flex',
           flexDirection: 'column',
           padding: '0',
           overflow: 'hidden',
-          boxShadow: 'none',
+          boxShadow: '0 0 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(124, 58, 237, 0.25)',
         }}
       >
         {/* TOP STATUS BAR */}
         <div
           style={{
             padding: '16px 24px',
-            backgroundColor: 'var(--color-paper-2)',
-            borderBottom: 'var(--rule-hair)',
+            backgroundColor: '#090d1f',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -477,23 +472,24 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: 0,
-                background: 'var(--color-paper-3)',
-                border: 'var(--rule-hair)',
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #7c3aed, #0284c7)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                fontSize: '1.4rem',
+                boxShadow: '0 0 15px rgba(124, 58, 237, 0.4)',
               }}
             >
-              <GraduationCap size={18} color="var(--color-accent)" />
+              🎓
             </div>
             <div>
-              <div style={{ fontSize: '10px', color: 'var(--color-accent)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ fontSize: '0.72rem', color: '#a78bfa', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 NASA Ground School &amp; Astronaut Flight Academy
               </div>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-ink)', margin: 0, fontFamily: 'var(--font-mono)' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
                 {activeClassroomTab === 'LESSONS' && 'Ground School: Flight Training & Spacecraft Systems'}
                 {activeClassroomTab === 'COMIC_VIDEOS' && 'Kid Cadet Motion Comic Cinema: 6 Animated STEM Missions'}
                 {activeClassroomTab === 'SCIENCE_LAB' && 'NASA Space Science & Biology Laboratory'}
@@ -506,11 +502,11 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              background: 'var(--color-paper)',
-              padding: '2px',
-              borderRadius: 0,
-              border: 'var(--rule-hair)',
+              gap: '6px',
+              background: 'rgba(255,255,255,0.05)',
+              padding: '4px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.1)',
             }}
           >
             <button
@@ -519,21 +515,21 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
                 soundFx.playClick(750);
               }}
               style={{
-                padding: '6px 12px',
-                borderRadius: 0,
-                border: activeClassroomTab === 'LESSONS' ? '1px solid var(--color-accent)' : 'var(--rule-hair)',
-                background: activeClassroomTab === 'LESSONS' ? 'var(--color-paper-3)' : 'transparent',
-                color: activeClassroomTab === 'LESSONS' ? 'var(--color-accent)' : 'var(--color-muted)',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: 'var(--font-mono)',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: activeClassroomTab === 'LESSONS' ? '1.5px solid #a855f7' : '1px solid transparent',
+                background: activeClassroomTab === 'LESSONS' ? 'rgba(168, 85, 247, 0.28)' : 'transparent',
+                color: activeClassroomTab === 'LESSONS' ? '#e9d5ff' : '#94a3b8',
+                fontSize: '0.8rem',
+                fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
+                transition: 'all 0.15s ease',
               }}
             >
-              <BookOpen size={13} />
+              <span>📚</span>
               <span>Flight Lessons (6)</span>
             </button>
 
@@ -543,21 +539,22 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
                 soundFx.playClick(750);
               }}
               style={{
-                padding: '6px 12px',
-                borderRadius: 0,
-                border: activeClassroomTab === 'COMIC_VIDEOS' ? '1px solid var(--color-accent-amber)' : 'var(--rule-hair)',
-                background: activeClassroomTab === 'COMIC_VIDEOS' ? 'var(--color-paper-3)' : 'transparent',
-                color: activeClassroomTab === 'COMIC_VIDEOS' ? 'var(--color-accent-amber)' : 'var(--color-muted)',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: 'var(--font-mono)',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: activeClassroomTab === 'COMIC_VIDEOS' ? '1.5px solid #f59e0b' : '1px solid transparent',
+                background: activeClassroomTab === 'COMIC_VIDEOS' ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(234, 88, 12, 0.25))' : 'transparent',
+                color: activeClassroomTab === 'COMIC_VIDEOS' ? '#fbbf24' : '#94a3b8',
+                fontSize: '0.8rem',
+                fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
+                transition: 'all 0.15s ease',
+                boxShadow: activeClassroomTab === 'COMIC_VIDEOS' ? '0 0 14px rgba(245, 158, 11, 0.4)' : 'none',
               }}
             >
-              <Film size={13} />
+              <span>🎬</span>
               <span>Animated Comic Videos (6)</span>
             </button>
 
@@ -567,21 +564,22 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
                 soundFx.playClick(750);
               }}
               style={{
-                padding: '6px 12px',
-                borderRadius: 0,
-                border: activeClassroomTab === 'SCIENCE_LAB' ? '1px solid var(--color-accent-green)' : 'var(--rule-hair)',
-                background: activeClassroomTab === 'SCIENCE_LAB' ? 'var(--color-paper-3)' : 'transparent',
-                color: activeClassroomTab === 'SCIENCE_LAB' ? 'var(--color-accent-green)' : 'var(--color-muted)',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: 'var(--font-mono)',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: activeClassroomTab === 'SCIENCE_LAB' ? '1.5px solid #10b981' : '1px solid transparent',
+                background: activeClassroomTab === 'SCIENCE_LAB' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 182, 212, 0.25))' : 'transparent',
+                color: activeClassroomTab === 'SCIENCE_LAB' ? '#6ee7b7' : '#94a3b8',
+                fontSize: '0.8rem',
+                fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
+                transition: 'all 0.15s ease',
+                boxShadow: activeClassroomTab === 'SCIENCE_LAB' ? '0 0 14px rgba(16, 185, 129, 0.35)' : 'none',
               }}
             >
-              <Layers size={13} />
+              <span>🔬</span>
               <span>Space Science &amp; Biology Lab (5)</span>
             </button>
           </div>
@@ -1204,7 +1202,7 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
                 <span>🎬</span>
                 <span>EPISODES:</span>
               </div>
-              {classroomComicIssues.map((issue) => {
+              {COMIC_BOOK_ISSUES.map((issue) => {
                 const isSelected = issue.id === selectedComicIssueId;
                 return (
                   <button
@@ -1241,7 +1239,7 @@ export const AstronautClassroomModal: React.FC<AstronautClassroomModalProps> = (
             {/* Video Player Display */}
             <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
               {(() => {
-                const currentIssue = classroomComicIssues.find((i) => i.id === selectedComicIssueId) || classroomComicIssues[0];
+                const currentIssue = COMIC_BOOK_ISSUES.find((i) => i.id === selectedComicIssueId) || COMIC_BOOK_ISSUES[0];
                 return (
                   <ComicVideoPlayer
                     key={currentIssue.id}

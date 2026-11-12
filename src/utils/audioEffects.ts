@@ -7,6 +7,7 @@
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
+  private unlocked: boolean = false;
 
   private initCtx() {
     if (!this.ctx) {
@@ -14,8 +15,31 @@ class SoundEngine {
       this.ctx = new AudioContextClass();
     }
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
+  }
+
+  public unlock() {
+    try {
+      this.initCtx();
+      if (this.ctx) {
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+        if (!this.unlocked) {
+          this.unlocked = true;
+          // Play silent warm-up buffer to ensure audio pipeline is active
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.0001, this.ctx.currentTime + 0.02);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.03);
+        }
+      }
+    } catch {}
   }
 
   public setMuted(muted: boolean) {
@@ -48,12 +72,12 @@ class SoundEngine {
         const t = now + idx * 0.12;
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, t);
-        gain.gain.setValueAtTime(0.1, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        gain.gain.setValueAtTime(0.24, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
         osc.connect(gain);
         gain.connect(this.ctx!.destination);
         osc.start(t);
-        osc.stop(t + 0.36);
+        osc.stop(t + 0.40);
       });
     } catch {}
   }
@@ -88,7 +112,7 @@ class SoundEngine {
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(freq * 1.5, this.ctx.currentTime + duration);
 
-      gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+      gain.gain.setValueAtTime(0.22, this.ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
 
       osc.connect(gain);
@@ -120,7 +144,7 @@ class SoundEngine {
         osc.frequency.exponentialRampToValueAtTime(880, start + 0.15);
         osc.frequency.exponentialRampToValueAtTime(450, start + 0.25);
 
-        gain.gain.setValueAtTime(0.12, start);
+        gain.gain.setValueAtTime(0.26, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + 0.26);
 
         osc.connect(gain);
@@ -566,7 +590,7 @@ class SoundEngine {
         const t = now + idx * 0.04;
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t);
-        gain.gain.setValueAtTime(0.04, t);
+        gain.gain.setValueAtTime(0.18, t);
         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
         osc.connect(gain);
         gain.connect(this.ctx!.destination);
@@ -580,3 +604,13 @@ class SoundEngine {
 }
 
 export const soundFx = new SoundEngine();
+
+// Automatic Web Audio policy unlocker on first user interaction anywhere
+if (typeof window !== 'undefined') {
+  const handleInteraction = () => {
+    soundFx.unlock();
+  };
+  ['click', 'keydown', 'touchstart', 'pointerdown'].forEach((evt) => {
+    window.addEventListener(evt, handleInteraction, { once: false, passive: true });
+  });
+}

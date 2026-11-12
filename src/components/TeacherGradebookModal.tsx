@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   GraduationCap,
@@ -35,14 +35,12 @@ interface TeacherGradebookModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser?: User | null;
-  isFullPage?: boolean;
 }
 
 export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
   isOpen,
   onClose,
   currentUser,
-  isFullPage = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'GRADEBOOK' | 'ANALYTICS' | 'DIRECTIVES' | 'REPORT_CARD' | 'REALTIME_LOGS'>('GRADEBOOK');
   const [students, setStudents] = useState<StudentScoreRecord[]>(() => studentScoreService.getStudents());
@@ -61,11 +59,6 @@ export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
   // Edit Note State
   const [editingNoteStudentId, setEditingNoteStudentId] = useState<string | null>(null);
   const [tempNoteText, setTempNoteText] = useState('');
-
-  useEffect(() => {
-    if (!isOpen && !isFullPage) return;
-    return studentActivityService.subscribe(setRealtimeLogs);
-  }, [isOpen, isFullPage]);
 
   if (!isOpen) return null;
 
@@ -102,40 +95,30 @@ export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
   const examPassedCount = students.filter((s) => s.earthExamPassed).length;
   const passRate = Math.round((examPassedCount / (students.length || 1)) * 100);
 
-  const modalContent = (
-    <div
-      className={isFullPage ? "teacher-fullpage-panel" : "modal-container"}
-      onClick={(e) => e.stopPropagation()}
-      style={isFullPage ? {
-        maxWidth: '1360px',
-        width: '100%',
-        margin: '0 auto',
-        backgroundColor: 'var(--color-paper-2)',
-        border: 'var(--rule-hair)',
-        borderRadius: '4px',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-      } : {
-        maxWidth: '1180px',
-        width: '96vw',
-        maxHeight: '94vh',
-        backgroundColor: 'var(--color-paper-2)',
-        border: 'var(--rule-hair)',
-        borderRadius: 0,
-        boxShadow: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
+  return (
+    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 1200 }}>
+      <div
+        className="modal-container"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '1180px',
+          width: '96vw',
+          maxHeight: '94vh',
+          backgroundColor: '#070b14',
+          border: '1px solid rgba(168, 85, 247, 0.45)',
+          borderRadius: '18px',
+          boxShadow: '0 0 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(168, 85, 247, 0.25)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
         {/* Top Header */}
         <div
           style={{
             padding: '16px 24px',
-            backgroundColor: 'var(--color-paper-2)',
-            borderBottom: 'var(--rule-hair)',
+            backgroundColor: '#0d1322',
+            borderBottom: '1px solid rgba(168, 85, 247, 0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -144,40 +127,38 @@ export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: 0,
-                background: 'var(--color-paper-3)',
-                border: 'var(--rule-hair)',
+                width: '44px',
+                height: '44px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))',
+                border: '1px solid rgba(168, 85, 247, 0.5)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.2rem',
+                fontSize: '1.5rem',
               }}
             >
               👩‍🏫
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-ink)', fontFamily: 'var(--font-mono)' }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)' }}>
                   NASA STEM Educator Flight Control &amp; Student Gradebook
                 </span>
-                <span style={{ fontSize: '9px', background: 'var(--color-paper-3)', color: 'var(--color-accent)', border: 'var(--rule-hair)', padding: '1px 6px', borderRadius: 0, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                <span style={{ fontSize: '0.72rem', background: '#9333ea', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontWeight: 900 }}>
                   TEACHER CLEARANCE
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
-                Instructor: <strong style={{ color: 'var(--color-ink)' }}>{currentUser?.fullName || 'Prof. Sarah Jenkins'}</strong> ({currentUser?.email || 'sarah.stem@school.edu'}) / {currentUser?.schoolOrOrg || 'NASA STEM Academy / Central High'}
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                Instructor: <strong style={{ color: '#e9d5ff' }}>{currentUser?.fullName || 'Prof. Sarah Jenkins'}</strong> ({currentUser?.email || 'sarah.stem@school.edu'}) · {currentUser?.schoolOrOrg || 'NASA STEM Academy / Central High'}
               </div>
             </div>
           </div>
 
-        {!isFullPage && (
-          <button onClick={onClose} className="modal-close-btn" style={{ borderRadius: 0, border: 'var(--rule-hair)' }} aria-label="Close">
+          <button onClick={onClose} className="modal-close-btn" aria-label="Close">
             <X size={18} />
           </button>
-        )}
-      </div>
+        </div>
 
         {/* Tab Navigation */}
         <div
@@ -911,26 +892,9 @@ export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
                             Astronaut: {log.characterName}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: '2px' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#e2e8f0' }}>
-                            {log.missionTitle}
-                          </span>
-                          <span style={{
-                            fontSize: '0.65rem',
-                            fontWeight: 800,
-                            color: log.outcomeStatus === 'LEARNING' ? '#fbbf24' : '#86efac',
-                            border: `1px solid ${log.outcomeStatus === 'LEARNING' ? '#92400e' : '#166534'}`,
-                            borderRadius: 4,
-                            padding: '1px 5px',
-                          }}>
-                            {log.outcomeStatus === 'LEARNING' ? 'LEARNING ATTEMPT' : log.outcomeStatus}
-                          </span>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#e2e8f0', marginTop: '2px' }}>
+                          {log.missionTitle}
                         </div>
-                        {log.notes && (
-                          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 2 }}>
-                            {log.notes}
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -964,19 +928,6 @@ export const TeacherGradebookModal: React.FC<TeacherGradebookModalProps> = ({
           )}
         </div>
       </div>
-  );
-
-  if (isFullPage) {
-    return (
-      <div className="page-teacher-gradebook" style={{ minHeight: 'calc(100vh - 52px)', background: 'var(--color-space-950, #04070e)', padding: '16px 20px 48px' }}>
-        {modalContent}
-      </div>
-    );
-  }
-
-  return (
-    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 1200 }}>
-      {modalContent}
     </div>
   );
 };

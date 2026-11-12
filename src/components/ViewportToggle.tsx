@@ -10,21 +10,27 @@ interface ViewportToggleProps {
 export const ViewportToggle: React.FC<ViewportToggleProps> = ({ is3DView, onSetView }) => (
   <div style={{
     display: 'flex',
-    gap: '2px',
-    backgroundColor: 'var(--color-paper-3)',
+    gap: '4px',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
     padding: '2px',
-    border: 'var(--rule-hair) solid var(--color-rule)',
+    borderRadius: '6px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
   }}>
     <button
       onClick={() => { onSetView(true); soundFx.playClick(750); }}
-      className={is3DView ? 'hm-btn-primary' : 'hm-btn-secondary'}
       style={{
-        padding: '4px 8px',
-        fontSize: '11px',
-        fontFamily: 'var(--font-outlier)',
+        padding: '3px 8px',
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        borderRadius: '4px',
+        border: 'none',
+        cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         gap: '4px',
+        backgroundColor: is3DView ? '#38bdf8' : 'transparent',
+        color: is3DView ? '#070a0e' : '#94a3b8',
+        transition: 'all 0.15s ease',
       }}
     >
       <Box size={12} />
@@ -32,14 +38,19 @@ export const ViewportToggle: React.FC<ViewportToggleProps> = ({ is3DView, onSetV
     </button>
     <button
       onClick={() => { onSetView(false); soundFx.playClick(650); }}
-      className={!is3DView ? 'hm-btn-primary' : 'hm-btn-secondary'}
       style={{
-        padding: '4px 8px',
-        fontSize: '11px',
-        fontFamily: 'var(--font-outlier)',
+        padding: '3px 8px',
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        borderRadius: '4px',
+        border: 'none',
+        cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         gap: '4px',
+        backgroundColor: !is3DView ? '#38bdf8' : 'transparent',
+        color: !is3DView ? '#070a0e' : '#94a3b8',
+        transition: 'all 0.15s ease',
       }}
     >
       <MapIcon size={12} />

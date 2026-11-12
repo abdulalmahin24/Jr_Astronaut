@@ -78,7 +78,20 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
   });
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  const missionIndex = MISSION_GAME_DATA.findIndex((m) => m.id === missionId);
+  // Map cadet-XX, officer-XX, commander-XX or numeric suffix to authentic NASA-MXXX
+  const resolvedMissionId = React.useMemo(() => {
+    if (!missionId) return 'NASA-M001';
+    if (missionId.startsWith('cadet-') || missionId.startsWith('officer-') || missionId.startsWith('commander-')) {
+      const numPart = missionId.split('-')[1];
+      const num = parseInt(numPart, 10);
+      if (!isNaN(num) && num >= 1 && num <= 76) {
+        return `NASA-M${num.toString().padStart(3, '0')}`;
+      }
+    }
+    return missionId;
+  }, [missionId]);
+
+  const missionIndex = MISSION_GAME_DATA.findIndex((m) => m.id === resolvedMissionId || m.id === missionId);
   const mission: MissionGameConfig = MISSION_GAME_DATA[missionIndex] || MISSION_GAME_DATA[0];
   const nextMission: MissionGameConfig | undefined = MISSION_GAME_DATA[missionIndex + 1];
 
@@ -241,24 +254,24 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
       return NASA_MAPS['map-mars-jezero'];
     }
     if (nameLower.includes('europa')) {
-      return NASA_MAPS['map-europa-rift'] || NASA_MAPS['map-moon-aitken'];
+      return NASA_MAPS['map-europa-ice'];
     }
     if (nameLower.includes('titan') || nameLower.includes('saturn') || nameLower.includes('cassini')) {
-      return NASA_MAPS['map-titan-kraken'] || NASA_MAPS['map-mars-jezero'];
+      return NASA_MAPS['map-titan-methane'];
     }
     if (nameLower.includes('psyche') || nameLower.includes('asteroid') || nameLower.includes('dart') || nameLower.includes('dawn') || nameLower.includes('osiris')) {
-      return NASA_MAPS['map-psyche-belt'] || NASA_MAPS['map-moon-aitken'];
+      return NASA_MAPS['map-psyche-belt'];
     }
     if (m.gameType === 'telescope' || nameLower.includes('jwst') || nameLower.includes('hubble') || nameLower.includes('spitzer') || nameLower.includes('chandra') || nameLower.includes('kepler')) {
-      return NASA_MAPS['map-nebula-eagle'] || NASA_MAPS['map-earth-lc39b'];
+      return NASA_MAPS['map-nebula-deep'];
     }
     if (m.gameType === 'deep_space' || nameLower.includes('voyager') || nameLower.includes('pioneer') || nameLower.includes('horizons')) {
-      return NASA_MAPS['map-nebula-eagle'] || NASA_MAPS['map-earth-lc39b'];
+      return NASA_MAPS['map-nebula-deep'];
     }
     if (m.gameType === 'docking' || nameLower.includes('iss') || nameLower.includes('skylab') || nameLower.includes('station') || nameLower.includes('gemini') || nameLower.includes('rendezvous')) {
-      return NASA_MAPS['map-gateway-nrho'] || NASA_MAPS['map-earth-lc39b'];
+      return NASA_MAPS['map-gateway-orbit'];
     }
-    return NASA_MAPS['map-earth-lc39b'] || NASA_MAPS['map-moon-aitken'];
+    return NASA_MAPS['map-earth-lc39b'];
   };
 
   const getTrailerVehicle = (m: MissionGameConfig): VehicleConfig => {

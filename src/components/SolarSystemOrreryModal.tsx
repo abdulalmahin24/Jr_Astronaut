@@ -8,7 +8,6 @@
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { getSharedGLTFLoader } from '../utils/modelLoader';
 import {
   X,
   Compass,
@@ -619,25 +618,45 @@ export const ORBITAL_ZONES: OrbitalZone[] = [
 ];
 
 // ── REAL-TIME CELESTIAL MECHANICS & JULIAN EPHEMERIS ────────────────────────
-function getJulianDate(date: Date): number {
+export function getJulianDate(date: Date): number {
   return date.getTime() / 86400000 + 2440587.5;
 }
 
-function getPlanetHeliocentricAngle(planetId: string, jd: number): number {
+// NASA JPL Planetary Ephemeris Parameters (Epoch J2000.0 / DE440 Model)
+export const KEPLER_PLANETS: Record<string, { a: number; e: number; L0: number; n: number; w0: number; dw: number }> = {
+  mercury: { a: 0.387098, e: 0.205630, L0: 252.250845, n: 4.0923344368, w0: 77.45645, dw: 0.000044 },
+  venus:   { a: 0.723332, e: 0.006773, L0: 181.979730, n: 1.6021302244, w0: 131.57294, dw: 0.000014 },
+  earth:   { a: 1.000000, e: 0.016709, L0: 100.464350, n: 0.9856091030, w0: 102.93768, dw: 0.000009 },
+  mars:    { a: 1.523679, e: 0.093405, L0: 355.453320, n: 0.5240330350, w0: 336.04084, dw: 0.000048 },
+  jupiter: { a: 5.204267, e: 0.048498, L0: 34.404380,  n: 0.0830853001, w0: 14.75385,  dw: 0.000022 },
+  saturn:  { a: 9.582017, e: 0.055546, L0: 49.944240,  n: 0.0334442282, w0: 92.43194,  dw: 0.000054 },
+  uranus:  { a: 19.22941, e: 0.047318, L0: 313.232180, n: 0.0117283451, w0: 170.96424, dw: 0.000038 },
+  neptune: { a: 30.06992, e: 0.008606, L0: 304.880030, n: 0.0059810301, w0: 44.97135,  dw: 0.000008 }
+};
+
+export function getKeplerianCoords(id: string, jd: number) {
+  const p = KEPLER_PLANETS[id] || KEPLER_PLANETS.earth;
   const d = jd - 2451545.0; // Days from J2000.0 epoch
-  const rates: Record<string, { L0: number; n: number }> = {
-    mercury: { L0: 252.25, n: 4.0923344 },
-    venus: { L0: 181.98, n: 1.6021302 },
-    earth: { L0: 100.46, n: 0.9856474 },
-    mars: { L0: 355.45, n: 0.5240330 },
-    jupiter: { L0: 34.40, n: 0.0830853 },
-    saturn: { L0: 49.94, n: 0.0334442 },
-    uranus: { L0: 313.23, n: 0.0117283 },
-    neptune: { L0: 304.88, n: 0.0059810 },
+  const L = (p.L0 + p.n * d) % 360;
+  const w = (p.w0 + p.dw * d) % 360;
+  let M = (L - w) % 360;
+  if (M < 0) M += 360;
+  const Mrad = (M * Math.PI) / 180;
+  // Kepler's Equation of Center (elliptical correction)
+  const eqCenter = (2 * p.e - 0.25 * Math.pow(p.e, 3)) * Math.sin(Mrad) + 1.25 * Math.pow(p.e, 2) * Math.sin(2 * Mrad);
+  const trueLonDeg = (L + (eqCenter * 180) / Math.PI) % 360;
+  const trueLonRad = (trueLonDeg * Math.PI) / 180;
+  const r = (p.a * (1 - p.e * p.e)) / (1 + p.e * Math.cos(eqCenter));
+  return {
+    angleRad: trueLonRad,
+    distAU: r,
+    xAU: r * Math.cos(trueLonRad),
+    zAU: r * Math.sin(trueLonRad)
   };
-  const r = rates[planetId] || { L0: 0, n: 1 };
-  const deg = (r.L0 + r.n * d) % 360;
-  return (deg * Math.PI) / 180;
+}
+
+export function getPlanetHeliocentricAngle(planetId: string, jd: number): number {
+  return getKeplerianCoords(planetId, jd).angleRad;
 }
 
 // ── Helper: Canvas text sprite for labels ───────────────────────────────────
@@ -694,288 +713,147 @@ function createTextSprite(text: string, color: string, subtext?: string): THREE.
 }
 
 // ── 3D MODEL BUILDERS (Realistic, non-game, scientific representations) ─────
-
-// Radial UV mapping generator for planetary rings (Cassini Division & radial banding)
-function createSaturnRingGeometry(innerRadius: number, outerRadius: number, thetaSegments: number = 128): THREE.BufferGeometry {
-  const geo = new THREE.RingGeometry(innerRadius, outerRadius, thetaSegments);
-  const pos = geo.attributes.position;
-  const uvs = geo.attributes.uv;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const r = Math.sqrt(x * x + y * y);
-    const u = (r - innerRadius) / (outerRadius - innerRadius);
-    uvs.setXY(i, u, 0.5);
-  }
-  uvs.needsUpdate = true;
-  return geo;
-}
-
 function createRealisticISSMesh(): THREE.Group {
   const group = new THREE.Group();
 
-  // Integrated Truss Structure (S0, S1/P1, S3/P3, S4/P4, S6/P6)
-  const trussGeo = new THREE.BoxGeometry(7.8, 0.22, 0.22);
-  const trussMat = new THREE.MeshStandardMaterial({
-    color: 0xe2e8f0,
-    metalness: 0.85,
-    roughness: 0.25,
-  });
+  // Central Integrated Truss Structure (long silver bar)
+  const trussGeo = new THREE.BoxGeometry(7.0, 0.25, 0.25);
+  const trussMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.8, roughness: 0.3 });
   const truss = new THREE.Mesh(trussGeo, trussMat);
   group.add(truss);
 
-  // Central Pressurized Modules: Destiny (US Lab), Harmony (Node 2), Unity (Node 1)
-  const moduleMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    metalness: 0.65,
-    roughness: 0.3,
-  });
-  const centralModuleGeo = new THREE.CylinderGeometry(0.42, 0.42, 2.8, 18);
-  const centralModules = new THREE.Mesh(centralModuleGeo, moduleMat);
-  centralModules.rotation.x = Math.PI / 2;
-  group.add(centralModules);
+  // Pressurized Habitation Modules (Cylinders at center)
+  const modGeo = new THREE.CylinderGeometry(0.45, 0.45, 2.2, 16);
+  const modMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.6, roughness: 0.4 });
+  const modules = new THREE.Mesh(modGeo, modMat);
+  modules.rotation.x = Math.PI / 2;
+  group.add(modules);
 
-  // Columbus (ESA) & Kibo (JAXA) Laboratory Modules
-  const columbusGeo = new THREE.CylinderGeometry(0.38, 0.38, 1.2, 16);
-  const columbus = new THREE.Mesh(columbusGeo, moduleMat);
-  columbus.rotation.z = Math.PI / 2;
-  columbus.position.set(-0.85, 0, 0.3);
-  group.add(columbus);
+  // Cross module (Node / Kibo)
+  const crossGeo = new THREE.CylinderGeometry(0.35, 0.35, 1.4, 16);
+  const crossMesh = new THREE.Mesh(crossGeo, modMat);
+  crossMesh.rotation.z = Math.PI / 2;
+  group.add(crossMesh);
 
-  const kiboGeo = new THREE.CylinderGeometry(0.38, 0.38, 1.6, 16);
-  const kibo = new THREE.Mesh(kiboGeo, moduleMat);
-  kibo.rotation.z = Math.PI / 2;
-  kibo.position.set(0.85, 0, 0.3);
-  group.add(kibo);
-
-  // Kibo Exposed Facility Porch
-  const porchGeo = new THREE.BoxGeometry(0.65, 0.22, 0.85);
-  const porchMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.3 });
-  const porch = new THREE.Mesh(porchGeo, porchMat);
-  porch.position.set(1.75, 0, 0.4);
-  group.add(porch);
-
-  // Russian Segment: Zarya (FGB) and Zvezda (Service Module)
-  const zaryaGeo = new THREE.CylinderGeometry(0.36, 0.36, 1.6, 16);
-  const zaryaMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.5, roughness: 0.4 });
-  const zarya = new THREE.Mesh(zaryaGeo, zaryaMat);
-  zarya.rotation.x = Math.PI / 2;
-  zarya.position.set(0, 0, -1.9);
-  group.add(zarya);
-
-  // Cupola 7-Window Earth Observation Dome facing nadir
-  const cupolaGeo = new THREE.CylinderGeometry(0.2, 0.28, 0.18, 8);
-  const cupolaMat = new THREE.MeshStandardMaterial({
-    color: 0x0284c7,
-    emissive: 0x0369a1,
-    emissiveIntensity: 0.6,
-    metalness: 0.9,
-    roughness: 0.1,
-  });
-  const cupola = new THREE.Mesh(cupolaGeo, cupolaMat);
-  cupola.position.set(0, -0.42, 0.2);
-  group.add(cupola);
-
-  // 8 Giant Photovoltaic Solar Array Wings (Deep Blue)
-  const wingGeo = new THREE.BoxGeometry(0.95, 2.1, 0.03);
+  // 8 Solar Array Wings (4 Port, 4 Starboard)
+  const wingGeo = new THREE.BoxGeometry(0.9, 1.8, 0.04);
   const wingMat = new THREE.MeshStandardMaterial({
     color: 0x1d4ed8,
     emissive: 0x1e3a8a,
-    emissiveIntensity: 0.55,
-    metalness: 0.6,
+    emissiveIntensity: 0.4,
+    metalness: 0.5,
     roughness: 0.2,
   });
 
-  const offsets = [-3.3, -2.3, 2.3, 3.3];
+  const offsets = [-3.1, -2.2, 2.2, 3.1];
   offsets.forEach((xOff) => {
+    // Upper wing
     const wingUpper = new THREE.Mesh(wingGeo, wingMat);
-    wingUpper.position.set(xOff, 1.25, 0);
+    wingUpper.position.set(xOff, 1.1, 0);
     group.add(wingUpper);
 
+    // Lower wing
     const wingLower = new THREE.Mesh(wingGeo, wingMat);
-    wingLower.position.set(xOff, -1.25, 0);
+    wingLower.position.set(xOff, -1.1, 0);
     group.add(wingLower);
   });
 
-  // White Radiator Heat Rejection Panels
-  const radGeo = new THREE.BoxGeometry(0.65, 1.2, 0.02);
+  // Radiator Panels (White rectangular heat rejection fins)
+  const radGeo = new THREE.BoxGeometry(0.5, 0.8, 0.02);
   const radMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
   const rad1 = new THREE.Mesh(radGeo, radMat);
-  rad1.position.set(-1.1, 0, 1.0);
+  rad1.position.set(-1.0, 0, 0.7);
   const rad2 = new THREE.Mesh(radGeo, radMat);
-  rad2.position.set(1.1, 0, 1.0);
+  rad2.position.set(1.0, 0, 0.7);
   group.add(rad1);
   group.add(rad2);
 
-  // Navigation strobe beacon
-  const beaconGeo = new THREE.SphereGeometry(0.12, 8, 8);
-  const beaconMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
-  const beacon = new THREE.Mesh(beaconGeo, beaconMat);
-  beacon.position.set(3.7, 0, 0);
-  group.add(beacon);
+  // Navigation strobe beacon (pulsing red/green)
+  const strobeGeo = new THREE.SphereGeometry(0.12, 8, 8);
+  const strobeMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+  const strobe = new THREE.Mesh(strobeGeo, strobeMat);
+  strobe.position.set(3.4, 0, 0);
+  group.add(strobe);
 
-  group.scale.set(0.42, 0.42, 0.42);
+  group.scale.set(0.4, 0.4, 0.4);
   return group;
 }
 
 function createRealisticTiangongMesh(): THREE.Group {
   const group = new THREE.Group();
 
-  // Tianhe Core Module (16.6m length, 4.2m diameter)
-  const coreGeo = new THREE.CylinderGeometry(0.5, 0.5, 2.6, 18);
-  const coreMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.6, roughness: 0.28 });
+  // Tianhe Core Module
+  const coreGeo = new THREE.CylinderGeometry(0.5, 0.5, 2.5, 16);
+  const coreMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.5, roughness: 0.3 });
   const core = new THREE.Mesh(coreGeo, coreMat);
   core.rotation.x = Math.PI / 2;
   group.add(core);
 
-  // Wentian & Mengtian Lab Modules forming T-configuration
-  const labGeo = new THREE.CylinderGeometry(0.44, 0.44, 2.1, 16);
+  // Wentian & Mengtian Lab Modules (T-shape lateral wings)
+  const labGeo = new THREE.CylinderGeometry(0.42, 0.42, 2.0, 16);
   const lab1 = new THREE.Mesh(labGeo, coreMat);
   lab1.rotation.z = Math.PI / 2;
-  lab1.position.set(-1.25, 0, 0.35);
+  lab1.position.set(-1.2, 0, 0.3);
   const lab2 = new THREE.Mesh(labGeo, coreMat);
   lab2.rotation.z = Math.PI / 2;
-  lab2.position.set(1.25, 0, 0.35);
+  lab2.position.set(1.2, 0, 0.3);
   group.add(lab1);
   group.add(lab2);
 
-  // Flexible Gallium Arsenide Solar Wings (Golden-Amber)
-  const solarGeo = new THREE.BoxGeometry(0.75, 2.4, 0.03);
+  // Flexible Solar Wings
+  const solarGeo = new THREE.BoxGeometry(0.7, 2.2, 0.03);
   const solarMat = new THREE.MeshStandardMaterial({
     color: 0xd97706,
     emissive: 0x92400e,
-    emissiveIntensity: 0.45,
-    metalness: 0.5,
-    roughness: 0.25,
+    emissiveIntensity: 0.4,
+    metalness: 0.4,
+    roughness: 0.3,
   });
   const sWing1 = new THREE.Mesh(solarGeo, solarMat);
-  sWing1.position.set(-2.65, 0, 0.35);
+  sWing1.position.set(-2.5, 0, 0.3);
   const sWing2 = new THREE.Mesh(solarGeo, solarMat);
-  sWing2.position.set(2.65, 0, 0.35);
+  sWing2.position.set(2.5, 0, 0.3);
   group.add(sWing1);
   group.add(sWing2);
 
-  // Shenzhou Crew Capsule docked at forward port
-  const capsuleGeo = new THREE.ConeGeometry(0.35, 0.6, 16);
-  const capsuleMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8 });
-  const capsule = new THREE.Mesh(capsuleGeo, capsuleMat);
-  capsule.position.set(0, 0, 1.6);
-  capsule.rotation.x = Math.PI / 2;
-  group.add(capsule);
-
-  group.scale.set(0.4, 0.4, 0.4);
+  group.scale.set(0.38, 0.38, 0.38);
   return group;
 }
 
 function createRealisticGatewayMesh(): THREE.Group {
   const group = new THREE.Group();
 
-  // HALO Module (Habitation and Logistics Outpost)
-  const haloGeo = new THREE.CylinderGeometry(0.48, 0.48, 1.9, 18);
-  const haloMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.75, roughness: 0.25 });
+  // HALO Module
+  const haloGeo = new THREE.CylinderGeometry(0.45, 0.45, 1.8, 16);
+  const haloMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.7, roughness: 0.3 });
   const halo = new THREE.Mesh(haloGeo, haloMat);
   group.add(halo);
 
-  // PPE (Power & Propulsion Element)
-  const ppeGeo = new THREE.CylinderGeometry(0.58, 0.58, 1.3, 18);
+  // PPE (Power & Propulsion Element with Xenon glow ring)
+  const ppeGeo = new THREE.CylinderGeometry(0.55, 0.55, 1.2, 16);
   const ppe = new THREE.Mesh(ppeGeo, haloMat);
-  ppe.position.y = -1.55;
+  ppe.position.y = -1.5;
   group.add(ppe);
 
-  // Xenon Electric Ion Thruster Plume (Cyan luminescence)
-  const plumeGeo = new THREE.ConeGeometry(0.38, 0.9, 16);
-  const plumeMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.75 });
+  // Xenon thruster ion plume
+  const plumeGeo = new THREE.ConeGeometry(0.35, 0.8, 16);
+  const plumeMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.7 });
   const plume = new THREE.Mesh(plumeGeo, plumeMat);
-  plume.position.y = -2.4;
+  plume.position.y = -2.3;
   plume.rotation.x = Math.PI;
   group.add(plume);
 
-  // 50 kW High-Power Roll-Out Solar Arrays (ROSA)
-  const wingGeo = new THREE.BoxGeometry(3.4, 0.85, 0.03);
-  const wingMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x1d4ed8, emissiveIntensity: 0.55 });
+  // Giant high-power solar wings
+  const wingGeo = new THREE.BoxGeometry(3.2, 0.8, 0.03);
+  const wingMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x1d4ed8, emissiveIntensity: 0.5 });
   const w1 = new THREE.Mesh(wingGeo, wingMat);
-  w1.position.set(2.1, -1.55, 0);
+  w1.position.set(2.0, -1.5, 0);
   const w2 = new THREE.Mesh(wingGeo, wingMat);
-  w2.position.set(-2.1, -1.55, 0);
+  w2.position.set(-2.0, -1.5, 0);
   group.add(w1);
   group.add(w2);
 
-  // Orion Spacecraft docked
-  const orionGeo = new THREE.ConeGeometry(0.42, 0.7, 16);
-  const orionMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.6, roughness: 0.3 });
-  const orion = new THREE.Mesh(orionGeo, orionMat);
-  orion.position.set(0, 1.3, 0);
-  group.add(orion);
-
-  group.scale.set(0.38, 0.38, 0.38);
-  return group;
-}
-
-function createRealisticHubbleMesh(): THREE.Group {
-  const group = new THREE.Group();
-
-  // Cylindrical Telescope Tube
-  const tubeGeo = new THREE.CylinderGeometry(0.48, 0.48, 2.2, 24);
-  const tubeMat = new THREE.MeshStandardMaterial({
-    color: 0xe2e8f0,
-    metalness: 0.9,
-    roughness: 0.15,
-  });
-  const tube = new THREE.Mesh(tubeGeo, tubeMat);
-  tube.rotation.x = Math.PI / 2;
-  group.add(tube);
-
-  // Forward Aperture Hood & Open Door (revealing optical cavity)
-  const doorGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.05, 24);
-  const doorMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9, roughness: 0.2 });
-  const door = new THREE.Mesh(doorGeo, doorMat);
-  door.position.set(0, 0.4, 1.15);
-  door.rotation.x = Math.PI / 3;
-  group.add(door);
-
-  // Primary Mirror visible inside
-  const mirrorGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.04, 24);
-  const mirrorMat = new THREE.MeshStandardMaterial({
-    color: 0x38bdf8,
-    emissive: 0x0284c7,
-    emissiveIntensity: 0.4,
-    metalness: 0.95,
-    roughness: 0.08,
-  });
-  const mirror = new THREE.Mesh(mirrorGeo, mirrorMat);
-  mirror.rotation.x = Math.PI / 2;
-  mirror.position.set(0, 0, 0.6);
-  group.add(mirror);
-
-  // Dual Solar Panel Wings
-  const panelGeo = new THREE.BoxGeometry(2.2, 0.65, 0.03);
-  const panelMat = new THREE.MeshStandardMaterial({
-    color: 0x1d4ed8,
-    emissive: 0x1e3a8a,
-    emissiveIntensity: 0.5,
-    metalness: 0.6,
-    roughness: 0.25,
-  });
-  const p1 = new THREE.Mesh(panelGeo, panelMat);
-  p1.position.set(1.5, 0, 0);
-  const p2 = new THREE.Mesh(panelGeo, panelMat);
-  p2.position.set(-1.5, 0, 0);
-  group.add(p1);
-  group.add(p2);
-
-  // Steerable High-Gain Antennas on Booms
-  const dishGeo = new THREE.CylinderGeometry(0.28, 0.05, 0.12, 16);
-  const dishMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.4, roughness: 0.4 });
-  const d1 = new THREE.Mesh(dishGeo, dishMat);
-  d1.position.set(0.65, 0.65, -0.4);
-  d1.rotation.z = -Math.PI / 4;
-  const d2 = new THREE.Mesh(dishGeo, dishMat);
-  d2.position.set(-0.65, -0.65, -0.4);
-  d2.rotation.z = Math.PI / 4;
-  group.add(d1);
-  group.add(d2);
-
-  group.scale.set(0.42, 0.42, 0.42);
+  group.scale.set(0.35, 0.35, 0.35);
   return group;
 }
 
@@ -983,44 +861,44 @@ function createRealisticParkerMesh(): THREE.Group {
   const group = new THREE.Group();
 
   // Carbon-composite Thermal Protection Shield (facing sun)
-  const shieldGeo = new THREE.CylinderGeometry(1.35, 1.35, 0.16, 6);
+  const shieldGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.15, 6);
   const shieldMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: 0xfef08a,
-    emissiveIntensity: 0.35,
-    roughness: 0.15,
+    emissiveIntensity: 0.3,
+    roughness: 0.2,
   });
   const shield = new THREE.Mesh(shieldGeo, shieldMat);
   shield.rotation.x = Math.PI / 2;
   group.add(shield);
 
-  // Gold foil covered spacecraft bus behind shield
-  const busGeo = new THREE.BoxGeometry(0.85, 0.85, 1.3);
-  const busMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.95, roughness: 0.12 });
+  // Spacecraft bus behind shield
+  const busGeo = new THREE.BoxGeometry(0.8, 0.8, 1.2);
+  const busMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8, roughness: 0.2 }); // Gold foil
   const bus = new THREE.Mesh(busGeo, busMat);
-  bus.position.z = 0.8;
+  bus.position.z = 0.7;
   group.add(bus);
 
   // Folded solar arrays (tilted back to avoid melting)
-  const panelGeo = new THREE.BoxGeometry(1.5, 0.5, 0.03);
-  const panelMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, emissive: 0x1e40af, emissiveIntensity: 0.35 });
+  const panelGeo = new THREE.BoxGeometry(1.4, 0.5, 0.03);
+  const panelMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, emissive: 0x1e40af, emissiveIntensity: 0.3 });
   const p1 = new THREE.Mesh(panelGeo, panelMat);
-  p1.position.set(1.2, 0, 0.8);
-  p1.rotation.y = -0.45;
+  p1.position.set(1.1, 0, 0.7);
+  p1.rotation.y = -0.4;
   const p2 = new THREE.Mesh(panelGeo, panelMat);
-  p2.position.set(-1.2, 0, 0.8);
-  p2.rotation.y = 0.45;
+  p2.position.set(-1.1, 0, 0.7);
+  p2.rotation.y = 0.4;
   group.add(p1);
   group.add(p2);
 
   // High gain antenna dish
-  const dishGeo = new THREE.CylinderGeometry(0.35, 0.05, 0.18, 16);
+  const dishGeo = new THREE.CylinderGeometry(0.3, 0.05, 0.2, 16);
   const dish = new THREE.Mesh(dishGeo, shieldMat);
-  dish.position.set(0, 0.65, 1.2);
+  dish.position.set(0, 0.6, 1.1);
   dish.rotation.x = Math.PI / 4;
   group.add(dish);
 
-  group.scale.set(0.48, 0.48, 0.48);
+  group.scale.set(0.45, 0.45, 0.45);
   return group;
 }
 
@@ -1028,135 +906,45 @@ function createRealisticJWSTMesh(): THREE.Group {
   const group = new THREE.Group();
 
   // 5-Layer Kite-Shaped Kapton Sunshield
-  const shieldGeo = new THREE.BoxGeometry(4.2, 0.06, 2.6);
+  const shieldGeo = new THREE.BoxGeometry(3.6, 0.05, 2.2);
   const shieldMat = new THREE.MeshStandardMaterial({
-    color: 0xddd6fe,
-    metalness: 0.85,
+    color: 0xe0e7ff,
+    metalness: 0.8,
     roughness: 0.2,
   });
   const sunshield = new THREE.Mesh(shieldGeo, shieldMat);
   group.add(sunshield);
 
   // Spacecraft bus (warm side below sunshield)
-  const busGeo = new THREE.BoxGeometry(0.9, 0.45, 0.9);
+  const busGeo = new THREE.BoxGeometry(0.8, 0.4, 0.8);
   const busMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
   const bus = new THREE.Mesh(busGeo, busMat);
-  bus.position.y = -0.32;
+  bus.position.y = -0.3;
   group.add(bus);
 
-  // Solar array panel on warm side
-  const solarGeo = new THREE.BoxGeometry(1.2, 0.03, 0.6);
-  const solarMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, emissive: 0x1e3a8a, emissiveIntensity: 0.4 });
-  const solar = new THREE.Mesh(solarGeo, solarMat);
-  solar.position.set(0, -0.5, 0.8);
-  group.add(solar);
-
-  // 18 Individual Hexagonal Gold Primary Mirrors
-  const mirrorGroup = new THREE.Group();
-  const hexRadius = 0.36;
-  const hexMat = new THREE.MeshStandardMaterial({
+  // 18-Segment Gold Primary Mirror
+  const mirrorGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.06, 6);
+  const mirrorMat = new THREE.MeshStandardMaterial({
     color: 0xfacc15,
-    emissive: 0xb45309,
-    emissiveIntensity: 0.4,
-    metalness: 0.98,
-    roughness: 0.06,
+    emissive: 0xca8a04,
+    emissiveIntensity: 0.5,
+    metalness: 0.95,
+    roughness: 0.1,
   });
+  const mirror = new THREE.Mesh(mirrorGeo, mirrorMat);
+  mirror.position.set(0, 0.6, 0);
+  mirror.rotation.x = Math.PI / 2.3;
+  group.add(mirror);
 
-  const hexGeo = new THREE.CylinderGeometry(hexRadius, hexRadius, 0.05, 6);
-  const hexSpacing = hexRadius * Math.sqrt(3);
+  // Secondary mirror tripod
+  const tripodGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 8);
+  const tripodMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
+  const leg = new THREE.Mesh(tripodGeo, tripodMat);
+  leg.position.set(0, 1.1, 0.5);
+  leg.rotation.x = -Math.PI / 4;
+  group.add(leg);
 
-  for (let ring = 1; ring <= 2; ring++) {
-    const count = ring * 6;
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2;
-      const dist = ring * (hexSpacing * 0.58);
-      const hex = new THREE.Mesh(hexGeo, hexMat);
-      hex.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
-      hex.rotation.y = angle;
-      mirrorGroup.add(hex);
-    }
-  }
-
-  mirrorGroup.rotation.x = Math.PI / 2.3;
-  mirrorGroup.position.set(0, 0.7, 0);
-  group.add(mirrorGroup);
-
-  // Secondary Mirror Tripod Assembly
-  const tripodMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
-  const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.5, 6), tripodMat);
-  leg1.position.set(0, 1.25, 0.65);
-  leg1.rotation.x = -Math.PI / 3.8;
-  group.add(leg1);
-
-  const subMirrorGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.03, 6);
-  const subMirror = new THREE.Mesh(subMirrorGeo, hexMat);
-  subMirror.position.set(0, 1.6, 1.0);
-  subMirror.rotation.x = Math.PI / 2.3;
-  group.add(subMirror);
-
-  group.scale.set(0.48, 0.48, 0.48);
-  return group;
-}
-
-function createRealisticVoyagerMesh(): THREE.Group {
-  const group = new THREE.Group();
-
-  // 3.66-meter High-Gain Parabolic Antenna Dish (White)
-  const dishGeo = new THREE.CylinderGeometry(1.6, 0.15, 0.45, 24);
-  const dishMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    metalness: 0.3,
-    roughness: 0.3,
-  });
-  const dish = new THREE.Mesh(dishGeo, dishMat);
-  dish.rotation.x = Math.PI / 2;
-  group.add(dish);
-
-  // Sub-reflector feed horn
-  const feedGeo = new THREE.ConeGeometry(0.12, 0.35, 12);
-  const feedMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 });
-  const feed = new THREE.Mesh(feedGeo, feedMat);
-  feed.position.set(0, 0, 0.6);
-  feed.rotation.x = Math.PI / 2;
-  group.add(feed);
-
-  // 10-sided Decagonal Bus Body
-  const busGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.5, 10);
-  const busMat = new THREE.MeshStandardMaterial({
-    color: 0xd97706,
-    metalness: 0.9,
-    roughness: 0.18,
-  });
-  const bus = new THREE.Mesh(busGeo, busMat);
-  bus.rotation.x = Math.PI / 2;
-  bus.position.set(0, 0, -0.45);
-  group.add(bus);
-
-  // RTG Boom
-  const rtgBoomGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.8, 8);
-  const rtgBoomMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8 });
-  const rtgBoom = new THREE.Mesh(rtgBoomGeo, rtgBoomMat);
-  rtgBoom.position.set(-1.1, 0, -0.5);
-  rtgBoom.rotation.z = Math.PI / 3;
-  group.add(rtgBoom);
-
-  // 3 RTG Cylinders with cooling fins
-  for (let r = 0; r < 3; r++) {
-    const rtgGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.35, 12);
-    const rtgMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
-    const rtg = new THREE.Mesh(rtgGeo, rtgMat);
-    rtg.position.set(-1.8 - r * 0.28, 0.5 + r * 0.15, -0.5);
-    group.add(rtg);
-  }
-
-  // Magnetometer Boom
-  const magBoomGeo = new THREE.CylinderGeometry(0.02, 0.02, 3.8, 8);
-  const magBoom = new THREE.Mesh(magBoomGeo, rtgBoomMat);
-  magBoom.position.set(1.9, 0, -0.5);
-  magBoom.rotation.z = -Math.PI / 3.5;
-  group.add(magBoom);
-
-  group.scale.set(0.48, 0.48, 0.48);
+  group.scale.set(0.45, 0.45, 0.45);
   return group;
 }
 
@@ -1188,241 +976,6 @@ function createRealisticSatelliteMesh(color: number): THREE.Group {
 
   group.scale.set(0.4, 0.4, 0.4);
   return group;
-}
-
-interface PlanetaryTextures {
-  mercury: THREE.Texture;
-  venusAtmosphere: THREE.Texture;
-  venusSurface: THREE.Texture;
-  earthDay: THREE.Texture;
-  earthNight: THREE.Texture;
-  earthClouds: THREE.Texture;
-  moon: THREE.Texture;
-  mars: THREE.Texture;
-  jupiter: THREE.Texture;
-  saturn: THREE.Texture;
-  saturnRing: THREE.Texture;
-  uranus: THREE.Texture;
-  neptune: THREE.Texture;
-}
-
-interface PlanetMeshBundle {
-  mesh: THREE.Mesh;
-  clouds?: THREE.Mesh;
-  moons?: { mesh: THREE.Mesh; orbitRadius: number; speed: number; angle: number }[];
-  rings?: THREE.Mesh;
-}
-
-function createRealisticPlanetMesh(p: PlanetData, textures: PlanetaryTextures): PlanetMeshBundle {
-  const pGeo = new THREE.SphereGeometry(p.radius, 48, 48);
-  let pMat: THREE.Material;
-  let cloudsMesh: THREE.Mesh | undefined;
-  let ringsMesh: THREE.Mesh | undefined;
-  const moonsList: { mesh: THREE.Mesh; orbitRadius: number; speed: number; angle: number }[] = [];
-
-  switch (p.id) {
-    case 'mercury': {
-      pMat = new THREE.MeshStandardMaterial({
-        map: textures.mercury,
-        roughness: 0.9,
-        metalness: 0.1,
-      });
-      break;
-    }
-    case 'venus': {
-      pMat = new THREE.MeshStandardMaterial({
-        map: textures.venusAtmosphere,
-        roughness: 0.35,
-        metalness: 0.05,
-      });
-      const innerGeo = new THREE.SphereGeometry(p.radius * 0.985, 32, 32);
-      const innerMat = new THREE.MeshStandardMaterial({
-        map: textures.venusSurface,
-        roughness: 0.8,
-        metalness: 0.2,
-      });
-      const innerMesh = new THREE.Mesh(innerGeo, innerMat);
-      const mesh = new THREE.Mesh(pGeo, pMat);
-      mesh.add(innerMesh);
-      return { mesh };
-    }
-    case 'earth': {
-      pMat = new THREE.MeshStandardMaterial({
-        map: textures.earthDay,
-        emissiveMap: textures.earthNight,
-        emissive: new THREE.Color(0xffd580),
-        emissiveIntensity: 0.75,
-        roughness: 0.55,
-        metalness: 0.1,
-      });
-      const mesh = new THREE.Mesh(pGeo, pMat);
-
-      // Atmospheric Clouds
-      const cloudGeo = new THREE.SphereGeometry(p.radius * 1.025, 48, 48);
-      const cloudMat = new THREE.MeshStandardMaterial({
-        map: textures.earthClouds,
-        transparent: true,
-        opacity: 0.55,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      });
-      cloudsMesh = new THREE.Mesh(cloudGeo, cloudMat);
-      mesh.add(cloudsMesh);
-
-      // Earth's Moon
-      const moonGeo = new THREE.SphereGeometry(0.85, 32, 32);
-      const moonMat = new THREE.MeshStandardMaterial({
-        map: textures.moon,
-        roughness: 0.9,
-        metalness: 0.08,
-      });
-      const moon = new THREE.Mesh(moonGeo, moonMat);
-      moon.position.set(6.5, 0.5, 0);
-      mesh.add(moon);
-      moonsList.push({ mesh: moon, orbitRadius: 6.5, speed: 1.0, angle: 0 });
-
-      return { mesh, clouds: cloudsMesh, moons: moonsList };
-    }
-    case 'mars': {
-      pMat = new THREE.MeshStandardMaterial({
-        map: textures.mars,
-        roughness: 0.82,
-        metalness: 0.08,
-      });
-      const mesh = new THREE.Mesh(pGeo, pMat);
-
-      // Phobos
-      const phobosGeo = new THREE.SphereGeometry(0.22, 12, 12);
-      const phobosMat = new THREE.MeshStandardMaterial({ color: 0x78716c, roughness: 0.9 });
-      const phobos = new THREE.Mesh(phobosGeo, phobosMat);
-      phobos.scale.set(1.4, 0.9, 0.9);
-      phobos.position.set(4.2, 0.2, 0);
-      mesh.add(phobos);
-      moonsList.push({ mesh: phobos, orbitRadius: 4.2, speed: 2.8, angle: 0 });
-
-      // Deimos
-      const deimosGeo = new THREE.SphereGeometry(0.14, 10, 10);
-      const deimosMat = new THREE.MeshStandardMaterial({ color: 0xa8a29e, roughness: 0.9 });
-      const deimos = new THREE.Mesh(deimosGeo, deimosMat);
-      deimos.position.set(6.8, 0.6, 0);
-      mesh.add(deimos);
-      moonsList.push({ mesh: deimos, orbitRadius: 6.8, speed: 1.6, angle: 1.8 });
-
-      return { mesh, moons: moonsList };
-    }
-    case 'jupiter': {
-      pMat = new THREE.MeshStandardMaterial({
-        map: textures.jupiter,
-        roughness: 0.5,
-        metalness: 0.05,
-      });
-      const mesh = new THREE.Mesh(pGeo, pMat);
-
-      // 4 Galilean Moons (Io, Europa, Ganymede, Callisto)
-      const galilean = [
-        { name: 'Io', r: 0.45, dist: 7.2, color: 0xfacc15, speed: 3.2 },
-        { name: 'Europa', r: 0.38, dist: 9.8, color: 0xf1f5f9, speed: 2.4 },
-        { name: 'Ganymede', r: 0.65, dist: 13.5, color: 0x94a3b8, speed: 1.7 },
-        { name: 'Callisto', r: 0.58, dist: 17.5, color: 0x64748b, speed: 1.2 },
-      ];
-      galilean.forEach((gm, idx) => {
-        const mGeo = new THREE.SphereGeometry(gm.r, 16, 16);
-        const mMat = new THREE.MeshStandardMaterial({ color: gm.color, roughness: 0.8 });
-        const moon = new THREE.Mesh(mGeo, mMat);
-        const initAngle = (idx * Math.PI) / 2;
-        moon.position.set(Math.cos(initAngle) * gm.dist, (Math.random() - 0.5) * 0.4, Math.sin(initAngle) * gm.dist);
-        mesh.add(moon);
-        moonsList.push({ mesh: moon, orbitRadius: gm.dist, speed: gm.speed, angle: initAngle });
-      });
-
-      return { mesh, moons: moonsList };
-    }
-    case 'saturn': {
-      pMat = new THREE.MeshStandardMaterial({
-        map: textures.saturn,
-        roughness: 0.55,
-        metalness: 0.05,
-      });
-      const mesh = new THREE.Mesh(pGeo, pMat);
-
-      // Saturn Rings with radial UV mapping
-      const ringGeo = createSaturnRingGeometry(p.radius * 1.28, p.radius * 2.7, 128);
-      const ringMat = new THREE.MeshStandardMaterial({
-        map: textures.saturnRing,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.92,
-        roughness: 0.7,
-      });
-      ringsMesh = new THREE.Mesh(ringGeo, ringMat);
-      ringsMesh.rotation.x = Math.PI / 2;
-      mesh.add(ringsMesh);
-
-      // Saturn's authentic 26.73° axial tilt
-      mesh.rotation.z = (26.73 * Math.PI) / 180;
-
-      // Titan Moon
-      const titanGeo = new THREE.SphereGeometry(0.65, 20, 20);
-      const titanMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 });
-      const titan = new THREE.Mesh(titanGeo, titanMat);
-      titan.position.set(13.2, 0.4, 0);
-      mesh.add(titan);
-      moonsList.push({ mesh: titan, orbitRadius: 13.2, speed: 1.1, angle: 0 });
-
-      return { mesh, rings: ringsMesh, moons: moonsList };
-    }
-    case 'uranus': {
-      pMat = new THREE.MeshStandardMaterial({
-        map: textures.uranus,
-        roughness: 0.45,
-        metalness: 0.05,
-      });
-      const mesh = new THREE.Mesh(pGeo, pMat);
-
-      const uRingGeo = new THREE.RingGeometry(p.radius * 1.35, p.radius * 2.15, 96);
-      const uRingMat = new THREE.MeshBasicMaterial({
-        color: 0x67e8f9,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.35,
-      });
-      ringsMesh = new THREE.Mesh(uRingGeo, uRingMat);
-      ringsMesh.rotation.x = Math.PI / 2;
-      mesh.add(ringsMesh);
-      mesh.rotation.z = (97.77 * Math.PI) / 180;
-
-      return { mesh, rings: ringsMesh };
-    }
-    case 'neptune': {
-      pMat = new THREE.MeshStandardMaterial({
-        map: textures.neptune,
-        roughness: 0.45,
-        metalness: 0.05,
-      });
-      const mesh = new THREE.Mesh(pGeo, pMat);
-
-      // Moon Triton (Retrograde)
-      const tritonGeo = new THREE.SphereGeometry(0.44, 20, 20);
-      const tritonMat = new THREE.MeshStandardMaterial({ color: 0xc4b5fd, roughness: 0.7 });
-      const triton = new THREE.Mesh(tritonGeo, tritonMat);
-      triton.position.set(9.0, 1.5, 0);
-      mesh.add(triton);
-      moonsList.push({ mesh: triton, orbitRadius: 9.0, speed: -1.3, angle: 0 });
-
-      return { mesh, moons: moonsList };
-    }
-    default: {
-      pMat = new THREE.MeshStandardMaterial({
-        color: p.color,
-        roughness: 0.6,
-      });
-      const mesh = new THREE.Mesh(pGeo, pMat);
-      return { mesh };
-    }
-  }
-
-  const mesh = new THREE.Mesh(pGeo, pMat);
-  return { mesh, clouds: cloudsMesh, moons: moonsList, rings: ringsMesh };
 }
 
 // ── PROPS ──────────────────────────────────────────────────────────────────
@@ -1460,33 +1013,15 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
   const [simDate, setSimDate] = useState<Date>(new Date());
   const [currentJD, setCurrentJD] = useState<number>(() => getJulianDate(new Date()));
 
-  // Active Ref Mirrors for Render Loop (Prevents unmounting Three.js canvas on state changes)
-  const cameraTargetRef = useRef<string>(cameraTarget);
-  useEffect(() => { cameraTargetRef.current = cameraTarget; }, [cameraTarget]);
-  const simSpeedRef = useRef<number>(simSpeed);
-  useEffect(() => { simSpeedRef.current = simSpeed; }, [simSpeed]);
-  const isPlayingRef = useRef<boolean>(isPlaying);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-
   // Three.js References
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 
   // Entity References for Real-time update & raycasting
-  const planetMeshesRef = useRef<Map<string, {
-    mesh: THREE.Mesh;
-    orbitRadius: number;
-    angle: number;
-    label: THREE.Sprite;
-    glow: THREE.Mesh;
-    clouds?: THREE.Mesh;
-    moons?: { mesh: THREE.Mesh; orbitRadius: number; speed: number; angle: number }[];
-  }>>(new Map());
+  const planetMeshesRef = useRef<Map<string, { mesh: THREE.Mesh; orbitRadius: number; angle: number; label: THREE.Sprite; glow: THREE.Mesh }>>(new Map());
   const stationMeshesRef = useRef<Map<string, { group: THREE.Group; parent: 'earth' | 'moon'; orbitRadius: number; angle: number; orbitSpeed: number; label: THREE.Sprite }>>(new Map());
   const solarMissionMeshesRef = useRef<Map<string, { group: THREE.Group; mission: SolarMissionData; label: THREE.Sprite }>>(new Map());
-  const asteroidInstancesRef = useRef<THREE.Object3D[]>([]);
-  const skyDomeRef = useRef<THREE.Mesh | null>(null);
 
   const orbitLinesRef = useRef<THREE.Line[]>([]);
   const zoneMeshesRef = useRef<THREE.Mesh[]>([]);
@@ -1495,6 +1030,47 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
   const simDateRef = useRef<Date>(new Date());
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
+
+  // ── REAL-TIME LIVE ISS TELEMETRY FEED (NORAD #25544) ──
+  const [liveIssState, setLiveIssState] = useState<{
+    velocity: number;
+    altitude: number;
+    latitude: number;
+    longitude: number;
+    visibility: string;
+    isLive: boolean;
+  }>({
+    velocity: 27580,
+    altitude: 418.5,
+    latitude: 5.98,
+    longitude: -176.07,
+    visibility: 'DAYLIGHT',
+    isLive: false,
+  });
+
+  // Poll Real-Time ISS Telemetry
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchIss = async () => {
+      try {
+        const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+        if (res.ok) {
+          const data = await res.json();
+          setLiveIssState({
+            velocity: Math.round(data.velocity),
+            altitude: Number(data.altitude.toFixed(1)),
+            latitude: Number(data.latitude.toFixed(2)),
+            longitude: Number(data.longitude.toFixed(2)),
+            visibility: String(data.visibility || 'DAYLIGHT').toUpperCase(),
+            isLive: true,
+          });
+        }
+      } catch {}
+    };
+    fetchIss();
+    const timer = setInterval(fetchIss, 5000);
+    return () => clearInterval(timer);
+  }, [isOpen]);
 
   // Real-time Clock Ticker
   useEffect(() => {
@@ -1506,7 +1082,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
         setSimDate(now);
         setCurrentJD(getJulianDate(now));
       }
-    }, 1000);
+    }, 500);
     return () => clearInterval(interval);
   }, [isOpen, isLiveSynced, isPlaying, simSpeed]);
 
@@ -1522,10 +1098,10 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
 
     const jd = getJulianDate(now);
     planetMeshesRef.current.forEach((val, id) => {
-      const angle = getPlanetHeliocentricAngle(id, jd);
-      val.angle = angle;
-      val.mesh.position.x = Math.cos(angle) * val.orbitRadius;
-      val.mesh.position.z = Math.sin(angle) * val.orbitRadius;
+      const kepler = getKeplerianCoords(id, jd);
+      val.angle = kepler.angleRad;
+      val.mesh.position.x = Math.cos(kepler.angleRad) * val.orbitRadius;
+      val.mesh.position.z = Math.sin(kepler.angleRad) * val.orbitRadius;
     });
   };
 
@@ -1671,73 +1247,33 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
     const hemiLight = new THREE.HemisphereLight(0xfffbeb, 0x1e293b, 0.6);
     scene.add(hemiLight);
 
-    // ── TEXTURE LOADER & 2K SCIENTIFIC PLANETARY MAPS ──────────────────────
-    const textureLoader = new THREE.TextureLoader();
-    const textures: PlanetaryTextures = {
-      mercury: textureLoader.load('/assets/planets/2k_mercury.jpg'),
-      venusAtmosphere: textureLoader.load('/assets/planets/2k_venus_atmosphere.jpg'),
-      venusSurface: textureLoader.load('/assets/planets/2k_venus_surface.jpg'),
-      earthDay: textureLoader.load('/assets/planets/2k_earth_daymap.jpg'),
-      earthNight: textureLoader.load('/assets/planets/2k_earth_nightmap.jpg'),
-      earthClouds: textureLoader.load('/assets/planets/2k_earth_clouds.jpg'),
-      moon: textureLoader.load('/assets/planets/2k_moon.jpg'),
-      mars: textureLoader.load('/assets/planets/2k_mars.jpg'),
-      jupiter: textureLoader.load('/assets/planets/2k_jupiter.jpg'),
-      saturn: textureLoader.load('/assets/planets/2k_saturn.jpg'),
-      saturnRing: textureLoader.load('/assets/planets/2k_saturn_ring_alpha.png'),
-      uranus: textureLoader.load('/assets/planets/2k_uranus.jpg'),
-      neptune: textureLoader.load('/assets/planets/2k_neptune.jpg'),
-    };
-
-    const sunTex = textureLoader.load('/assets/planets/2k_sun.jpg');
-    const starsMilkyWayTex = textureLoader.load('/assets/planets/2k_stars_milky_way.jpg');
-
-    [
-      sunTex,
-      starsMilkyWayTex,
-      textures.mercury,
-      textures.venusAtmosphere,
-      textures.venusSurface,
-      textures.earthDay,
-      textures.earthNight,
-      textures.moon,
-      textures.mars,
-      textures.jupiter,
-      textures.saturn,
-      textures.uranus,
-      textures.neptune,
-    ].forEach((t) => {
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.anisotropy = 8;
-    });
-    textures.saturnRing.colorSpace = THREE.SRGBColorSpace;
-
     // 3. Central Sun Mesh & Multi-layered Photosphere Corona
-    const sunGeo = new THREE.SphereGeometry(6.8, 64, 64);
+    const textureLoader = new THREE.TextureLoader();
+    const sunTex = textureLoader.load('/assets/planets/sun.jpg');
+    sunTex.colorSpace = THREE.SRGBColorSpace;
+
+    const sunGeo = new THREE.SphereGeometry(6.5, 64, 64);
     const sunMat = new THREE.MeshBasicMaterial({
       map: sunTex,
-      color: 0xffffff,
     });
     const sun = new THREE.Mesh(sunGeo, sunMat);
     scene.add(sun);
 
-    // Chromosphere layer with solar prominence flare emission
-    const chromoGeo = new THREE.SphereGeometry(7.6, 48, 48);
+    // Chromosphere layer (pulsating fiery solar edge)
+    const chromoGeo = new THREE.SphereGeometry(7.2, 48, 48);
     const chromoMat = new THREE.MeshBasicMaterial({
-      map: sunTex,
-      color: 0xffaa22,
+      color: 0xf97316,
       transparent: true,
       opacity: 0.38,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
     });
-    const chromoMesh = new THREE.Mesh(chromoGeo, chromoMat);
-    scene.add(chromoMesh);
+    scene.add(new THREE.Mesh(chromoGeo, chromoMat));
 
     // Outer Coronal streamer glow
-    const coronaGeo = new THREE.SphereGeometry(11.2, 48, 48);
+    const coronaGeo = new THREE.SphereGeometry(9.8, 48, 48);
     const coronaMat = new THREE.MeshBasicMaterial({
-      color: 0xff8800,
+      color: 0xfbbf24,
       transparent: true,
       opacity: 0.16,
       side: THREE.BackSide,
@@ -1746,18 +1282,8 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
     const coronaOuterMesh = new THREE.Mesh(coronaGeo, coronaMat);
     scene.add(coronaOuterMesh);
 
-    // 4. Milky Way Celestial Sky Sphere & Starfield
-    const skyGeo = new THREE.SphereGeometry(1800, 48, 48);
-    const skyMat = new THREE.MeshBasicMaterial({
-      map: starsMilkyWayTex,
-      side: THREE.BackSide,
-      depthWrite: false,
-    });
-    const skyDome = new THREE.Mesh(skyGeo, skyMat);
-    scene.add(skyDome);
-    skyDomeRef.current = skyDome;
-
-    const starCount = 2500;
+    // 4. Starfield & Deep Space Skybox
+    const starCount = 3000;
     const starGeo = new THREE.BufferGeometry();
     const starPositions = new Float32Array(starCount * 3);
     const starColors = new Float32Array(starCount * 3);
@@ -1797,7 +1323,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
     zoneMeshesRef.current = zonesMeshes;
 
     // Asteroid belt particles
-    const asteroidCount = 450;
+    const asteroidCount = 500;
     const asteroidGeo = new THREE.BufferGeometry();
     const asteroidPositions = new Float32Array(asteroidCount * 3);
     for (let i = 0; i < asteroidCount; i++) {
@@ -1811,46 +1337,6 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
     asteroidGeo.setAttribute('position', new THREE.BufferAttribute(asteroidPositions, 3));
     const asteroidMat = new THREE.PointsMaterial({ color: 0xa8a29e, size: 0.8, transparent: true, opacity: 0.6 });
     scene.add(new THREE.Points(asteroidGeo, asteroidMat));
-
-    // Load 3D Asteroids from Asteroid.glb (properly normalized to 0.4 - 0.8 units)
-    const gltfLoader = getSharedGLTFLoader();
-    const asteroidInstances: THREE.Object3D[] = [];
-    gltfLoader.load(
-      '/models/Asteroid.glb',
-      (gltf) => {
-        const baseRock = gltf.scene;
-        for (let i = 0; i < 24; i++) {
-          const ast = baseRock.clone();
-          const angle = (i / 24) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
-          const r = 66 + Math.random() * 11;
-          const y = (Math.random() - 0.5) * 3.5;
-          // Asteroid.glb raw size is ~1350 units; scale to ~0.45 - 0.85 units in orbit
-          const s = (0.45 + Math.random() * 0.40) / 1350;
-          ast.scale.set(s, s, s);
-          ast.position.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
-          ast.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-          scene.add(ast);
-          asteroidInstances.push(ast);
-        }
-        asteroidInstancesRef.current = asteroidInstances;
-      },
-      undefined,
-      (err) => {
-        console.warn('Asteroid model loading note:', err);
-      }
-    );
-
-    // Dwarf Planet Ceres in Asteroid Belt (940 km)
-    const ceresGeo = new THREE.SphereGeometry(1.05, 24, 24);
-    const ceresMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.95 });
-    const ceresMesh = new THREE.Mesh(ceresGeo, ceresMat);
-    const occatorGeo = new THREE.SphereGeometry(0.18, 8, 8);
-    const occatorMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const occator = new THREE.Mesh(occatorGeo, occatorMat);
-    occator.position.set(0, 0, 1.0);
-    ceresMesh.add(occator);
-    ceresMesh.position.set(Math.cos(1.2) * 71, 0.4, Math.sin(1.2) * 71);
-    scene.add(ceresMesh);
 
     // Kuiper Belt particles
     const kuiperCount = 450;
@@ -1868,21 +1354,13 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
     const kuiperMat = new THREE.PointsMaterial({ color: 0x8b5cf6, size: 0.9, transparent: true, opacity: 0.5 });
     scene.add(new THREE.Points(kuiperGeo, kuiperMat));
 
-    // 6. BUILD CELESTIAL PLANETS (With 2K textures, real clouds, and Earth-Moon system)
+    // 6. BUILD CELESTIAL PLANETS (With distinct textures, materials, and Earth-Moon system)
     const initialJD = getJulianDate(simDateRef.current);
-    const planetMap = new Map<string, {
-      mesh: THREE.Mesh;
-      orbitRadius: number;
-      angle: number;
-      label: THREE.Sprite;
-      glow: THREE.Mesh;
-      clouds?: THREE.Mesh;
-      moons?: { mesh: THREE.Mesh; orbitRadius: number; speed: number; angle: number }[];
-    }>();
+    const planetMap = new Map<string, { mesh: THREE.Mesh; orbitRadius: number; angle: number; label: THREE.Sprite; glow: THREE.Mesh }>();
     const allLabels: THREE.Sprite[] = [];
     const allOrbitLines: THREE.Line[] = [];
 
-    // Store Earth and Moon mesh references for space stations
+    // Store Earth mesh reference so space stations and Moon can attach or orbit
     let earthMeshRef: THREE.Mesh | null = null;
     let moonMeshRef: THREE.Mesh | null = null;
 
@@ -1905,76 +1383,199 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
       scene.add(orbitLine);
       allOrbitLines.push(orbitLine);
 
-      // Create Realistic Planet Mesh Bundle with PBR Maps
-      const bundle = createRealisticPlanetMesh(p, textures);
-      const pMesh = bundle.mesh;
+      // Planet Sphere Geometry with smooth high-poly subdivision
+      const pGeo = new THREE.SphereGeometry(p.radius, 64, 64);
+
+      // Authentic NASA photorealistic surface textures
+      let mapTex: THREE.Texture | null = null;
+      let roughness = 0.7;
+      let metalness = 0.05;
+
+      if (p.id === 'mercury') {
+        mapTex = textureLoader.load('/assets/planets/mercury.jpg');
+        roughness = 0.92;
+        metalness = 0.1;
+      } else if (p.id === 'venus') {
+        mapTex = textureLoader.load('/assets/planets/venus.jpg');
+        roughness = 0.38;
+        metalness = 0.02;
+      } else if (p.id === 'earth') {
+        mapTex = textureLoader.load('/assets/earth_orbit.jpg');
+        roughness = 0.55;
+        metalness = 0.12;
+      } else if (p.id === 'mars') {
+        mapTex = textureLoader.load('/assets/mars_texture.jpg');
+        roughness = 0.88;
+        metalness = 0.08;
+      } else if (p.id === 'jupiter') {
+        mapTex = textureLoader.load('/assets/planets/jupiter.jpg');
+        roughness = 0.52;
+        metalness = 0.02;
+      } else if (p.id === 'saturn') {
+        mapTex = textureLoader.load('/assets/planets/saturn.jpg');
+        roughness = 0.58;
+        metalness = 0.02;
+      } else if (p.id === 'uranus') {
+        mapTex = textureLoader.load('/assets/planets/uranus.jpg');
+        roughness = 0.45;
+        metalness = 0.02;
+      } else if (p.id === 'neptune') {
+        mapTex = textureLoader.load('/assets/planets/neptune.jpg');
+        roughness = 0.45;
+        metalness = 0.02;
+      }
+
+      if (mapTex) {
+        mapTex.colorSpace = THREE.SRGBColorSpace;
+      }
+
+      const pMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        map: mapTex,
+        roughness,
+        metalness,
+        emissive: p.color,
+        emissiveIntensity: 0.08,
+      });
+      const pMesh = new THREE.Mesh(pGeo, pMat);
+
+      // Authentic Astronomical Axial Tilt (Euler ZYX)
+      const AXIAL_TILTS: Record<string, number> = {
+        mercury: 0.0006,
+        venus: 3.09,
+        earth: 0.409,
+        mars: 0.440,
+        jupiter: 0.055,
+        saturn: 0.466,
+        uranus: 1.706,
+        neptune: 0.494,
+      };
+      pMesh.rotation.order = 'ZYX';
+      pMesh.rotation.z = AXIAL_TILTS[p.id] || 0;
 
       // Real astronomical initial angle
       const initialAngle = getPlanetHeliocentricAngle(p.id, initialJD);
       pMesh.position.set(Math.cos(initialAngle) * p.orbitRadius, 0, Math.sin(initialAngle) * p.orbitRadius);
       scene.add(pMesh);
 
-      // Atmospheric Glow Halo
-      const glowGeo = new THREE.SphereGeometry(p.radius * 1.35, 24, 24);
+      // Atmospheric Glow Halo (tight authentic limb glow)
+      const hasAtmosphere = p.id !== 'mercury';
+      const atmoScale = p.id === 'earth' ? 1.06 : p.id === 'venus' ? 1.08 : p.id === 'mars' ? 1.03 : 1.06;
+      const atmoOpacity = p.id === 'venus' ? 0.30 : p.id === 'earth' ? 0.22 : p.id === 'mars' ? 0.08 : 0.20;
+      const atmoColor = p.id === 'earth' ? 0x38bdf8 : p.id === 'venus' ? 0xfef08a : p.id === 'mars' ? 0xf87171 : p.color;
+
+      const glowGeo = new THREE.SphereGeometry(p.radius * atmoScale, 32, 32);
       const glowMat = new THREE.MeshBasicMaterial({
-        color: p.color,
+        color: atmoColor,
         transparent: true,
-        opacity: p.id === 'earth' ? 0.22 : 0.14,
+        opacity: hasAtmosphere ? atmoOpacity : 0.0,
         side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
         depthWrite: false,
       });
       const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+      glowMesh.raycast = () => {};
       pMesh.add(glowMesh);
 
       // Custom Planet Features
       if (p.id === 'earth') {
         earthMeshRef = pMesh;
 
-        if (bundle.moons && bundle.moons.length > 0) {
-          moonMeshRef = bundle.moons[0].mesh;
+        // Photorealistic Dynamic Cloud Layer
+        const cloudTex = textureLoader.load('/assets/planets/earth_clouds.png');
+        cloudTex.colorSpace = THREE.SRGBColorSpace;
+        const cloudGeo = new THREE.SphereGeometry(p.radius * 1.025, 64, 64);
+        const cloudMat = new THREE.MeshStandardMaterial({
+          map: cloudTex,
+          transparent: true,
+          opacity: 0.72,
+          blending: THREE.AdditiveBlending,
+          roughness: 1.0,
+          depthWrite: false,
+        });
+        const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+        clouds.raycast = () => {};
+        pMesh.add(clouds);
+        pMesh.userData.clouds = clouds;
 
-          // Moon Orbit Line around Earth
-          const mOrbitGeo = new THREE.BufferGeometry();
-          const mPoints: THREE.Vector3[] = [];
-          for (let s = 0; s <= 64; s++) {
-            const t = (s / 64) * Math.PI * 2;
-            mPoints.push(new THREE.Vector3(Math.cos(t) * 6.5, 0, Math.sin(t) * 6.5));
-          }
-          mOrbitGeo.setFromPoints(mPoints);
-          const mOrbitMat = new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.25 });
-          const mOrbit = new THREE.Line(mOrbitGeo, mOrbitMat);
-          pMesh.add(mOrbit);
+        // Earth's Moon with Authentic NASA LRO Surface Map
+        const moonTex = textureLoader.load('/assets/moon_texture.jpg');
+        moonTex.colorSpace = THREE.SRGBColorSpace;
+        const moonGeo = new THREE.SphereGeometry(0.82, 32, 32);
+        const moonMat = new THREE.MeshStandardMaterial({
+          map: moonTex,
+          roughness: 0.95,
+          metalness: 0.05,
+          emissive: 0x94a3b8,
+          emissiveIntensity: 0.06,
+        });
+        const moon = new THREE.Mesh(moonGeo, moonMat);
+        moon.position.set(6.5, 0.5, 0);
+        moon.raycast = () => {};
+        pMesh.add(moon);
+        pMesh.userData.moon = moon;
+        moonMeshRef = moon;
 
-          // Mount Apollo 11 Lunar Module Eagle at Tranquility Base
-          gltfLoader.load(
-            '/models/Apollo_Lunar_Module.glb',
-            (gltf) => {
-              const lm = gltf.scene;
-              // Apollo LM model height is ~137 units; scale to ~0.25 units on Moon
-              lm.scale.set(0.0018, 0.0018, 0.0018);
-              lm.position.set(0, 0.52, 0);
-              moonMeshRef?.add(lm);
-            },
-            undefined,
-            (err) => console.warn('Apollo LM loading note:', err)
-          );
+        // Moon Orbit Line around Earth
+        const mOrbitGeo = new THREE.BufferGeometry();
+        const mPoints: THREE.Vector3[] = [];
+        for (let s = 0; s <= 64; s++) {
+          const t = (s / 64) * Math.PI * 2;
+          mPoints.push(new THREE.Vector3(Math.cos(t) * 6.5, 0, Math.sin(t) * 6.5));
         }
+        mOrbitGeo.setFromPoints(mPoints);
+        const mOrbitMat = new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.25 });
+        const mOrbit = new THREE.Line(mOrbitGeo, mOrbitMat);
+        pMesh.add(mOrbit);
       }
 
-      if (p.id === 'mars') {
-        // Mount Perseverance Rover at Jezero Crater
-        gltfLoader.load(
-          '/models/Mars_Perseverance_Rover.glb',
-          (gltf) => {
-            const rover = gltf.scene;
-            // Perseverance model height is ~175 units; scale to ~0.35 units on Mars
-            rover.scale.set(0.002, 0.002, 0.002);
-            rover.position.set(0, p.radius + 0.05, 0);
-            pMesh.add(rover);
-          },
-          undefined,
-          (err) => console.warn('Perseverance loading note:', err)
-        );
+      if (p.id === 'saturn') {
+        // Authentic Saturn Ring System with Radial UV Texture & Cassini Division
+        const ringTex = textureLoader.load('/assets/planets/saturn_ring.png');
+        ringTex.colorSpace = THREE.SRGBColorSpace;
+        const innerR = p.radius * 1.30;
+        const outerR = p.radius * 2.70;
+        const ringGeo = new THREE.RingGeometry(innerR, outerR, 96, 4);
+
+        const pos = ringGeo.attributes.position;
+        const uvs = ringGeo.attributes.uv;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const y = pos.getY(i);
+          const r = Math.sqrt(x * x + y * y);
+          const u = (r - innerR) / (outerR - innerR);
+          uvs.setXY(i, u, 0.5);
+        }
+        uvs.needsUpdate = true;
+
+        const ringMat = new THREE.MeshStandardMaterial({
+          map: ringTex,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.92,
+          roughness: 0.6,
+          metalness: 0.08,
+        });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = Math.PI / 2.35;
+        ringMesh.rotation.y = 0.08;
+        ringMesh.raycast = () => {};
+        pMesh.add(ringMesh);
+      }
+
+      if (p.id === 'uranus') {
+        // Delicate Uranus Ring System
+        const uRingGeo = new THREE.RingGeometry(p.radius * 1.35, p.radius * 1.85, 64);
+        const uRingMat = new THREE.MeshBasicMaterial({
+          color: 0x93c5fd,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.28,
+        });
+        const uRingMesh = new THREE.Mesh(uRingGeo, uRingMat);
+        uRingMesh.rotation.x = Math.PI / 1.15;
+        uRingMesh.raycast = () => {};
+        pMesh.add(uRingMesh);
       }
 
       // Floating Billboard Label
@@ -1992,8 +1593,6 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
         angle: initialAngle,
         label,
         glow: glowMesh,
-        clouds: bundle.clouds,
-        moons: bundle.moons,
       });
     });
     planetMeshesRef.current = planetMap;
@@ -2019,7 +1618,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
         orbitRadius = 1.8; // Around the Moon
         orbitSpeed = 1.2;
       } else {
-        stationGroup = createRealisticHubbleMesh(); // Hubble Space Telescope
+        stationGroup = createRealisticSatelliteMesh(0x06b6d4); // Hubble
         orbitRadius = 3.6;
         orbitSpeed = 2.4;
       }
@@ -2084,6 +1683,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
         // High eccentric elliptical orbit trajectory around Sun!
         const pspGeo = new THREE.BufferGeometry();
         const pspPoints: THREE.Vector3[] = [];
+        // Ellipse: a = 24, e = 0.65
         const a = 24, b = 15;
         for (let s = 0; s <= 128; s++) {
           const t = (s / 128) * Math.PI * 2;
@@ -2107,7 +1707,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
         group = createRealisticSatelliteMesh(0xeab308);
         group.position.set(22.0, 3.5, 12.0); // Inclined orbit
       } else if (mission.id === 'voyager-1') {
-        group = createRealisticVoyagerMesh();
+        group = createRealisticSatelliteMesh(0x34d399);
         group.position.set(185, 25, -180); // Escaping solar system!
       } else if (mission.id === 'perseverance') {
         group = createRealisticSatelliteMesh(0xf43f5e);
@@ -2162,7 +1762,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
     };
     const onMouseUp = () => { isDragging = false; };
     const onWheel = (e: WheelEvent) => {
-      camDistance = Math.max(25, Math.min(650, camDistance + e.deltaY * 0.22));
+      camDistance = Math.max(10, Math.min(650, camDistance + e.deltaY * 0.22));
     };
     const onClick = (e: MouseEvent) => {
       if (isDragging) return;
@@ -2189,76 +1789,58 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
       sun.rotation.y += 0.003;
       coronaOuterMesh.scale.setScalar(1.0 + Math.sin(pulseTime * 1.6) * 0.05);
 
-      // Celestial Milky Way sky dome subtle drift
-      if (skyDomeRef.current) {
-        skyDomeRef.current.rotation.y += 0.00012;
-      }
-
-      // 3D Asteroid Belt rocks tumbling
-      asteroidInstancesRef.current.forEach((ast, idx) => {
-        ast.rotation.x += 0.003 * (idx % 2 === 0 ? 1 : -1);
-        ast.rotation.y += 0.005;
-      });
-
       // Simulation Time Advance
-      const curPlaying = isPlayingRef.current;
-      const curSpeed = simSpeedRef.current;
-      if (curPlaying) {
-        if (curSpeed > 1) {
-          const advanceDays = delta * curSpeed;
-          simDateRef.current = new Date(simDateRef.current.getTime() + advanceDays * 86400000);
-          const newJD = getJulianDate(simDateRef.current);
-          setSimDate(new Date(simDateRef.current));
-          setCurrentJD(newJD);
-
-          planetMeshesRef.current.forEach((val, id) => {
-            const angle = getPlanetHeliocentricAngle(id, newJD);
-            val.angle = angle;
-            val.mesh.position.x = Math.cos(angle) * val.orbitRadius;
-            val.mesh.position.z = Math.sin(angle) * val.orbitRadius;
-            val.mesh.rotation.y += 0.02;
-
-            // Rotate atmospheric cloud layer independently
-            if (val.clouds) {
-              val.clouds.rotation.y += 0.0028;
-            }
-
-            // Moons orbit their parent body
-            if (val.moons) {
-              val.moons.forEach((m) => {
-                m.angle += delta * m.speed * Math.min(curSpeed * 0.2, 5.0);
-                m.mesh.position.x = Math.cos(m.angle) * m.orbitRadius;
-                m.mesh.position.z = Math.sin(m.angle) * m.orbitRadius;
-                m.mesh.rotation.y += 0.012;
-              });
-            }
-
-            // Sync billboard label position
-            val.label.position.copy(val.mesh.position);
-            val.label.position.y = (val.mesh.geometry as THREE.SphereGeometry).parameters.radius + 4.2;
-          });
+      if (isPlaying) {
+        let currentJDToUse: number;
+        if (isLiveSynced || simSpeed === 1) {
+          // ── 100% PURE REAL-TIME LIVE CELESTIAL MECHANICS ──
+          const now = new Date();
+          simDateRef.current = now;
+          currentJDToUse = getJulianDate(now);
         } else {
-          planetMeshesRef.current.forEach((val) => {
-            val.mesh.rotation.y += 0.008;
-
-            if (val.clouds) {
-              val.clouds.rotation.y += 0.0016;
-            }
-
-            if (val.moons) {
-              val.moons.forEach((m) => {
-                m.angle += delta * m.speed;
-                m.mesh.position.x = Math.cos(m.angle) * m.orbitRadius;
-                m.mesh.position.z = Math.sin(m.angle) * m.orbitRadius;
-                m.mesh.rotation.y += 0.012;
-              });
-            }
-          });
+          // ── ACCELERATED TIME MACHINE (7D/s, 30D/s, etc.) ──
+          const advanceDays = delta * simSpeed;
+          simDateRef.current = new Date(simDateRef.current.getTime() + advanceDays * 86400000);
+          currentJDToUse = getJulianDate(simDateRef.current);
+          setSimDate(new Date(simDateRef.current));
+          setCurrentJD(currentJDToUse);
         }
 
+        // Continually position planets along true Keplerian orbits
+        planetMeshesRef.current.forEach((val, id) => {
+          const kepler = getKeplerianCoords(id, currentJDToUse);
+          val.angle = kepler.angleRad;
+          val.mesh.position.x = Math.cos(kepler.angleRad) * val.orbitRadius;
+          val.mesh.position.z = Math.sin(kepler.angleRad) * val.orbitRadius;
+
+          // Authentic axial rotation speeds (Jupiter/Saturn ~10 hrs, Venus slow retrograde)
+          const spinRate = id === 'jupiter' || id === 'saturn' ? 0.018 : id === 'venus' ? -0.002 : 0.009;
+          val.mesh.rotation.y += (simSpeed > 1 ? 0.025 : 1) * spinRate;
+
+          // Atmospheric cloud layer rotation (drifts over Earth continents)
+          if (val.mesh.userData.clouds) {
+            (val.mesh.userData.clouds as THREE.Mesh).rotation.y += 0.002;
+          }
+
+          // Moon orbital movement around Earth
+          if (val.mesh.userData.moon) {
+            const moon = val.mesh.userData.moon as THREE.Mesh;
+            const mAngle = pulseTime * 0.45;
+            moon.position.x = Math.cos(mAngle) * 6.5;
+            moon.position.z = Math.sin(mAngle) * 6.5;
+            moon.rotation.y += 0.008;
+          }
+
+          // Sync billboard label position
+          val.label.position.copy(val.mesh.position);
+          val.label.position.y = (val.mesh.geometry as THREE.SphereGeometry).parameters.radius + 4.2;
+        });
+
         // Animate Space Station Orbits around Earth / Moon
-        stationMeshesRef.current.forEach((val) => {
-          val.angle += delta * val.orbitSpeed;
+        stationMeshesRef.current.forEach((val, sId) => {
+          // If ISS and live telemetry is active, use authentic orbital rate
+          const speedMultiplier = (sId === 'iss' && liveIssState.isLive) ? 2.5 : val.orbitSpeed;
+          val.angle += delta * speedMultiplier;
           val.group.position.x = Math.cos(val.angle) * val.orbitRadius;
           val.group.position.z = Math.sin(val.angle) * val.orbitRadius;
           val.group.rotation.y += 0.02;
@@ -2284,21 +1866,19 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
       // Camera Target Lerp Tracking
       let targetCenter = new THREE.Vector3(0, 0, 0);
       let targetZoomDist = camDistance;
-      const curTarget = cameraTargetRef.current;
 
-      if (curTarget !== 'sun') {
-        if (planetMeshesRef.current.has(curTarget)) {
-          targetCenter = planetMeshesRef.current.get(curTarget)!.mesh.position.clone();
-          targetZoomDist = Math.min(camDistance, 45); // Closer inspection of planet
-        } else if (curTarget === 'inner') {
+      if (cameraTarget !== 'sun') {
+        if (planetMeshesRef.current.has(cameraTarget)) {
+          const targetMesh = planetMeshesRef.current.get(cameraTarget)!.mesh;
+          targetCenter = targetMesh.position.clone();
+          const pRad = (targetMesh.geometry as THREE.SphereGeometry).parameters.radius || 3;
+          targetZoomDist = Math.min(camDistance, Math.max(13, pRad * 4.2)); // Dynamic close inspection zoom
+        } else if (cameraTarget === 'inner') {
           targetCenter = new THREE.Vector3(0, 0, 0);
           targetZoomDist = 90;
-        } else if (curTarget === 'earth-system' && earthMeshRef) {
+        } else if (cameraTarget === 'earth-system' && earthMeshRef) {
           targetCenter = earthMeshRef.position.clone();
-          targetZoomDist = 24; // Close zoom on Earth, Moon & ISS!
-        } else if (solarMissionMeshesRef.current.has(curTarget)) {
-          targetCenter = solarMissionMeshesRef.current.get(curTarget)!.group.position.clone();
-          targetZoomDist = 18; // Close zoom on solar probe
+          targetZoomDist = 28; // Close zoom on Earth, Moon & ISS!
         }
       }
 
@@ -2336,7 +1916,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
       }
       renderer.dispose();
     };
-  }, [isOpen, handleCanvasClick]);
+  }, [isOpen, isPlaying, simSpeed, cameraTarget, handleCanvasClick]);
 
   // ── SYNC TOGGLES TO 3D VISIBILITY ────────────────────────────────────────
   useEffect(() => {
@@ -2365,9 +1945,21 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
     orbitLinesRef.current.forEach((line) => { line.visible = showOrbits; });
   }, [showOrbits]);
 
-  // Computed Solar Coordinates & Irradiance for Selected Body
+  // Computed Real-Time Planetary Ephemeris & Distance Telemetry from Earth
   const solarTelemetry = useMemo(() => {
-    const currentDistAU = selectedPlanet.actualAU;
+    const jd = getJulianDate(simDate);
+    const eCoords = getKeplerianCoords('earth', jd);
+    const pCoords = getKeplerianCoords(selectedPlanet.id, jd);
+
+    // Real-time distance between Earth and selected planet
+    const earthDistAU = selectedPlanet.id === 'earth' 
+      ? 0 
+      : Math.sqrt(Math.pow(pCoords.xAU - eCoords.xAU, 2) + Math.pow(pCoords.zAU - eCoords.zAU, 2));
+    const earthDistKm = earthDistAU * 149597870.7;
+    const earthLightDelayMin = (earthDistKm / 299792.458 / 60);
+
+    // Distance to Sun
+    const currentDistAU = pCoords.distAU;
     // Inverse Square Law: S = S0 / r^2 (S0 = 1361 W/m^2 at 1 AU)
     const fluxWm2 = (1361 / (currentDistAU * currentDistAU)).toFixed(1);
     const lightDelayMinutes = ((currentDistAU * 149597870.7) / 299792.458 / 60).toFixed(2);
@@ -2377,8 +1969,12 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
     return {
       fluxWm2,
       lightDelayMinutes,
+      earthDistAU: earthDistAU.toFixed(3),
+      earthDistKm: (earthDistKm / 1e6).toFixed(1),
+      earthLightDelayMin: earthLightDelayMin.toFixed(2),
       localSolarTime: `${solarTimeHours}:${solarTimeMins} LTST`,
       carringtonRotation: Math.floor(2285 + (currentJD - 2460000) / 27.2753),
+      heliocentricLongitude: ((pCoords.angleRad * 180) / Math.PI).toFixed(1),
     };
   }, [selectedPlanet, currentJD, simDate]);
 
@@ -2400,11 +1996,11 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
         position: 'relative',
         width: '100%',
         maxWidth: '1440px',
-        height: '95dvh',
-        backgroundColor: 'var(--color-paper)',
-        borderRadius: 0,
-        border: '1px solid var(--rule-light)',
-        boxShadow: '0 24px 48px rgba(0, 0, 0, 0.8)',
+        height: '95vh',
+        backgroundColor: '#090d16',
+        borderRadius: '20px',
+        border: '1px solid rgba(56, 189, 248, 0.4)',
+        boxShadow: '0 25px 70px rgba(0,0,0,0.95), 0 0 50px rgba(56, 189, 248, 0.25)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -2415,58 +2011,67 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 20px',
-          borderBottom: '1px solid var(--rule-subtle)',
-          background: 'var(--color-paper-2)',
+          borderBottom: '1px solid rgba(56, 189, 248, 0.25)',
+          background: 'linear-gradient(90deg, rgba(15, 23, 42, 0.98), rgba(9, 14, 26, 0.98))',
           flexWrap: 'wrap',
           gap: '10px',
         }}>
           {/* Title & Real-time JPL Clock */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: 0,
-              background: 'var(--color-paper-3)',
-              border: '1px solid var(--rule-subtle)',
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: '0 0 20px rgba(56, 189, 248, 0.6)',
             }}>
-              <Compass size={20} style={{ color: 'var(--color-accent)' }} />
+              <Compass size={24} color="#ffffff" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-ink)', margin: 0, letterSpacing: '-0.01em' }}>
-                  NASA Eyes: 3D Solar System Orrery &amp; Space Fleet
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f8fafc', margin: 0, letterSpacing: '-0.02em' }}>
+                  NASA Eyes: 3D Solar System Orrery & Space Fleet
                 </h2>
                 <span style={{
-                  padding: '2px 8px',
-                  borderRadius: 0,
-                  background: 'var(--color-paper-3)',
-                  border: '1px solid var(--rule-subtle)',
-                  color: 'var(--color-accent)',
-                  fontSize: '9.5px',
-                  fontWeight: 700,
+                  padding: '3px 10px',
+                  borderRadius: '9999px',
+                  background: isLiveSynced ? 'rgba(34, 197, 94, 0.2)' : 'rgba(56, 189, 248, 0.15)',
+                  border: isLiveSynced ? '1px solid #22c55e' : '1px solid rgba(56, 189, 248, 0.5)',
+                  color: isLiveSynced ? '#4ade80' : '#38bdf8',
+                  fontSize: '10px',
+                  fontWeight: 800,
                   fontFamily: 'var(--font-mono)',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}>
-                  Live JPL Ephemeris
+                  <div style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: isLiveSynced ? '#22c55e' : '#38bdf8',
+                    animation: isLiveSynced ? 'pulse 1.2s infinite' : 'none',
+                  }} />
+                  {isLiveSynced ? '● 100% REAL-TIME LIVE NOW' : 'SIMULATION MODE'}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Clock size={12} style={{ color: 'var(--color-accent)' }} />
-                  <span style={{ fontSize: '0.78rem', color: 'var(--color-accent)', fontFamily: 'var(--font-mono)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  <Clock size={12} color="#38bdf8" />
+                  <span style={{ fontSize: '0.78rem', color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
                     {simDate.toUTCString()}
                   </span>
                 </div>
-                <span style={{ color: 'var(--rule-light)' }}>/</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-ink-faint)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ color: '#475569' }}>·</span>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
                   JD {currentJD.toFixed(4)}
                 </span>
-                <span style={{ color: 'var(--rule-light)' }}>/</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-accent-2)', fontFamily: 'var(--font-mono)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ color: '#475569' }}>·</span>
+                <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
                   CR {solarTelemetry.carringtonRotation}
                 </span>
               </div>
@@ -2479,15 +2084,15 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
             <button
               onClick={syncToLiveNow}
               style={{
-                display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 11px', borderRadius: 0,
-                background: isLiveSynced ? 'var(--color-paper-3)' : 'transparent',
-                border: isLiveSynced ? '1px solid var(--color-accent-green)' : '1px solid var(--rule-subtle)',
-                color: isLiveSynced ? 'var(--color-accent-green)' : 'var(--color-ink-muted)', cursor: 'pointer',
-                fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 11px', borderRadius: '8px',
+                background: isLiveSynced ? 'rgba(52, 211, 153, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                border: isLiveSynced ? '1px solid #34d399' : '1px solid rgba(148, 163, 184, 0.3)',
+                color: isLiveSynced ? '#34d399' : '#e2e8f0', cursor: 'pointer',
+                fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700,
               }}
               title="Snap planetary positions to real-time current date"
             >
-              <Zap size={13} />
+              <Zap size={14} />
               <span>{isLiveSynced ? '● Live Ephemeris' : 'Sync Live'}</span>
             </button>
 
@@ -2495,10 +2100,9 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
             <button
               onClick={() => { setIsPlaying(!isPlaying); soundFx.playClick(600); }}
               style={{
-                display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 11px', borderRadius: 0,
-                background: 'transparent', border: '1px solid var(--rule-subtle)',
-                color: 'var(--color-ink)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '11px',
-                fontWeight: 700, textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 11px', borderRadius: '8px',
+                background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(148, 163, 184, 0.3)',
+                color: '#e2e8f0', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '11px',
               }}
             >
               {isPlaying ? <Pause size={13} /> : <Play size={13} />}
@@ -2506,7 +2110,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
             </button>
 
             {/* Sim Speed */}
-            <div style={{ display: 'flex', background: 'var(--color-paper-3)', borderRadius: 0, border: '1px solid var(--rule-subtle)', padding: '2px', gap: '2px' }}>
+            <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.85)', borderRadius: '8px', border: '1px solid rgba(148, 163, 184, 0.25)', padding: '2px' }}>
               {[
                 { label: 'Real', val: 1 },
                 { label: '7D/s', val: 7 },
@@ -2517,9 +2121,9 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
                   key={s.val}
                   onClick={() => { setSimSpeed(s.val); setIsLiveSynced(s.val === 1); soundFx.playClick(800); }}
                   style={{
-                    padding: '4px 8px', borderRadius: 0, border: 'none',
-                    background: simSpeed === s.val ? 'var(--color-accent)' : 'transparent',
-                    color: simSpeed === s.val ? '#000000' : 'var(--color-ink-muted)',
+                    padding: '5px 8px', borderRadius: '6px', border: 'none',
+                    background: simSpeed === s.val ? '#0284c7' : 'transparent',
+                    color: simSpeed === s.val ? '#fff' : '#94a3b8',
                     cursor: 'pointer', fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700,
                   }}
                 >{s.label}</button>
@@ -2530,11 +2134,11 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
             <button
               onClick={() => { setShowStations(!showStations); soundFx.playClick(600); }}
               style={{
-                display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 9px', borderRadius: 0,
-                background: showStations ? 'var(--color-paper-3)' : 'transparent',
-                border: showStations ? '1px solid var(--color-accent-2)' : '1px solid var(--rule-subtle)',
-                color: showStations ? 'var(--color-accent-2)' : 'var(--color-ink-muted)', cursor: 'pointer',
-                fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700, textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 9px', borderRadius: '8px',
+                background: showStations ? 'rgba(56, 189, 248, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                border: showStations ? '1px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.3)',
+                color: showStations ? '#38bdf8' : '#94a3b8', cursor: 'pointer',
+                fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700,
               }}
               title="Toggle ISS, Tiangong & Lunar Gateway"
             >
@@ -2545,11 +2149,11 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
             <button
               onClick={() => { setShowSolarFleet(!showSolarFleet); soundFx.playClick(600); }}
               style={{
-                display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 9px', borderRadius: 0,
-                background: showSolarFleet ? 'var(--color-paper-3)' : 'transparent',
-                border: showSolarFleet ? '1px solid var(--color-accent)' : '1px solid var(--rule-subtle)',
-                color: showSolarFleet ? 'var(--color-accent)' : 'var(--color-ink-muted)', cursor: 'pointer',
-                fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700, textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 9px', borderRadius: '8px',
+                background: showSolarFleet ? 'rgba(249, 115, 22, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                border: showSolarFleet ? '1px solid #f97316' : '1px solid rgba(148, 163, 184, 0.3)',
+                color: showSolarFleet ? '#f97316' : '#94a3b8', cursor: 'pointer',
+                fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700,
               }}
               title="Toggle Parker Solar Probe, JWST & Fleet"
             >
@@ -2560,11 +2164,11 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
             <button
               onClick={() => { setShowOrbits(!showOrbits); soundFx.playClick(600); }}
               style={{
-                display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 9px', borderRadius: 0,
-                background: showOrbits ? 'var(--color-paper-3)' : 'transparent',
-                border: showOrbits ? '1px solid var(--color-accent-2)' : '1px solid var(--rule-subtle)',
-                color: showOrbits ? 'var(--color-accent-2)' : 'var(--color-ink-muted)', cursor: 'pointer',
-                fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700, textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 9px', borderRadius: '8px',
+                background: showOrbits ? 'rgba(168, 85, 247, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                border: showOrbits ? '1px solid #a855f7' : '1px solid rgba(148, 163, 184, 0.3)',
+                color: showOrbits ? '#c084fc' : '#94a3b8', cursor: 'pointer',
+                fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700,
               }}
               title="Toggle orbital lines"
             >
@@ -2575,11 +2179,11 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
             <button
               onClick={() => { setShowLabels(!showLabels); soundFx.playClick(600); }}
               style={{
-                display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 9px', borderRadius: 0,
-                background: showLabels ? 'var(--color-paper-3)' : 'transparent',
-                border: showLabels ? '1px solid var(--color-accent)' : '1px solid var(--rule-subtle)',
-                color: showLabels ? 'var(--color-accent)' : 'var(--color-ink-muted)', cursor: 'pointer',
-                fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700, textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 9px', borderRadius: '8px',
+                background: showLabels ? 'rgba(56, 189, 248, 0.2)' : 'rgba(30, 41, 59, 0.8)',
+                border: showLabels ? '1px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.3)',
+                color: showLabels ? '#38bdf8' : '#94a3b8', cursor: 'pointer',
+                fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700,
               }}
               title="Toggle entity name labels"
             >
@@ -2590,14 +2194,12 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
             {/* Close */}
             <button
               onClick={() => { onClose(); soundFx.playClick(500); }}
-              aria-label="Close"
               style={{
-                background: 'transparent', border: '1px solid var(--rule-subtle)',
-                borderRadius: 0, padding: '6px', color: 'var(--color-ink-muted)', cursor: 'pointer', marginLeft: '6px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(30, 41, 59, 0.7)', border: '1px solid rgba(148, 163, 184, 0.3)',
+                borderRadius: '8px', padding: '7px', color: '#94a3b8', cursor: 'pointer', marginLeft: '6px',
               }}
             >
-              <X size={15} />
+              <X size={18} />
             </button>
           </div>
         </div>
@@ -2605,35 +2207,33 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
         {/* ═══ MAIN 3D VIEWPORT & SIDEBAR ═══ */}
         <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
           {/* 3D Canvas Container */}
-          <div style={{ flex: 1, width: '100%', height: '100%', position: 'relative', cursor: 'crosshair', overflow: 'hidden' }}>
-            <div ref={mountRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} />
+          <div ref={mountRef} style={{ flex: 1, width: '100%', height: '100%', position: 'relative', cursor: 'crosshair' }}>
             {/* Camera Quick-Jump HUD Floating Bar */}
             <div style={{
               position: 'absolute', top: '14px', left: '14px', zIndex: 10,
-              display: 'flex', gap: '4px', background: 'var(--color-paper-2)',
-              padding: '4px 6px', borderRadius: 0, border: '1px solid var(--rule-subtle)',
-              flexWrap: 'wrap',
+              display: 'flex', gap: '6px', background: 'rgba(9, 14, 26, 0.88)',
+              padding: '6px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.3)',
+              backdropFilter: 'blur(10px)', flexWrap: 'wrap',
             }}>
-              <span style={{ fontSize: '10px', color: 'var(--color-accent)', fontWeight: 700, alignSelf: 'center', padding: '0 6px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                VIEW:
+              <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 800, alignSelf: 'center', padding: '0 6px', fontFamily: 'var(--font-mono)' }}>
+                FLY-TO VIEW:
               </span>
               {[
-                { id: 'sun', label: 'Solar Overview', icon: <Sun size={12} /> },
-                { id: 'inner', label: 'Inner Planets', icon: <Crosshair size={12} /> },
-                { id: 'earth-system', label: 'Earth & Stations (ISS)', icon: <Globe size={12} /> },
-                { id: 'parker-solar-probe', label: 'Parker Solar Probe', icon: <Flame size={12} /> },
+                { id: 'sun', label: '☀️ Solar Overview', icon: <Sun size={12} /> },
+                { id: 'inner', label: '🪨 Inner Planets', icon: <Crosshair size={12} /> },
+                { id: 'earth-system', label: '🌍 Earth & Stations (ISS)', icon: <Globe size={12} /> },
+                { id: 'parker-solar-probe', label: '🔥 Parker Solar Probe', icon: <Flame size={12} /> },
               ].map((view) => (
                 <button
                   key={view.id}
                   onClick={() => focusOnTarget(view.id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '5px',
-                    padding: '5px 10px', borderRadius: 0, border: 'none',
-                    background: cameraTarget === view.id ? 'var(--color-paper-3)' : 'transparent',
-                    color: cameraTarget === view.id ? 'var(--color-accent)' : 'var(--color-ink-muted)',
-                    borderBottom: cameraTarget === view.id ? '2px solid var(--color-accent)' : '2px solid transparent',
+                    padding: '5px 10px', borderRadius: '8px', border: 'none',
+                    background: cameraTarget === view.id ? 'rgba(56, 189, 248, 0.25)' : 'rgba(30, 41, 59, 0.6)',
+                    color: cameraTarget === view.id ? '#38bdf8' : '#cbd5e1',
+                    borderBottom: cameraTarget === view.id ? '2px solid #38bdf8' : '2px solid transparent',
                     cursor: 'pointer', fontSize: '10.5px', fontFamily: 'var(--font-mono)', fontWeight: 700,
-                    textTransform: 'uppercase',
                   }}
                 >
                   {view.icon}
@@ -2644,28 +2244,28 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
 
             {/* Bottom HUD Helper */}
             <div style={{
-              position: 'absolute', bottom: '14px', left: '14px', padding: '6px 14px', borderRadius: 0,
-              background: 'var(--color-paper-2)', border: '1px solid var(--rule-subtle)',
-              color: 'var(--color-ink-muted)', fontFamily: 'var(--font-mono)', fontSize: '10.5px',
-              pointerEvents: 'none', display: 'flex', gap: '14px', textTransform: 'uppercase', letterSpacing: '0.04em',
+              position: 'absolute', bottom: '14px', left: '14px', padding: '8px 16px', borderRadius: '10px',
+              background: 'rgba(9, 14, 26, 0.90)', border: '1px solid rgba(56, 189, 248, 0.35)',
+              color: '#94a3b8', fontFamily: 'var(--font-mono)', fontSize: '11px',
+              backdropFilter: 'blur(10px)', pointerEvents: 'none', display: 'flex', gap: '14px',
             }}>
-              <span>Drag: Rotate Orbit</span>
-              <span>Scroll: Zoom Distance</span>
-              <span><MousePointerClick size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />Click Planet / Station / Probe to Inspect</span>
+              <span>🖱️ Drag: Orbit Angle</span>
+              <span>🔍 Scroll: Zoom In/Out</span>
+              <span><MousePointerClick size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /> Click Planet / Station / Probe to Inspect</span>
             </div>
           </div>
 
           {/* ═══ RIGHT SCIENTIFIC DOSSIER SIDEBAR ═══ */}
           <div style={{
             width: '420px',
-            backgroundColor: 'var(--color-paper-2)',
-            borderLeft: '1px solid var(--rule-subtle)',
+            backgroundColor: 'rgba(15, 23, 42, 0.98)',
+            borderLeft: '1px solid rgba(56, 189, 248, 0.25)',
             display: 'flex',
             flexDirection: 'column',
             overflowY: 'auto',
           }}>
             {/* Top Navigation Tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--rule-subtle)' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid rgba(56, 189, 248, 0.15)' }}>
               {[
                 { id: 'planet' as const, label: 'Planets', icon: <Sparkles size={13} /> },
                 { id: 'stations' as const, label: 'Space Stations', icon: <Satellite size={13} /> },
@@ -2758,27 +2358,27 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
                       border: '1px solid rgba(56, 189, 248, 0.2)', marginBottom: '12px',
                     }}>
                       <div>
+                        <span style={{ fontSize: '9.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Live Distance to Earth</span>
+                        <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                          {selectedPlanet.id === 'earth' ? '0.00 AU (Origin)' : `${solarTelemetry.earthDistAU} AU (${solarTelemetry.earthDistKm}M km)`}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '9.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Live Earth Radio Delay</span>
+                        <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
+                          {selectedPlanet.id === 'earth' ? '0.00 s' : `${solarTelemetry.earthLightDelayMin} mins`}
+                        </div>
+                      </div>
+                      <div>
                         <span style={{ fontSize: '9.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Solar Irradiance</span>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>
+                        <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>
                           {solarTelemetry.fluxWm2} W/m²
                         </div>
                       </div>
                       <div>
-                        <span style={{ fontSize: '9.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Light Delay to Sun</span>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-                          {solarTelemetry.lightDelayMinutes} mins
-                        </div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '9.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Subsolar True Time</span>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
-                          {solarTelemetry.localSolarTime}
-                        </div>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '9.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Orbital Velocity</span>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#f43f5e', fontFamily: 'var(--font-mono)' }}>
-                          {selectedPlanet.orbitalVelocityKms}
+                        <span style={{ fontSize: '9.5px', color: '#94a3b8', textTransform: 'uppercase' }}>Heliocentric Longitude</span>
+                        <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#f43f5e', fontFamily: 'var(--font-mono)' }}>
+                          {solarTelemetry.heliocentricLongitude}°
                         </div>
                       </div>
                     </div>
@@ -2863,8 +2463,12 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
                           🏛️ Agency: {station.agency}
                         </div>
                         <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
-                          <span style={{ color: '#38bdf8' }}>🛰️ {station.altitudeKm} km</span>
-                          <span style={{ color: '#f59e0b' }}>⚡ {station.velocityKmh.toLocaleString()} km/h</span>
+                          <span style={{ color: '#38bdf8' }}>
+                            🛰️ {station.id === 'iss' && liveIssState.isLive ? `${liveIssState.altitude} km (LIVE)` : `${station.altitudeKm} km`}
+                          </span>
+                          <span style={{ color: '#f59e0b' }}>
+                            ⚡ {station.id === 'iss' && liveIssState.isLive ? `${liveIssState.velocity.toLocaleString()} km/h (LIVE)` : `${station.velocityKmh.toLocaleString()} km/h`}
+                          </span>
                           <span style={{ color: '#34d399' }}>👨‍🚀 {station.crewCount} Crew</span>
                         </div>
 
@@ -2874,7 +2478,16 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
                               {station.description}
                             </p>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', background: 'rgba(15, 23, 42, 0.6)', padding: '8px', borderRadius: '8px' }}>
-                              {station.specs.map((sp, i) => (
+                              {(station.id === 'iss' && liveIssState.isLive
+                                ? [
+                                    { label: 'Altitude', value: `${liveIssState.altitude} km (LIVE LEO)` },
+                                    { label: 'Orbital Speed', value: `${liveIssState.velocity.toLocaleString()} km/h (${(liveIssState.velocity / 3600).toFixed(2)} km/s)` },
+                                    { label: 'Sub-Satellite Point', value: `${liveIssState.latitude}°N, ${liveIssState.longitude}°W` },
+                                    { label: 'Solar Shadow Phase', value: liveIssState.visibility },
+                                    ...station.specs.slice(4)
+                                  ]
+                                : station.specs
+                              ).map((sp, i) => (
                                 <div key={i} style={{ fontSize: '10.5px' }}>
                                   <span style={{ color: '#94a3b8', display: 'block' }}>{sp.label}:</span>
                                   <strong style={{ color: '#f8fafc', fontFamily: 'var(--font-mono)' }}>{sp.value}</strong>

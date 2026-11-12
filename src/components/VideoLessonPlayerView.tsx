@@ -1,24 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CURRICULUM_MODULES, type CurriculumModulePackage, type VideoLessonStep } from '../data/curriculumNotesAudioVideo';
-import { NASA_ARCHIVAL_VIDEOS } from './ComicVideoPlayer';
-import { 
-  Play, 
-  Pause, 
-  ChevronRight, 
-  ChevronLeft, 
-  Subtitles, 
-  Award, 
-  Sparkles, 
-  HelpCircle,
-  Film,
-  Box,
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle2,
-  Tv
-} from 'lucide-react';
+import { Play, Pause, ChevronRight, ChevronLeft, Subtitles, Award, Sparkles, HelpCircle } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
-import { ThreeAerospaceStage } from './ThreeAerospaceStage';
 
 interface VideoLessonPlayerViewProps {
   initialModuleId?: number;
@@ -31,21 +14,19 @@ export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
 }) => {
   const [selectedModuleId, setSelectedModuleId] = useState<number>(initialModuleId);
   const [currentStepIdx, setCurrentStepIdx] = useState<number>(0);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [captionsEnabled, setCaptionsEnabled] = useState<boolean>(true);
   const [userDecision, setUserDecision] = useState<string | null>(null);
-  const [stageMode, setStageMode] = useState<'VIDEO' | '3D'>('VIDEO');
 
   const currentModule: CurriculumModulePackage =
     CURRICULUM_MODULES.find((m) => m.id === selectedModuleId) || CURRICULUM_MODULES[0];
   const { video } = currentModule;
   const currentStep: VideoLessonStep = video.steps[currentStepIdx] || video.steps[0];
-  const archivalVideo = NASA_ARCHIVAL_VIDEOS[selectedModuleId] || NASA_ARCHIVAL_VIDEOS[1];
 
-  // Auto-advance through video steps if playing in 3D mode
+  // Auto-advance through video steps if playing
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
-    if (isPlaying && stageMode === '3D') {
+    if (isPlaying) {
       timer = setTimeout(() => {
         if (currentStepIdx < video.steps.length - 1) {
           setCurrentStepIdx((prev) => prev + 1);
@@ -58,7 +39,7 @@ export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isPlaying, stageMode, currentStepIdx, video.steps.length]);
+  }, [isPlaying, currentStepIdx, video.steps.length]);
 
   const handleNextStep = () => {
     if (currentStepIdx < video.steps.length - 1) {
@@ -74,9 +55,177 @@ export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
     }
   };
 
+  // Render animated graphic stage according to module and step
+  const renderVideoStage = (step: VideoLessonStep) => {
+    // Dynamic visual animation depending on module & step
+    if (selectedModuleId === 1) {
+      // Launch / Staging / Balloon demo
+      return (
+        <svg viewBox="0 0 600 300" className="video-canvas-stage">
+          <defs>
+            <linearGradient id="vSky1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#020617" />
+              <stop offset="60%" stopColor="#0c4a6e" />
+              <stop offset="100%" stopColor="#f59e0b" />
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#vSky1)" />
+          {/* Earth Horizon */}
+          <path d="M 0 240 Q 300 210 600 240 L 600 300 L 0 300 Z" fill="#0369a1" />
+          
+          {step.type === 'ANIMATION' ? (
+            // Balloon Rocket Demo
+            <g transform="translate(200, 100)">
+              <ellipse cx="100" cy="50" rx="70" ry="38" fill="#ef4444" stroke="#991b1b" strokeWidth="2" />
+              <polygon points="170,50 195,40 195,60" fill="#b91c1c" />
+              <path d="M 195 45 Q 230 40 260 45" stroke="#38bdf8" strokeWidth="3" fill="none" />
+              <path d="M 195 55 Q 230 60 260 55" stroke="#93c5fd" strokeWidth="3" fill="none" />
+              <line x1="20" y1="50" x2="550" y2="50" stroke="#94a3b8" strokeDasharray="6,4" />
+              <text x="30" y="30" fill="#fef08a" fontSize="13" fontWeight="bold">ACTION & REACTION: GAS EXPULSION</text>
+            </g>
+          ) : (
+            // Rocket Staging into Orbit
+            <g transform="translate(270, 70) rotate(-30)">
+              <polygon points="20,0 12,25 28,25" fill="#ef4444" />
+              <rect x="12" y="25" width="16" height="50" fill="#f8fafc" stroke="#000" strokeWidth="1.5" />
+              <polygon points="10,75 30,75 25,120 15,120" fill="#f59e0b" opacity="0.9" />
+              {/* Dropping booster */}
+              {step.stepNumber >= 3 && (
+                <rect x="0" y="85" width="18" height="40" fill="#64748b" transform="rotate(25 0 85)" opacity="0.8" />
+              )}
+            </g>
+          )}
+        </svg>
+      );
+    }
+
+    if (selectedModuleId === 2) {
+      // Gemini 8 Docking & Spinning Demo
+      return (
+        <svg viewBox="0 0 600 300" className="video-canvas-stage">
+          <rect width="100%" height="100%" fill="#020617" />
+          <path d="M 0 230 Q 300 190 600 230 L 600 300 L 0 300 Z" fill="#0284c7" opacity="0.8" />
+          {/* Agena Collar */}
+          <g transform="translate(120, 110)">
+            <rect x="0" y="20" width="120" height="40" fill="#94a3b8" stroke="#475569" strokeWidth="2" rx="4" />
+            <polygon points="120,15 155,28 155,52 120,65" fill="#cbd5e1" stroke="#000" strokeWidth="2" />
+          </g>
+          {/* Gemini 8 Approaching or Spinning */}
+          <g transform={`translate(310, 100) ${step.stepNumber >= 3 ? 'rotate(15)' : ''}`}>
+            <polygon points="20,25 90,5 90,85 20,65" fill="#1e293b" stroke="#64748b" strokeWidth="2" />
+            <polygon points="90,5 150,0 150,90 90,85" fill="#f8fafc" stroke="#94a3b8" strokeWidth="2" />
+            <polygon points="110,0 120,-20 130,0" fill="#43ffa0" />
+          </g>
+          {/* Docking crosshairs reticle */}
+          <circle cx="300" cy="140" r="45" fill="none" stroke="#43ffa0" strokeWidth="2" strokeDasharray="6,4" />
+          <line x1="240" y1="140" x2="360" y2="140" stroke="#43ffa0" strokeWidth="1.5" />
+          <line x1="300" y1="80" x2="300" y2="200" stroke="#43ffa0" strokeWidth="1.5" />
+        </svg>
+      );
+    }
+
+    if (selectedModuleId === 3) {
+      // Apollo 11 Lunar Descent & 30-Second Pause
+      return (
+        <svg viewBox="0 0 600 300" className="video-canvas-stage">
+          <rect width="100%" height="100%" fill="#000000" />
+          <path d="M 0 210 Q 250 180 600 200 L 600 300 L 0 300 Z" fill="#475569" />
+          {/* Craters */}
+          <ellipse cx="120" cy="240" rx="45" ry="16" fill="#334155" />
+          <ellipse cx="450" cy="230" rx="70" ry="22" fill="#1e293b" />
+          {/* Lunar Module Eagle */}
+          <g transform="translate(250, 60)">
+            <polygon points="35,20 75,20 85,50 25,50" fill="#94a3b8" stroke="#000" strokeWidth="1.5" />
+            <polygon points="25,50 85,50 95,78 15,78" fill="#d97706" stroke="#b45309" strokeWidth="2" />
+            <polygon points="45,78 65,78 55,115" fill="#fef08a" opacity="0.8" />
+            <line x1="18" y1="78" x2="-5" y2="125" stroke="#cbd5e1" strokeWidth="2.5" />
+            <line x1="92" y1="78" x2="115" y2="125" stroke="#cbd5e1" strokeWidth="2.5" />
+          </g>
+          {/* Glowing Fuel Margin HUD */}
+          <g transform="translate(30, 30)">
+            <rect x="0" y="0" width="160" height="55" fill="#0f172a" stroke="#ef4444" strokeWidth="2" rx="6" />
+            <text x="12" y="22" fill="#f87171" fontSize="11" fontWeight="bold">HOVER FUEL REMAINING</text>
+            <text x="12" y="44" fill="#fbbf24" fontSize="16" fontFamily="monospace" fontWeight="bold">00:30 SECONDS</text>
+          </g>
+        </svg>
+      );
+    }
+
+    if (selectedModuleId === 4) {
+      // Sojourner on Mars / Airbag Bounce
+      return (
+        <svg viewBox="0 0 600 300" className="video-canvas-stage">
+          <defs>
+            <linearGradient id="marsSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#451a03" />
+              <stop offset="100%" stopColor="#9a3412" />
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#marsSky)" />
+          <path d="M 0 190 Q 300 170 600 190 L 600 300 L 0 300 Z" fill="#7c2d12" />
+          {/* Rocks Yogi & Barnacle Bill */}
+          <polygon points="120,210 150,185 180,215 160,230" fill="#451a03" />
+          <polygon points="440,205 480,180 520,215 470,235" fill="#451a03" />
+          {/* Sojourner Rover */}
+          <g transform="translate(240, 150)">
+            <rect x="20" y="20" width="80" height="30" fill="#0284c7" stroke="#000" strokeWidth="2" rx="2" />
+            <rect x="25" y="45" width="70" height="25" fill="#d97706" rx="2" />
+            <circle cx="30" cy="78" r="9" fill="#1e293b" stroke="#cbd5e1" strokeWidth="2" />
+            <circle cx="60" cy="80" r="9" fill="#1e293b" stroke="#cbd5e1" strokeWidth="2" />
+            <circle cx="90" cy="78" r="9" fill="#1e293b" stroke="#cbd5e1" strokeWidth="2" />
+            {/* Science Beam to Rock Yogi */}
+            <line x1="95" y1="55" x2="140" y2="65" stroke="#38bdf8" strokeWidth="3" strokeDasharray="3,3" />
+            <circle cx="140" cy="65" r="5" fill="#fbbf24" />
+          </g>
+        </svg>
+      );
+    }
+
+    if (selectedModuleId === 5) {
+      // Hubble Space Telescope Optical Repair
+      return (
+        <svg viewBox="0 0 600 300" className="video-canvas-stage">
+          <rect width="100%" height="100%" fill="#020617" />
+          <path d="M 0 240 Q 300 200 600 240 L 600 300 L 0 300 Z" fill="#0369a1" />
+          {/* Hubble Body */}
+          <g transform="translate(140, 70)">
+            <rect x="0" y="30" width="160" height="55" fill="#cbd5e1" stroke="#334155" strokeWidth="2" rx="4" />
+            <rect x="40" y="-30" width="22" height="60" fill="#1e3a8a" stroke="#fbbf24" strokeWidth="1.5" />
+            <rect x="40" y="85" width="22" height="60" fill="#1e3a8a" stroke="#fbbf24" strokeWidth="1.5" />
+          </g>
+          {/* Canadarm & Astronaut with COSTAR */}
+          <g transform="translate(360, 50)">
+            <path d="M 0 200 Q 60 120 120 70" stroke="#f8fafc" strokeWidth="8" fill="none" />
+            <circle cx="130" cy="65" r="16" fill="#f8fafc" stroke="#475569" strokeWidth="2" />
+            <rect x="150" y="60" width="50" height="60" fill="#3b82f6" rx="4" />
+            <text x="155" y="85" fill="#fff" fontSize="8" fontWeight="bold">COSTAR</text>
+          </g>
+        </svg>
+      );
+    }
+
+    // Default Module 6: Voyager Slingshot
+    return (
+      <svg viewBox="0 0 600 300" className="video-canvas-stage">
+        <rect width="100%" height="100%" fill="#000000" />
+        {/* Giant Jupiter */}
+        <circle cx="180" cy="150" r="70" fill="#ea580c" />
+        <ellipse cx="180" cy="130" rx="68" ry="14" fill="#c2410c" />
+        <ellipse cx="180" cy="170" rx="68" ry="14" fill="#9a3412" />
+        {/* Hyperbolic Slingshot Path */}
+        <path d="M 30 250 Q 180 20 340 120 T 560 80" stroke="#43ffa0" strokeWidth="4" fill="none" strokeDasharray="6,4" />
+        {/* Voyager Craft */}
+        <g transform="translate(390, 110)">
+          <ellipse cx="20" cy="20" rx="30" ry="14" fill="#f8fafc" stroke="#475569" strokeWidth="2" />
+          <circle cx="45" cy="35" r="12" fill="#eab308" />
+        </g>
+      </svg>
+    );
+  };
+
   return (
     <div className="video-lesson-wrapper">
-      {/* ── TOP MODULE SELECTOR PILLS (ALL 8 MODULES) ────────────────────── */}
+      {/* ── TOP MODULE SELECTOR PILLS ──────────────────────────────────────── */}
       <div className="video-module-pills">
         {CURRICULUM_MODULES.map((mod) => (
           <button
@@ -92,246 +241,82 @@ export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
             }}
           >
             <span>Mod {mod.id}</span>
-            <strong>{mod.name.split(':')[1]?.split('—')[0]?.trim() || mod.name}</strong>
+            <strong>{mod.name.split(':')[1]?.split('—')[0]?.trim()}</strong>
           </button>
         ))}
       </div>
 
-      {/* ── STAGE MODE SWITCHER HUD ────────────────────────────────────────── */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          marginBottom: '10px',
-          background: 'rgba(15, 23, 42, 0.75)',
-          padding: '8px 14px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '8px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={() => {
-              setStageMode('VIDEO');
-              soundFx.playClick(700);
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '6px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              fontFamily: 'var(--font-mono)',
-              border: stageMode === 'VIDEO' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
-              background: stageMode === 'VIDEO' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-              color: stageMode === 'VIDEO' ? '#38bdf8' : '#94a3b8',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Film size={14} /> Official NASA Video Module
-          </button>
-
-          <button
-            onClick={() => {
-              setStageMode('3D');
-              soundFx.playClick(750);
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '6px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              fontFamily: 'var(--font-mono)',
-              border: stageMode === '3D' ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.1)',
-              background: stageMode === '3D' ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
-              color: stageMode === '3D' ? '#f59e0b' : '#94a3b8',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Box size={14} /> 3D Telemetry Flight Stage
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.72rem', fontFamily: 'var(--font-mono)', color: '#64748b' }}>
-            NASA PUBLIC DOMAIN ARCHIVES
-          </span>
-          <button
-            onClick={() => setCaptionsEnabled(!captionsEnabled)}
-            className={`video-cc-btn ${captionsEnabled ? 'active' : ''}`}
-            title="Toggle Closed Captions Subtitles"
-            style={{ padding: '4px 8px', fontSize: '11px' }}
-          >
-            <Subtitles size={12} /> CC
-          </button>
-        </div>
-      </div>
-
       {/* ── MAIN CINEMATIC VIDEO DECK ──────────────────────────────────────── */}
       <div className="video-player-deck">
-        {stageMode === 'VIDEO' ? (
-          /* 📹 AUTHENTIC NASA ARCHIVAL VIDEO STREAM */
-          <div style={{ background: '#020617', padding: '16px' }}>
-            <div style={{ position: 'relative', width: '100%', paddingBottom: '52%', borderRadius: '8px', overflow: 'hidden', background: '#000', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <iframe
-                key={archivalVideo.youtubeId}
-                src={`https://www.youtube-nocookie.com/embed/${archivalVideo.youtubeId}?rel=0&modestbranding=1`}
-                title={archivalVideo.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                }}
-              />
-            </div>
+        <div className="video-stage-container">
+          {renderVideoStage(currentStep)}
 
-            {/* Official NASA Archival Metadata Card */}
-            <div 
-              style={{ 
-                marginTop: '14px', 
-                padding: '14px 18px', 
-                background: 'rgba(15, 23, 42, 0.9)', 
-                border: '1px solid rgba(56, 189, 248, 0.25)', 
-                borderRadius: '8px' 
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ShieldCheck size={16} style={{ color: '#10b981' }} />
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: '#38bdf8', letterSpacing: '0.06em' }}>
-                    {archivalVideo.title.toUpperCase()}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <span style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
-                    YEAR {archivalVideo.year}
-                  </span>
-                  <span style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '4px', color: '#fbbf24', fontFamily: 'var(--font-mono)' }}>
-                    ⏱️ {archivalVideo.duration}
-                  </span>
-                  <span style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '4px', color: '#34d399', fontFamily: 'var(--font-mono)' }}>
-                    📍 {archivalVideo.keyTimestamp}
-                  </span>
-                </div>
-              </div>
-
-              <p style={{ fontSize: '0.84rem', color: '#cbd5e1', lineHeight: 1.5, margin: '0 0 10px 0' }}>
-                {archivalVideo.summary}
-              </p>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                  🏛️ <strong>Curator:</strong> {archivalVideo.nasaCredit}
-                </div>
-                <a
-                  href={archivalVideo.nasaGovUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '0.75rem',
-                    color: '#38bdf8',
-                    textDecoration: 'none',
-                    fontFamily: 'var(--font-mono)',
-                    fontWeight: 600
-                  }}
-                >
-                  <span>Official NASA Mission Primary Archives</span>
-                  <ExternalLink size={12} />
-                </a>
-              </div>
+          {/* Top Video Header HUD */}
+          <div className="video-top-hud">
+            <span className="video-step-badge" style={{ background: currentModule.themeColor }}>
+              STEP {currentStep.stepNumber} / {video.steps.length}: {currentStep.type}
+            </span>
+            <div className="video-hud-meta">
+              <span className="video-hud-time">⏱️ {video.duration}</span>
+              <button
+                onClick={() => setCaptionsEnabled(!captionsEnabled)}
+                className={`video-cc-btn ${captionsEnabled ? 'active' : ''}`}
+                title="Toggle Closed Captions Subtitles"
+              >
+                <Subtitles size={14} /> CC
+              </button>
             </div>
           </div>
-        ) : (
-          /* 🛰️ 3D INTERACTIVE AEROSPACE FLIGHT STAGE */
-          <div className="video-stage-container">
-            <ThreeAerospaceStage
-              moduleId={selectedModuleId}
-              stepIndex={currentStepIdx}
-              stepType={currentStep.type}
-            />
 
-            {/* Top Video Header HUD */}
-            <div className="video-top-hud">
-              <span className="video-step-badge" style={{ background: currentModule.themeColor }}>
-                STEP {currentStep.stepNumber} / {video.steps.length}: {currentStep.type}
-              </span>
-              <div className="video-hud-meta">
-                <span className="video-hud-time">⏱️ {video.duration}</span>
-              </div>
-            </div>
-
-            {/* Interactive Decision Point for Apollo 11 (Step 3) */}
-            {selectedModuleId === 3 && currentStep.stepNumber === 3 && (
-              <div className="video-decision-overlay">
-                <div className="video-decision-box">
-                  <HelpCircle size={22} style={{ color: '#fbbf24' }} />
-                  <h4>Decision Point: 30 Seconds of Fuel Left!</h4>
-                  <p>Do you touch down immediately in the West Crater boulder field, or fly over into unknown flat ground?</p>
-                  <div className="video-decision-options">
-                    <button
-                      onClick={() => setUserDecision('boulders')}
-                      className={`decision-btn ${userDecision === 'boulders' ? 'selected error' : ''}`}
-                    >
-                      Land Now in Boulders (High Crash Risk)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setUserDecision('flyover');
-                        soundFx.playFlagPlant();
-                      }}
-                      className={`decision-btn ${userDecision === 'flyover' ? 'selected success' : ''}`}
-                    >
-                      Pitch Forward & Fly Past (Armstrong Choice!)
-                    </button>
+          {/* Interactive Decision Point for Apollo 11 (Step 3) */}
+          {selectedModuleId === 3 && currentStep.stepNumber === 3 && (
+            <div className="video-decision-overlay">
+              <div className="video-decision-box">
+                <HelpCircle size={22} style={{ color: '#fbbf24' }} />
+                <h4>Decision Point: 30 Seconds of Fuel Left!</h4>
+                <p>Do you touch down immediately in the West Crater boulder field, or fly over into unknown flat ground?</p>
+                <div className="video-decision-options">
+                  <button
+                    onClick={() => setUserDecision('boulders')}
+                    className={`decision-btn ${userDecision === 'boulders' ? 'selected error' : ''}`}
+                  >
+                    Land Now in Boulders (High Crash Risk)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUserDecision('flyover');
+                      soundFx.playFlagPlant();
+                    }}
+                    className={`decision-btn ${userDecision === 'flyover' ? 'selected success' : ''}`}
+                  >
+                    Pitch Forward & Fly Past (Armstrong Choice!)
+                  </button>
+                </div>
+                {userDecision === 'flyover' && (
+                  <div className="decision-feedback success">
+                    ✅ Historic Choice! Neil Armstrong flew past West Crater to find a smooth spot with under 40 seconds of fuel remaining.
                   </div>
-                  {userDecision === 'flyover' && (
-                    <div className="decision-feedback success">
-                      ✅ Historic Choice! Neil Armstrong flew past West Crater to find a smooth spot with under 40 seconds of fuel remaining.
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Closed Captions Subtitles Box */}
-            {captionsEnabled && (
-              <div className="video-captions-overlay">
-                <div className="video-caption-inner">
-                  <strong>{currentStep.title}: </strong>
-                  <span>{currentStep.caption}</span>
-                </div>
+          {/* Closed Captions Subtitles Box */}
+          {captionsEnabled && (
+            <div className="video-captions-overlay">
+              <div className="video-caption-inner">
+                <strong>{currentStep.title}: </strong>
+                <span>{currentStep.caption}</span>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
         {/* Video Step Progress Bar & Controls */}
         <div className="video-timeline-controls">
-          <button 
-            onClick={() => {
-              if (stageMode !== '3D') setStageMode('3D');
-              setIsPlaying(!isPlaying);
-            }} 
-            className="video-play-btn"
-          >
+          <button onClick={() => setIsPlaying(!isPlaying)} className="video-play-btn">
             {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-            <span>{isPlaying ? 'Pause 3D Tour' : 'Play 3D Tour'}</span>
+            <span>{isPlaying ? 'Pause' : 'Play'}</span>
           </button>
 
           <div className="video-steps-timeline">
@@ -381,11 +366,10 @@ export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
 
           <div className="video-nasa-credit">
             <Award size={12} />
-            <span>NASA Primary Media: {archivalVideo.nasaCredit}</span>
+            <span>NASA Media Credit: {currentStep.nasaMediaCredit}</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
