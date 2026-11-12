@@ -368,6 +368,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
   // Determine Mission Destination Architecture (Earth Orbit vs Moon vs Mars)
   const isLunarMission = useMemo(() => {
+    // Launch missions are strictly atmospheric ascent to Low Earth Orbit (LEO) insertion!
+    if (mission.gameType === 'launch') return false;
     const name = (mission.missionName || '').toLowerCase();
     const prog = (mission.programName || '').toLowerCase();
     const brief = (mission.briefing || '').toLowerCase();
@@ -601,6 +603,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const lasTowerMeshRef = useRef<THREE.Mesh | null>(null);
   const shockConeMeshRef = useRef<THREE.Mesh | null>(null);
   const loxVentMeshRef = useRef<THREE.Points | null>(null);
+  const machDiamondGroupRef = useRef<THREE.Group | null>(null);
   const trenchSteamGroupRef = useRef<THREE.Group | null>(null);
   const lunarDustRef = useRef<THREE.Points | null>(null);
   const roverDustRef = useRef<THREE.Points | null>(null);
@@ -1046,6 +1049,12 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       stage1MeshRef.current.position.copy(worldPos);
       stage1MeshRef.current.quaternion.copy(worldQuat);
       playerVehicleRef.current.parent?.add(stage1MeshRef.current);
+
+      // Re-align vacuum engine plume directly under Stage 2 upper stage nozzle
+      if (machDiamondGroupRef.current) {
+        machDiamondGroupRef.current.position.set(0, 19.2, 0);
+        machDiamondGroupRef.current.scale.set(0.85, 1.2, 0.85);
+      }
     }
 
     if (roomState) {
@@ -1763,38 +1772,45 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       scene.add(earthMesh);
       scene.add(atmoMesh);
 
-      // 3.5 3D Moon & Trans-Lunar Orbit Trajectory Line (for Lunar Missions & TLI)
-      const moonTex = mainTextureLoader.load('/assets/moon_texture.jpg');
-      const moonGeo = new THREE.SphereGeometry(220, 48, 48);
-      const moonMat = new THREE.MeshStandardMaterial({
-        map: moonTex,
-        roughness: 0.9,
-        metalness: 0.05,
-      });
-      const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-      moonMesh.position.set(0, 750, -2800);
-      moonMesh.visible = false;
-      scene.add(moonMesh);
-      moonMeshRef.current = moonMesh;
-
-      // Glowing Lunar Transfer Trajectory Spline Curve
+      // 3.5 Glowing 3D Low Earth Orbit (LEO) Ascent & Insertion Trajectory Corridor around Earth
       const trajCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0, 150, -80),
-        new THREE.Vector3(50, 320, -600),
-        new THREE.Vector3(30, 520, -1400),
-        new THREE.Vector3(-20, 680, -2100),
-        new THREE.Vector3(0, 750, -2700),
+        new THREE.Vector3(0, 4, 0),         // Pad at Cape Canaveral / KSC
+        new THREE.Vector3(18, 55, -15),     // Waypoint 1: Booster Separation Corridor (36 km)
+        new THREE.Vector3(55, 120, -45),    // Waypoint 2: Fairing Separation Corridor (75 km)
+        new THREE.Vector3(120, 200, -95),   // Waypoint 3: Core MECO & S-II Ignition (125 km)
+        new THREE.Vector3(220, 280, -165),  // Waypoint 4: Upper Stage Orbital Insertion Burn (160 km)
+        new THREE.Vector3(380, 330, -250),  // Target 185 km Circular LEO Flight Path around Earth
+        new THREE.Vector3(560, 350, -360),
+        new THREE.Vector3(760, 355, -490),
       ]);
-      const trajPoints = trajCurve.getPoints(80);
+      const trajPoints = trajCurve.getPoints(120);
       const trajGeo = new THREE.BufferGeometry().setFromPoints(trajPoints);
       const trajMat = new THREE.LineBasicMaterial({
-        color: 0x38bdf8,
+        color: 0x00e5ff,
+        linewidth: 3,
         transparent: true,
-        opacity: 0.75,
+        opacity: 0.85,
       });
       const trajLine = new THREE.Line(trajGeo, trajMat);
-      trajLine.visible = false;
+      trajLine.visible = true; // Always visible as orbital insertion flight corridor guidance!
       scene.add(trajLine);
+      trajectoryLineRef.current = trajLine;
+
+      // Holographic Waypoint Corridor Rings along the ascent flight path
+      const waypoints = [
+        { pos: new THREE.Vector3(18, 55, -15), radius: 8, color: 0xfbbf24 },   // Booster Sep (36 km)
+        { pos: new THREE.Vector3(55, 120, -45), radius: 10, color: 0x38bdf8 },  // Fairing Sep (75 km)
+        { pos: new THREE.Vector3(120, 200, -95), radius: 12, color: 0xa855f7 }, // MECO (125 km)
+        { pos: new THREE.Vector3(380, 330, -250), radius: 16, color: 0x22c55e }, // LEO Orbit Target (185 km)
+      ];
+      waypoints.forEach((wp) => {
+        const ringGeo = new THREE.TorusGeometry(wp.radius, 0.35, 16, 48);
+        const ringMat = new THREE.MeshBasicMaterial({ color: wp.color, transparent: true, opacity: 0.65 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.copy(wp.pos);
+        ring.lookAt(wp.pos.clone().add(new THREE.Vector3(1, 0.4, -0.7)));
+        scene.add(ring);
+      });
       trajectoryLineRef.current = trajLine;
     } else if (mission.gameType === 'docking' || mission.gameType === 'telescope') {
       // In orbital missions, Earth is placed 460 units below so it curves beautifully as a blue planetary globe without clipping through the spacecraft
@@ -2515,6 +2531,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
       // Rocket Exhaust Plume with Mach Shock Diamonds
       machDiamondGroup = new THREE.Group();
+      machDiamondGroupRef.current = machDiamondGroup;
       machDiamondGroup.position.y = -8;
 
       const flameGeo = new THREE.ConeGeometry(3.0, 24, 32);
@@ -2978,6 +2995,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       landerFlame.visible = false;
       playerVehicle.add(landerFlame);
       machDiamondGroup = new THREE.Group();
+      machDiamondGroupRef.current = machDiamondGroup;
       machDiamondGroup.add(landerFlame);
     }
 
@@ -4476,43 +4494,44 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           lasTowerMeshRef.current.rotation.x += dt * 0.2;
         }
 
-        // Falling detached Stage 1 booster animation
+        // Falling detached Stage 1 core booster animation
         if (simStateRef.current.stage === 2 && stage1MeshRef.current && stage1MeshRef.current.parent === scene) {
-          stage1MeshRef.current.position.y -= (28 + dt * 10);
-          stage1MeshRef.current.rotation.x += dt * 0.08;
-          stage1MeshRef.current.rotation.z += dt * 0.05;
+          stage1MeshRef.current.position.y -= 35 * dt;
+          stage1MeshRef.current.position.x -= 6 * dt;
+          stage1MeshRef.current.rotation.x += dt * 0.15;
+          stage1MeshRef.current.rotation.z += dt * 0.1;
         }
 
         // Separated Dual Side Boosters Animation (Radial Korolev Cross outward drift)
         if (boosterLeftMeshRef.current && boosterLeftMeshRef.current.parent === scene) {
-          boosterLeftMeshRef.current.position.x -= 24 * dt;
-          boosterLeftMeshRef.current.position.y -= (26 + dt * 8);
+          boosterLeftMeshRef.current.position.x -= 16 * dt;
+          boosterLeftMeshRef.current.position.y -= 30 * dt;
           boosterLeftMeshRef.current.position.z -= 6 * dt;
-          boosterLeftMeshRef.current.rotation.z += 0.24 * dt;
-          boosterLeftMeshRef.current.rotation.y += 0.05 * dt;
+          boosterLeftMeshRef.current.rotation.z += 0.35 * dt;
+          boosterLeftMeshRef.current.rotation.y += 0.15 * dt;
         }
         if (boosterRightMeshRef.current && boosterRightMeshRef.current.parent === scene) {
-          boosterRightMeshRef.current.position.x += 24 * dt;
-          boosterRightMeshRef.current.position.y -= (26 + dt * 8);
+          boosterRightMeshRef.current.position.x += 16 * dt;
+          boosterRightMeshRef.current.position.y -= 30 * dt;
           boosterRightMeshRef.current.position.z -= 6 * dt;
-          boosterRightMeshRef.current.rotation.z -= 0.24 * dt;
-          boosterRightMeshRef.current.rotation.y -= 0.05 * dt;
+          boosterRightMeshRef.current.rotation.z -= 0.35 * dt;
+          boosterRightMeshRef.current.rotation.y += 0.15 * dt;
         }
 
         // Separated Bipartite Clamshell Fairing Halves Animation (Split Drift into Space)
         if (fairingLeftMeshRef.current && fairingLeftMeshRef.current.parent === scene) {
-          fairingLeftMeshRef.current.position.x -= 16 * dt;
-          fairingLeftMeshRef.current.position.y -= (14 + dt * 6);
+          fairingLeftMeshRef.current.position.x -= 14 * dt;
+          fairingLeftMeshRef.current.position.y -= 22 * dt;
           fairingLeftMeshRef.current.position.z -= 10 * dt;
-          fairingLeftMeshRef.current.rotation.z += 0.28 * dt;
-          fairingLeftMeshRef.current.rotation.y += 0.2 * dt;
+          fairingLeftMeshRef.current.rotation.z += 0.45 * dt;
+          fairingLeftMeshRef.current.rotation.y += 0.3 * dt;
         }
         if (fairingRightMeshRef.current && fairingRightMeshRef.current.parent === scene) {
-          fairingRightMeshRef.current.position.x += 16 * dt;
-          fairingRightMeshRef.current.position.y -= (14 + dt * 6);
+          fairingRightMeshRef.current.position.x += 14 * dt;
+          fairingRightMeshRef.current.position.y -= 22 * dt;
           fairingRightMeshRef.current.position.z -= 10 * dt;
-          fairingRightMeshRef.current.rotation.z -= 0.28 * dt;
-          fairingRightMeshRef.current.rotation.y -= 0.2 * dt;
+          fairingRightMeshRef.current.rotation.z -= 0.45 * dt;
+          fairingRightMeshRef.current.rotation.y += 0.3 * dt;
         }
 
         // Booster exhaust plume flicker while attached
@@ -4540,40 +4559,6 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         }
         if (state.altitudeKm >= 125 && state.stage === 1) {
           handleStage1Separation();
-        }
-
-        // Trans-Lunar Injection (TLI) Burn Dynamics towards Moon
-        if (state.tliActive && !state.tliComplete) {
-          state.tliProgress = Math.min(100, state.tliProgress + dt * 6.5);
-          state.velocityKms = THREE.MathUtils.lerp(7.8, 11.2, state.tliProgress / 100);
-          state.moonDistanceKm = THREE.MathUtils.lerp(384400, 100, state.tliProgress / 100);
-          setMoonDistDisplay(Math.round(state.moonDistanceKm));
-
-          if (moonMeshRef.current) {
-            moonMeshRef.current.visible = true;
-            const mDist = THREE.MathUtils.lerp(2800, 360, state.tliProgress / 100);
-            moonMeshRef.current.position.set(0, 750 - (state.tliProgress / 100) * 380, -mDist);
-          }
-          if (trajectoryLineRef.current) {
-            trajectoryLineRef.current.visible = true;
-          }
-
-          if (earthMeshRef.current && atmoMeshRef.current) {
-            const earthDepth = THREE.MathUtils.lerp(-earthRadius - 320, -earthRadius - 3000, state.tliProgress / 100);
-            earthMeshRef.current.position.y = earthDepth;
-            atmoMeshRef.current.position.y = earthDepth;
-          }
-
-          if (state.tliProgress >= 100) {
-            state.tliComplete = true;
-            setTliComplete(true);
-            setFlightPhase('lunar_orbit');
-            state.statusText = '🎉 TRANS-LUNAR INJECTION COMPLETE · LUNAR INSERTION ORBIT ACHIEVED!';
-            state.statusColor = '#22c55e';
-            soundFx.playRadioChirp();
-            audioSynthRef.current.playQuindarBeep();
-            confetti({ particleCount: 220, spread: 100 });
-          }
         }
 
         // Dynamic Atmospheric Sky & Fog Transition
@@ -4765,12 +4750,16 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         playerVehicle.position.y = 4 + Math.min(state.altitudeKm * 25, 450);
         groundPadGroup.position.y = -Math.min(state.altitudeKm * 25, 1400);
 
+        const effectiveTargetAlt = Math.min(p.targetAltitudeKm > 0 ? p.targetAltitudeKm : 185, 195);
+        const effectiveTargetVel = p.targetVelocityKms > 0 ? p.targetVelocityKms : 7.8;
+        const reachedOrbit = (state.altitudeKm >= effectiveTargetAlt * 0.9 && state.velocityKms >= effectiveTargetVel * 0.85) || state.altitudeKm >= 185;
+
         if (state.tliComplete) {
           state.isFinished = true;
           soundFx.playRadioChirp();
           confetti({ particleCount: 180, spread: 90 });
           setTimeout(() => onSuccess(1000), 2000);
-        } else if (state.altitudeKm >= p.targetAltitudeKm && state.velocityKms >= p.targetVelocityKms * 0.85 && !state.tliActive) {
+        } else if (reachedOrbit && !state.tliActive) {
           if (simStateRef.current.flightPhase !== 'orbit' && simStateRef.current.flightPhase !== 'tli_burn' && simStateRef.current.flightPhase !== 'lunar_orbit') {
             simStateRef.current.flightPhase = 'orbit';
             setFlightPhase('orbit');
@@ -4785,11 +4774,11 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
               if (moonMeshRef.current) moonMeshRef.current.visible = false;
               if (trajectoryLineRef.current) trajectoryLineRef.current.visible = false;
             } else {
-              // Earth Orbit / Suborbital Mission (Mercury, Gemini, Space Shuttle, ISS)
-              state.statusText = '🌍 LOW EARTH ORBIT (LEO) ACQUIRED · ORBITAL INSERTION CONFIRMED · MISSION COMPLETE!';
+              // Earth Orbit / Suborbital Mission (Mercury, Gemini, Space Shuttle, Apollo test, Artemis test, ISS)
+              state.statusText = '🌍 ORBITAL INSERTION ACHIEVED · 185 KM × 185 KM CIRCULAR ORBIT ACHIEVED · MISSION ACCOMPLISHED!';
               state.statusColor = '#22c55e';
               if (moonMeshRef.current) moonMeshRef.current.visible = false;
-              if (trajectoryLineRef.current) trajectoryLineRef.current.visible = false;
+              if (trajectoryLineRef.current) trajectoryLineRef.current.visible = true;
               state.isFinished = true;
               soundFx.playVictory();
               confetti({ particleCount: 220, spread: 90 });
