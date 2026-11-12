@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NASA_DATASETS } from '../data/nasaDatasets';
-import { Database, ExternalLink, X } from 'lucide-react';
+import { Database, ExternalLink, X, Globe, Key, ShieldCheck } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 
 interface NasaDataModalProps {
@@ -68,6 +68,117 @@ export const NasaDataModal: React.FC<NasaDataModalProps> = ({ isOpen, onClose })
         </div>
 
         <div style={{ padding: '20px 24px' }}>
+          {/* NASA 4-PLATFORM OPEN DATA & API GATEWAY */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.15), rgba(15, 23, 42, 0.95))',
+              border: '1.5px solid #0284c7',
+              borderRadius: '14px',
+              padding: '16px 18px',
+              marginBottom: '22px',
+              boxShadow: '0 8px 30px rgba(2, 132, 199, 0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={18} color="#38bdf8" />
+                <span style={{ fontSize: '13px', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.04em' }}>
+                  NASA OFFICIAL OPEN DATA & API PLATFORMS
+                </span>
+              </div>
+              <span style={{ fontSize: '10px', background: 'rgba(34, 197, 94, 0.2)', border: '1px solid #22c55e', color: '#4ade80', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                PUBLIC ACCESS · NO SPECIAL KEY REQUIRED
+              </span>
+            </div>
+
+            <p style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.5, marginBottom: '14px' }}>
+              NASA’s data and APIs are already publicly available without requiring a special NASA Space Apps API key. Jr_AstroCamp grounds all flight dynamics, Moonquake seismic records, and Martian environmental hazards in these four core NASA platforms:
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+              {/* 1. NASA Open Data */}
+              <a href="https://data.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '12px', height: '100%', transition: 'all 0.15s ease' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <strong style={{ fontSize: '11px', color: '#38bdf8', fontFamily: 'monospace' }}>data.nasa.gov</strong>
+                    <ExternalLink size={12} color="#94a3b8" />
+                  </div>
+                  <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#f8fafc', marginBottom: '4px' }}>NASA Open Data</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8', lineHeight: 1.4 }}>
+                    Publicly available datasets: Apollo Moonquake catalog (Nakamura 1979), Kessler orbital debris, launch vehicle guidance.
+                  </div>
+                </div>
+              </a>
+
+              {/* 2. NASA API Portal */}
+              <a href="https://api.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', padding: '12px', height: '100%', transition: 'all 0.15s ease' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <strong style={{ fontSize: '11px', color: '#fbbf24', fontFamily: 'monospace' }}>api.nasa.gov</strong>
+                    <ExternalLink size={12} color="#94a3b8" />
+                  </div>
+                  <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#f8fafc', marginBottom: '4px' }}>NASA API Portal</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8', lineHeight: 1.4 }}>
+                    REST APIs for Near-Earth Asteroids (NeoWs), Mars Rover Photos, APOD, and DONKI space weather solar flare events.
+                  </div>
+                </div>
+              </a>
+
+              {/* 3. NASA Earthdata */}
+              <a href="https://earthdata.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '10px', padding: '12px', height: '100%', transition: 'all 0.15s ease' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <strong style={{ fontSize: '11px', color: '#4ade80', fontFamily: 'monospace' }}>earthdata.nasa.gov</strong>
+                    <ExternalLink size={12} color="#94a3b8" />
+                  </div>
+                  <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#f8fafc', marginBottom: '4px' }}>NASA Earthdata</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8', lineHeight: 1.4 }}>
+                    Earth observation, climate, and satellite telemetry: Atmospheric density gradients, tropospheric wind shear, and launchpad weather rules.
+                  </div>
+                </div>
+              </a>
+
+              {/* 4. NASA JPL */}
+              <a href="https://www.jpl.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <div style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '10px', padding: '12px', height: '100%', transition: 'all 0.15s ease' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <strong style={{ fontSize: '11px', color: '#c084fc', fontFamily: 'monospace' }}>jpl.nasa.gov</strong>
+                    <ExternalLink size={12} color="#94a3b8" />
+                  </div>
+                  <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#f8fafc', marginBottom: '4px' }}>NASA JPL Science</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8', lineHeight: 1.4 }}>
+                    Planetary exploration missions: JPL Horizons celestial ephemerides, Mars 2020 Perseverance EDL telemetry, and MOLA topographic elevation models.
+                  </div>
+                </div>
+              </a>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', background: 'rgba(0,0,0,0.5)', padding: '10px 14px', borderRadius: '8px', fontSize: '10.5px' }}>
+              <span style={{ color: '#94a3b8' }}>
+                Need a personal API key for high-volume querying? Registration is 100% free:
+              </span>
+              <a
+                href="https://api.nasa.gov"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  color: '#000000',
+                  fontWeight: 900,
+                  fontSize: '11px',
+                  textDecoration: 'none',
+                  boxShadow: '0 0 12px rgba(245, 158, 11, 0.4)',
+                }}
+              >
+                <Key size={13} /> GENERATE FREE API KEY <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
           <p style={{ fontSize: '0.88rem', color: '#cbd5e1', lineHeight: 1.5, marginBottom: '16px' }}>
             In strict compliance with NASA Space Apps Challenge judging criteria, all simulation constants, physical models, and environmental hazards in <strong>Jr_AstroCamp: Beyond Earth</strong> are mathematically grounded in the following peer-reviewed NASA technical publications and open scientific repositories.
           </p>

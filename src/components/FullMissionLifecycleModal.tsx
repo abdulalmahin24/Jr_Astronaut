@@ -1606,6 +1606,18 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             })}
           </div>
 
+          {/* NASA 4-Platform Open Gateway Links */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '9px', fontFamily: 'monospace', background: 'rgba(0,0,0,0.4)', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <span style={{ color: '#94a3b8' }}>NASA OPEN DATA:</span>
+            <a href="https://data.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8', textDecoration: 'none' }} title="NASA Open Data">data.nasa.gov</a>
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
+            <a href="https://api.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ color: '#fbbf24', textDecoration: 'none' }} title="NASA API Portal (Free Registration)">api.nasa.gov</a>
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
+            <a href="https://earthdata.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ color: '#4ade80', textDecoration: 'none' }} title="NASA Earthdata (Climate & Weather)">earthdata.nasa.gov</a>
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
+            <a href="https://www.jpl.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ color: '#c084fc', textDecoration: 'none' }} title="NASA JPL Science (Ephemerides & Mars 2020)">jpl.nasa.gov</a>
+          </div>
+
           {/* Right Header Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
