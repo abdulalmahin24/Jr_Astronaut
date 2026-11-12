@@ -481,12 +481,18 @@ export const MissionCinematicIntro: React.FC<MissionCinematicIntroProps> = ({
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 5000);
     camera.position.set(0, 8, 70);
 
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-      powerPreference: 'high-performance',
-      alpha: false,
-    });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        powerPreference: 'high-performance',
+        alpha: false,
+      });
+    } catch (e) {
+      console.warn('WebGL initialization failed in MissionCinematicIntro:', e);
+      return;
+    }
     renderer.setSize(width, height, false);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;

@@ -263,17 +263,19 @@ function generateOrbitalDebrisField(count = 90, earthRadiusKm = 6371) {
   const debris = [];
   const types = ["fragment", "stage", "panel"];
   for (let i = 0; i < count; i++) {
-    const altitude = 200 + Math.random() * 300;
+    const altitude = 220 + Math.random() * 320;
     const r = earthRadiusKm + altitude;
-    const angle = Math.random() * Math.PI * 2;
-    const inc = (Math.random() - 0.5) * 0.4;
+    const minSafeAngle = 0.35;
+    const angleRange = Math.PI * 2 - 2 * minSafeAngle;
+    const angle = minSafeAngle + Math.random() * angleRange;
+    const inc = (Math.random() - 0.5) * 0.3;
     const x = r * Math.cos(angle);
     const y = r * Math.sin(inc);
     const z = r * Math.sin(angle);
-    const vMag = Math.sqrt(398600.44 / r) * (0.95 + Math.random() * 0.1);
-    const vx = -vMag * Math.sin(angle) + (Math.random() - 0.5) * 0.5;
-    const vy = (Math.random() - 0.5) * 0.8;
-    const vz = vMag * Math.cos(angle) + (Math.random() - 0.5) * 0.5;
+    const vMag = Math.sqrt(398600.44 / r) * (0.98 + Math.random() * 0.04);
+    const vx = -vMag * Math.sin(angle);
+    const vy = (Math.random() - 0.5) * 0.2;
+    const vz = vMag * Math.cos(angle);
     debris.push({
       id: i,
       x,

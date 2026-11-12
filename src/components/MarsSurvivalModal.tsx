@@ -448,7 +448,8 @@ export const MarsSurvivalModal: React.FC<MarsSurvivalModalProps> = ({
                 </div>
                 <button
                   onClick={() => {
-                    const manualId = `NASA-M07${selectedMissionIndex + 7}`;
+                    const MARS_MANUAL_MISSION_IDS = ['NASA-M077', 'NASA-M078', 'NASA-M079', 'NASA-M080'];
+                    const manualId = MARS_MANUAL_MISSION_IDS[selectedMissionIndex] || 'NASA-M077';
                     onClose();
                     onLaunchManualMission(manualId);
                     soundFx.playReactorStart();

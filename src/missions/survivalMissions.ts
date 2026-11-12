@@ -412,21 +412,24 @@ export function generateOrbitalDebrisField(count = 90, earthRadiusKm = 6371): De
   const types: Array<'fragment' | 'stage' | 'panel'> = ['fragment', 'stage', 'panel'];
 
   for (let i = 0; i < count; i++) {
-    // Altitudes between 200 km and 500 km
-    const altitude = 200 + Math.random() * 300;
+    // Altitudes between 220 km and 540 km
+    const altitude = 220 + Math.random() * 320;
     const r = earthRadiusKm + altitude;
-    const angle = Math.random() * Math.PI * 2;
-    const inc = (Math.random() - 0.5) * 0.4; // slight orbital inclination
+    // Keep initial angle away from spawn point (theta ~ 0) for safe initial clearance
+    const minSafeAngle = 0.35; // ~2300 km orbital clearance at spawn
+    const angleRange = Math.PI * 2 - 2 * minSafeAngle;
+    const angle = minSafeAngle + Math.random() * angleRange;
+    const inc = (Math.random() - 0.5) * 0.3; // slight orbital inclination
 
     const x = r * Math.cos(angle);
     const y = r * Math.sin(inc);
     const z = r * Math.sin(angle);
 
-    // Circular orbital speed ~ 7.7 km/s with chaotic dispersion
-    const vMag = Math.sqrt(398600.44 / r) * (0.95 + Math.random() * 0.1);
-    const vx = -vMag * Math.sin(angle) + (Math.random() - 0.5) * 0.5;
-    const vy = (Math.random() - 0.5) * 0.8;
-    const vz = vMag * Math.cos(angle) + (Math.random() - 0.5) * 0.5;
+    // Circular orbital speed ~ 7.7 km/s
+    const vMag = Math.sqrt(398600.44 / r) * (0.98 + Math.random() * 0.04);
+    const vx = -vMag * Math.sin(angle);
+    const vy = (Math.random() - 0.5) * 0.2;
+    const vz = vMag * Math.cos(angle);
 
     debris.push({
       id: i,
@@ -488,3 +491,4 @@ export function createInitialTelemetry(mission: HardcoreMissionConfig): Hardcore
     outcome: 'IN_PROGRESS',
   };
 }
+

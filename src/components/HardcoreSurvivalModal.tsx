@@ -30,3 +30,4 @@ export const HardcoreSurvivalModal: React.FC<HardcoreSurvivalModalProps> = ({
     />
   );
 };
+

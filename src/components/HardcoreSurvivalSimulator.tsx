@@ -75,6 +75,8 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     vxKms: 0,
     pitchRad: 0,
     yawRad: 0,
+    orbitalTheta: 0,
+    invulnTimer: 0,
     throttle: 0,
     fuel: 100,
     hull: 100,
@@ -107,6 +109,8 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       vxKms: Math.sqrt(Math.max(0, mission.initialVelocityKms ** 2 - mission.initialVerticalSpeedKms ** 2)),
       pitchRad: (mission.initialPitchDeg * Math.PI) / 180,
       yawRad: 0,
+      orbitalTheta: 0,
+      invulnTimer: 0,
       throttle: 0,
       fuel: mission.initialFuelPct,
       hull: 100,
@@ -143,18 +147,24 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       if (key === 'w') {
         if (!activeMission.mainEngineAvailable) return;
         physStateRef.current.throttle = Math.min(100, physStateRef.current.throttle + 10);
+        setTelemetry((prev) => ({ ...prev, throttlePct: physStateRef.current.throttle }));
       } else if (key === 's') {
         physStateRef.current.throttle = Math.max(0, physStateRef.current.throttle - 10);
+        setTelemetry((prev) => ({ ...prev, throttlePct: physStateRef.current.throttle }));
       } else if (key === 'z') {
         if (activeMission.mainEngineAvailable && physStateRef.current.overheatCooldown <= 0) {
           physStateRef.current.throttle = 100;
+          setTelemetry((prev) => ({ ...prev, throttlePct: 100 }));
         }
       } else if (key === 'x') {
         physStateRef.current.throttle = 0;
+        setTelemetry((prev) => ({ ...prev, throttlePct: 0 }));
       } else if (key === 'a') {
         physStateRef.current.pitchRad += 0.05;
+        setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
       } else if (key === 'd') {
         physStateRef.current.pitchRad -= 0.05;
+        setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
       } else if (key === ' ' || e.code === 'Space') {
         // RCS Pulse
         e.preventDefault();
@@ -333,6 +343,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     // 8. 60FPS Physics Simulation & Render Loop
     let animId: number;
     let lastTime = performance.now();
+    let lastHudTime = 0;
 
     const renderLoop = () => {
       animId = requestAnimationFrame(renderLoop);
@@ -412,13 +423,27 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         const thrustY = thrustAccelKms2 * Math.sin(p.pitchRad);
         const thrustX = thrustAccelKms2 * Math.cos(p.pitchRad);
 
-        // Vertical Speed & Altitude
-        p.vyKms += (thrustY - gravAccelKms2) * dt;
-        p.vxKms += thrustX * dt;
+        // Realistic Newtonian gravity + Centrifugal & Coriolis orbital acceleration
+        const centrifugalKms2 = (p.vxKms * p.vxKms) / Math.max(10, rKm);
+        const coriolisKms2 = (p.vxKms * p.vyKms) / Math.max(10, rKm);
+
+        p.vyKms += (thrustY - gravAccelKms2 + centrifugalKms2) * dt;
+        p.vxKms += (thrustX - coriolisKms2) * dt;
 
         p.altKm += p.vyKms * dt;
         p.rKm = bodyConfig.radiusKm + p.altKm;
         p.vKms = Math.sqrt(p.vyKms * p.vyKms + p.vxKms * p.vxKms);
+
+        // Orbital angular position for 3D navigation
+        p.orbitalTheta = (p.orbitalTheta || 0) + (p.vxKms / Math.max(100, p.rKm)) * dt;
+
+        // Ground crash check (except suicide-burn landing which handles its own touchdown)
+        if (p.altKm <= 0 && activeMission.id !== 'suicide-burn') {
+          p.altKm = 0;
+          p.outcome = 'FAILED';
+          p.failureReason = 'CRASH IMPACT: Spacecraft crashed into the planetary surface.';
+          if (soundEnabled) soundFx.playExplosion();
+        }
 
         // Keplerian orbit elements computation
         const kepler = computeKeplerianElements(p.rKm, p.vKms, p.vyKms, bodyConfig);
@@ -431,18 +456,29 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         }
 
         // Debris collision physics for Mission 1 (Kessler Syndrome)
+        if (p.invulnTimer > 0) p.invulnTimer -= dt;
         if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
+          const px = p.rKm * Math.cos(p.orbitalTheta);
+          const pz = p.rKm * Math.sin(p.orbitalTheta);
+          const py = 0;
+
           for (const d of debrisFieldRef.current) {
-            // Check relative distance in orbit
-            const dx = d.x - p.rKm;
-            const distKm = Math.sqrt(dx * dx + d.y * d.y + d.z * d.z);
-            if (distKm < 0.25) {
+            d.x += d.vx * dt;
+            d.y += d.vy * dt;
+            d.z += d.vz * dt;
+
+            const dx = d.x - px;
+            const dy = d.y - py;
+            const dz = d.z - pz;
+            const distKm = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (distKm < 0.12 && p.invulnTimer <= 0) {
               // Collision!
-              p.hull = Math.max(0, p.hull - 28);
+              p.hull = Math.max(0, p.hull - 18);
               p.fuelLeak = true;
+              p.invulnTimer = 2.0; // 2 seconds invulnerability grace period
               p.shakeIntensity = 1.0;
               if (soundEnabled) soundFx.playImpact();
-              d.x += 500; // disperse collided debris
+              d.x += 200; // disperse collided debris
               break;
             }
           }
@@ -553,59 +589,72 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           else if (ang > 7.5) warnings.push(`⚠️ RE-ENTRY STEEP (${ang.toFixed(1)}° > 7.5° - WILL BURN)`);
         }
 
-        // Update React HUD state (throttled)
-        setTelemetry({
-          missionId: activeMission.id,
-          timeSec: p.time,
-          altitudeKm: p.altKm,
-          velocityKms: p.vKms,
-          verticalSpeedKms: p.vyKms,
-          horizontalSpeedKms: p.vxKms,
-          pitchDeg: (p.pitchRad * 180) / Math.PI,
-          yawDeg: 0,
-          rollDeg: 0,
-          throttlePct: p.throttle,
-          fuelPct: p.fuel,
-          hullIntegrityPct: p.hull,
-          fuelLeakActive: p.fuelLeak,
-          engineHeatPct: p.engineHeat,
-          engineOverheated: p.overheatCooldown > 0,
-          heatShieldPct: p.heatShield,
-          oxygenBatteryTimerSec: p.countdownTimer,
-          apoapsisKm: kepler.apoapsisAltitudeKm,
-          periapsisKm: kepler.periapsisAltitudeKm,
-          eccentricity: kepler.eccentricity,
-          flightPathAngleDeg: kepler.flightPathAngleDeg,
-          suicideBurnDistanceM: suicideBurnAltM,
-          suicideBurnIgnitionRequired: suicideIgnitionRequired,
-          radarDebris: debrisFieldRef.current.slice(0, 15).map((d) => ({
-            x: d.x,
-            y: d.y,
-            z: d.z,
-            distanceKm: Math.sqrt((d.x - p.rKm) ** 2 + d.y ** 2 + d.z ** 2),
-          })),
-          warningAlerts: warnings,
-          cameraShakeIntensity: p.shakeIntensity,
-          isGameOver: p.outcome !== 'IN_PROGRESS',
-          outcome: p.outcome,
-          failureReason: p.failureReason,
-          successMessage: p.successMessage,
-        });
+        // Update React HUD state (throttled to 10 FPS for optimal performance)
+        if (now - lastHudTime > 90 || p.outcome !== 'IN_PROGRESS') {
+          lastHudTime = now;
+          const px = p.rKm * Math.cos(p.orbitalTheta);
+          const pz = p.rKm * Math.sin(p.orbitalTheta);
+
+          setTelemetry({
+            missionId: activeMission.id,
+            timeSec: p.time,
+            altitudeKm: p.altKm,
+            velocityKms: p.vKms,
+            verticalSpeedKms: p.vyKms,
+            horizontalSpeedKms: p.vxKms,
+            pitchDeg: (p.pitchRad * 180) / Math.PI,
+            yawDeg: 0,
+            rollDeg: 0,
+            throttlePct: p.throttle,
+            fuelPct: p.fuel,
+            hullIntegrityPct: p.hull,
+            fuelLeakActive: p.fuelLeak,
+            engineHeatPct: p.engineHeat,
+            engineOverheated: p.overheatCooldown > 0,
+            heatShieldPct: p.heatShield,
+            oxygenBatteryTimerSec: p.countdownTimer,
+            apoapsisKm: kepler.apoapsisAltitudeKm,
+            periapsisKm: kepler.periapsisAltitudeKm,
+            eccentricity: kepler.eccentricity,
+            flightPathAngleDeg: kepler.flightPathAngleDeg,
+            suicideBurnDistanceM: suicideBurnAltM,
+            suicideBurnIgnitionRequired: suicideIgnitionRequired,
+            radarDebris: debrisFieldRef.current.slice(0, 15).map((d) => ({
+              x: d.x - px,
+              y: d.y,
+              z: d.z - pz,
+              distanceKm: Math.sqrt((d.x - px) ** 2 + d.y ** 2 + (d.z - pz) ** 2),
+            })),
+            warningAlerts: warnings,
+            cameraShakeIntensity: p.shakeIntensity,
+            isGameOver: p.outcome !== 'IN_PROGRESS',
+            outcome: p.outcome,
+            failureReason: p.failureReason,
+            successMessage: p.successMessage,
+          });
+        }
       }
 
       // 9. Three.js Visual Plume & Exhaust Light
       const thr = p.throttle;
-      plumeMat.opacity = thr > 0 ? (thr / 100) * 0.9 : 0;
-      plumeMesh.scale.set(1, 1 + (thr / 100) * 1.5, 1);
+      plumeMat.opacity = thr > 0 ? 0.3 + (thr / 100) * 0.7 : 0;
+      plumeMesh.scale.set(1, 0.6 + (thr / 100) * 2.0, 1);
       exhaustLight.intensity = (thr / 100) * 8.0;
+
+      // Update 3D Spacecraft orientation & visual response
+      shipGroup.rotation.z = -p.pitchRad;
+      shipGroup.rotation.x = Math.sin(p.time * 2.5) * 0.03;
+      shipGroup.rotation.y = (p.yawRad || 0) + Math.cos(p.time * 1.5) * 0.02;
 
       // 10. Update 3D Debris Meshes
       if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
+        const px = p.rKm * Math.cos(p.orbitalTheta);
+        const pz = p.rKm * Math.sin(p.orbitalTheta);
         for (let i = 0; i < debrisMeshesRef.current.length; i++) {
           const dMesh = debrisMeshesRef.current[i];
           const dData = debrisFieldRef.current[i];
           if (dMesh && dData) {
-            dMesh.position.set((dData.x - p.rKm) * 0.1, dData.y * 0.1, dData.z * 0.1);
+            dMesh.position.set((dData.x - px) * 0.08, dData.y * 0.08, (dData.z - pz) * 0.08);
             dMesh.rotation.x += 0.02;
             dMesh.rotation.y += 0.03;
           }
@@ -1124,6 +1173,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             <button
               onClick={() => {
                 physStateRef.current.throttle = 0;
+                setTelemetry((prev) => ({ ...prev, throttlePct: 0 }));
               }}
               style={{
                 background: '#dc2626',
@@ -1148,7 +1198,9 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
                 value={telemetry.throttlePct}
                 onChange={(e) => {
                   if (activeMission.mainEngineAvailable && physStateRef.current.overheatCooldown <= 0) {
-                    physStateRef.current.throttle = parseInt(e.target.value, 10);
+                    const val = parseInt(e.target.value, 10);
+                    physStateRef.current.throttle = val;
+                    setTelemetry((prev) => ({ ...prev, throttlePct: val }));
                   }
                 }}
                 disabled={!activeMission.mainEngineAvailable || telemetry.engineOverheated}
@@ -1160,6 +1212,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
               onClick={() => {
                 if (activeMission.mainEngineAvailable && physStateRef.current.overheatCooldown <= 0) {
                   physStateRef.current.throttle = 100;
+                  setTelemetry((prev) => ({ ...prev, throttlePct: 100 }));
                 }
               }}
               style={{
@@ -1182,7 +1235,10 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           {/* Pitch Steering Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
-              onClick={() => { physStateRef.current.pitchRad += 0.08; }}
+              onClick={() => {
+                physStateRef.current.pitchRad += 0.08;
+                setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
+              }}
               style={{
                 background: 'rgba(56, 189, 248, 0.15)',
                 border: '1px solid rgba(56, 189, 248, 0.4)',
@@ -1198,7 +1254,10 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             </button>
 
             <button
-              onClick={() => { physStateRef.current.pitchRad -= 0.08; }}
+              onClick={() => {
+                physStateRef.current.pitchRad -= 0.08;
+                setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
+              }}
               style={{
                 background: 'rgba(56, 189, 248, 0.15)',
                 border: '1px solid rgba(56, 189, 248, 0.4)',
