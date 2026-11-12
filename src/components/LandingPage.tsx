@@ -627,6 +627,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
           )}
 
+          {/* 7. MARS SURVIVAL (4 MISSIONS) */}
+          {onOpenMarsSurvival && (
+            <button
+              onClick={() => handleNavClick(onOpenMarsSurvival, 'reactor')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.35), rgba(15, 23, 42, 0.95))',
+                borderColor: '#ef4444',
+                color: '#fca5a5',
+                fontWeight: 900,
+                fontSize: '11px',
+                padding: '4px 12px',
+                gap: '6px',
+                boxShadow: '0 0 14px rgba(239, 68, 68, 0.45)',
+              }}
+              title="NASA Mars Planetary Survival Operations (4 Missions: MOXIE, REMS Storm, Ice Core, Marsquake)"
+            >
+              <span>🔴</span>
+              <span>MARS SURVIVAL (4 OPS)</span>
+            </button>
+          )}
+
           {/* 7. CONFIG */}
           {onOpenSettings && (
             <button
@@ -1127,6 +1150,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <span>✦ 3D PLANETARY SIMULATION LABS</span>
                     <span style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setIsSimsHubOpen(false)}>✕</span>
                   </div>
+                  {onOpenMarsSurvival && (
+                    <button
+                      className="pubg-hub-subitem"
+                      style={{ border: '1px solid rgba(239, 68, 68, 0.5)', background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.2), rgba(15, 23, 42, 0.9))' }}
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenMarsSurvival, 'reactor'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🔴</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#fca5a5', fontSize: '12px' }}>Mars Planetary Survival (4 Ops)</div>
+                        <div style={{ fontSize: '10px', color: '#f87171' }}>MOXIE · Gale Storm · Valles Ice · Marsquake</div>
+                      </div>
+                    </button>
+                  )}
                   {onOpenMoonbaseAlpha && (
                     <button
                       className="pubg-hub-subitem"
@@ -1425,6 +1461,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span style={{ fontSize: '16px' }}>🔬</span>
               <span>SCIENCE DOSSIER</span>
             </button>
+
+            {/* 6. Dedicated Mars Survival Operations Button */}
+            {onOpenMarsSurvival && (
+              <button
+                className="pubg-bottom-tab"
+                onClick={() => handleNavClick(onOpenMarsSurvival, 'reactor')}
+                id="pubg-tab-mars-survival-ops"
+                style={{
+                  borderColor: '#ef4444',
+                  background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.35), rgba(15, 23, 42, 0.98))',
+                  color: '#fca5a5',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  justifyContent: 'space-between',
+                  padding: '7px 12px',
+                  height: '40px',
+                  borderWidth: '1.5px',
+                  boxShadow: '0 0 16px rgba(239, 68, 68, 0.35)',
+                }}
+                title="Launch NASA Mars Planetary Survival Operations (4 Missions)"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>🔴</span>
+                  <span style={{ fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>MARS SURVIVAL</span>
+                </div>
+                <span style={{ fontSize: '9px', background: '#ef4444', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
+                  4 OPS
+                </span>
+              </button>
+            )}
 
             {/* ── MASTER PUBG START BUTTON (DIRECTLY BELOW THE 5 HUBS) ── */}
             <button

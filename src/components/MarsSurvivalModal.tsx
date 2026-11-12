@@ -725,3 +725,4 @@ export const MarsSurvivalModal: React.FC<MarsSurvivalModalProps> = ({
     </div>
   );
 };
+

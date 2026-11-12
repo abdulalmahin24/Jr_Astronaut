@@ -48,6 +48,7 @@ interface MissionGameModalProps {
   coopRole?: import('../utils/multiplayerMissionService').CrewRole;
   onExitToLobby?: () => void;
   onOpenMoonquakeMap?: () => void;
+  onOpenMarsSurvival?: () => void;
 }
 
 export const MissionGameModal: React.FC<MissionGameModalProps> = ({
@@ -61,6 +62,7 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
   coopRole = 'CDR',
   onExitToLobby,
   onOpenMoonquakeMap,
+  onOpenMarsSurvival,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserGameRef = useRef<any>(null);
@@ -397,6 +399,22 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
                 >
                   <span>🌕</span>
                   <span>3D Moonquake Globe</span>
+                </button>
+              )}
+              {onOpenMarsSurvival && (
+                <button
+                  onClick={onOpenMarsSurvival}
+                  className="flight-astro-toggle-btn"
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.22)',
+                    borderColor: '#f87171',
+                    color: '#fca5a5',
+                    fontWeight: 800,
+                  }}
+                  title="Launch 4 NASA Mars Planetary Survival Operations"
+                >
+                  <span>🔴</span>
+                  <span>Mars Survival (4 Ops)</span>
                 </button>
               )}
               <button
@@ -737,6 +755,7 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
                   assignedRole={coopRole}
                   initialAgeTier={selectedAgeTier}
                   onOpenMoonquakeMap={onOpenMoonquakeMap}
+                  onOpenMarsSurvival={onOpenMarsSurvival}
                   onSuccess={(finalScore) => {
                     setScore(finalScore);
                     setMissionState('success');

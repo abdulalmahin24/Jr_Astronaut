@@ -13,6 +13,7 @@ interface MissionCampaignModalProps {
   completedMissions: string[];
   onLaunchMission: (missionId: string) => void;
   onOpenMoonquakeMap?: () => void;
+  onOpenMarsSurvival?: () => void;
 }
 
 export const MissionCampaignModal: React.FC<MissionCampaignModalProps> = ({
@@ -21,6 +22,7 @@ export const MissionCampaignModal: React.FC<MissionCampaignModalProps> = ({
   completedMissions,
   onLaunchMission,
   onOpenMoonquakeMap,
+  onOpenMarsSurvival,
 }) => {
   if (!isOpen) return null;
 
@@ -100,6 +102,34 @@ export const MissionCampaignModal: React.FC<MissionCampaignModalProps> = ({
               </button>
             )}
 
+            {onOpenMarsSurvival && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenMarsSurvival();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 14px',
+                  background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.25), rgba(15, 23, 42, 0.9))',
+                  border: '1px solid #ef4444',
+                  borderRadius: '10px',
+                  color: '#fca5a5',
+                  fontSize: '11px',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)',
+                  boxShadow: '0 0 12px rgba(239, 68, 68, 0.4)',
+                }}
+                title="Launch 4 NASA Mars Planetary Survival Operations"
+              >
+                <span>🔴</span>
+                <span>4 MARS SURVIVAL OPS</span>
+              </button>
+            )}
+
             <button onClick={onClose} className="flight-close-btn" aria-label="Close">
               <X size={20} />
             </button>
@@ -124,6 +154,55 @@ export const MissionCampaignModal: React.FC<MissionCampaignModalProps> = ({
             orbital mechanics · rocket equations · landing physics · regolith friction · optical diffraction · gravity assists
           </span>
         </div>
+
+        {/* Mars Survival Suite Banner */}
+        {onOpenMarsSurvival && (
+          <div style={{
+            margin: '14px 24px 0 24px',
+            padding: '12px 18px',
+            background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.25) 0%, rgba(15, 23, 42, 0.9) 100%)',
+            border: '1px solid rgba(239, 68, 68, 0.5)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            boxShadow: '0 4px 20px rgba(239, 68, 68, 0.2)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '24px' }}>🔴</span>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: '13px', color: '#fca5a5', fontFamily: 'var(--font-space)' }}>
+                  SPECIAL OPERATIONS: 4 NASA MARS PLANETARY SURVIVAL MISSIONS
+                </div>
+                <div style={{ fontSize: '11px', color: '#cbd5e1', fontFamily: 'var(--font-mono)' }}>
+                  Jezero MOXIE O₂ Extraction • Gale REMS Dust Storm • Valles Marineris Ice Core • Elysium Quake
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                onOpenMarsSurvival();
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#ef4444',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 900,
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-mono)',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 0 12px rgba(239, 68, 68, 0.6)',
+              }}
+            >
+              LAUNCH OPS ▶
+            </button>
+          </div>
+        )}
 
         {/* Scrollable Map Container */}
         <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>

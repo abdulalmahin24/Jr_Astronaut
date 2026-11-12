@@ -57,6 +57,7 @@ interface ThreeMissionSimulatorProps {
   multiplayerActive?: boolean;
   assignedRole?: CrewRole;
   onOpenMoonquakeMap?: () => void;
+  onOpenMarsSurvival?: () => void;
   initialAgeTier?: AstronautAgeTier;
 }
 
@@ -369,6 +370,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   multiplayerActive = false,
   assignedRole = 'CDR',
   onOpenMoonquakeMap,
+  onOpenMarsSurvival,
   initialAgeTier,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -6272,6 +6274,33 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
             >
               <span>🌕</span>
               <span>MOONQUAKE 3D GLOBE</span>
+            </button>
+          )}
+
+          {onOpenMarsSurvival && (
+            <button
+              onClick={() => {
+                onOpenMarsSurvival();
+                soundFx.playReactorStart();
+              }}
+              style={{
+                background: 'rgba(239, 68, 68, 0.22)',
+                border: '1px solid #ef4444',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                color: '#fca5a5',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '10px',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+              }}
+              title="Launch 4 NASA Mars Planetary Survival Operations"
+            >
+              <span>🔴</span>
+              <span>MARS SURVIVAL (4 OPS)</span>
             </button>
           )}
         </div>

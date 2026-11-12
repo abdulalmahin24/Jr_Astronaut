@@ -56,6 +56,7 @@ interface SpaceGamesHubModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialGame?: GameSuiteMode;
+  onOpenMarsSurvival?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -120,6 +121,7 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
   isOpen,
   onClose,
   initialGame = 'HUB',
+  onOpenMarsSurvival,
 }) => {
   const [activeGame, setActiveGame] = useState<GameSuiteMode>(initialGame);
   const [selectedMission, setSelectedMission] = useState<NasaLevelMission>(NASA_30_MISSIONS[0]);
@@ -349,6 +351,33 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
           >
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
+
+          {onOpenMarsSurvival && (
+            <button
+              onClick={() => {
+                onClose();
+                onOpenMarsSurvival();
+              }}
+              style={{
+                background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.35), rgba(15, 23, 42, 0.9))',
+                border: '1.5px solid #ef4444',
+                color: '#fca5a5',
+                borderRadius: '8px',
+                padding: '7px 14px',
+                cursor: 'pointer',
+                fontWeight: 900,
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 0 14px rgba(239, 68, 68, 0.4)',
+              }}
+              title="Launch 4 NASA Mars Planetary Survival Operations"
+            >
+              <span>🔴</span>
+              <span>4 MARS SURVIVAL OPS</span>
+            </button>
+          )}
 
           <button
             onClick={onClose}

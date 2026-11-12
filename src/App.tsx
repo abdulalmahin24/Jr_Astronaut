@@ -872,6 +872,7 @@ export const App: React.FC = () => {
             isCoopMode={isCoopActive}
             coopRole={coopRole}
             onOpenMoonquakeMap={() => setIsMoonquakeMapOpen(true)}
+            onOpenMarsSurvival={() => setIsMarsSurvivalOpen(true)}
             onOpenLobby={() => {
               setActiveMissionGameId(null);
               setIsMultiplayerLobbyOpen(true);
@@ -915,6 +916,12 @@ export const App: React.FC = () => {
             setIsAcademyModalOpen(false);
             setIsDepotOpen(true);
             soundFx.playClick(800);
+          }}
+          onOpenMarsSurvival={() => {
+            setIsAcademyModalOpen(false);
+            setIsCampaignMapOpen(false);
+            setIsMarsSurvivalOpen(true);
+            soundFx.playReactorStart();
           }}
         />
         <RealisticTrainingCenterModal
@@ -1073,6 +1080,7 @@ export const App: React.FC = () => {
         <SpaceGamesHubModal
           isOpen={isSpaceGamesHubOpen}
           onClose={() => setIsSpaceGamesHubOpen(false)}
+          onOpenMarsSurvival={() => setIsMarsSurvivalOpen(true)}
         />
       </>
     );
@@ -2170,6 +2178,7 @@ export const App: React.FC = () => {
           isCoopMode={isCoopActive}
           coopRole={coopRole}
           onOpenMoonquakeMap={() => setIsMoonquakeMapOpen(true)}
+          onOpenMarsSurvival={() => setIsMarsSurvivalOpen(true)}
           onOpenLobby={() => {
             setActiveMissionGameId(null);
             setIsMultiplayerLobbyOpen(true);
@@ -2226,6 +2235,12 @@ export const App: React.FC = () => {
           setIsAcademyModalOpen(false);
           setIsDepotOpen(true);
           soundFx.playClick(800);
+        }}
+        onOpenMarsSurvival={() => {
+          setIsAcademyModalOpen(false);
+          setIsCampaignMapOpen(false);
+          setIsMarsSurvivalOpen(true);
+          soundFx.playReactorStart();
         }}
       />
 
@@ -2357,6 +2372,7 @@ export const App: React.FC = () => {
       <SpaceGamesHubModal
         isOpen={isSpaceGamesHubOpen}
         onClose={() => setIsSpaceGamesHubOpen(false)}
+        onOpenMarsSurvival={() => setIsMarsSurvivalOpen(true)}
       />
 
       <AstronautCharacterModal

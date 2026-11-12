@@ -452,6 +452,7 @@ export interface AstronautAcademyModalProps {
   onOpenComics?: () => void;
   onOpenClassroom?: () => void;
   onOpenDepot?: () => void;
+  onOpenMarsSurvival?: () => void;
 }
 
 export const AstronautAcademyModal: React.FC<AstronautAcademyModalProps> = ({
@@ -463,6 +464,7 @@ export const AstronautAcademyModal: React.FC<AstronautAcademyModalProps> = ({
   onOpenComics,
   onOpenClassroom,
   onOpenDepot,
+  onOpenMarsSurvival,
 }) => {
   const [progression, setProgression] = useState(getCadetProgression);
   const [selectedLessonId, setSelectedLessonId] = useState<string>(LESSONS[0].id);
@@ -865,6 +867,35 @@ export const AstronautAcademyModal: React.FC<AstronautAcademyModalProps> = ({
               <Rocket size={13} color="#fbbf24" />
               <span>🚀 76 NASA Campaign</span>
             </button>
+
+            {onOpenMarsSurvival && (
+              <button
+                id="academy-tab-mars-survival"
+                onClick={() => {
+                  onClose();
+                  onOpenMarsSurvival();
+                  soundFx.playReactorStart();
+                }}
+                style={{
+                  padding: '7px 13px',
+                  borderRadius: '7px',
+                  border: '1.5px solid #ef4444',
+                  backgroundColor: 'rgba(239, 68, 68, 0.22)',
+                  color: '#fca5a5',
+                  fontSize: '0.78rem',
+                  fontWeight: 900,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 14px rgba(239, 68, 68, 0.35)',
+                }}
+                title="Launch 4 NASA Mars Planetary Survival Operations"
+              >
+                <span>🔴</span>
+                <span>Mars Survival (4 Ops)</span>
+              </button>
+            )}
 
             <button
               id="academy-tab-hangar"
@@ -2751,6 +2782,54 @@ export const AstronautAcademyModal: React.FC<AstronautAcademyModalProps> = ({
         {/* ── TAB 7: 76 NASA HISTORICAL CAMPAIGN ── */}
         {activeTab === 'NASA_76_CAMPAIGN' && (
           <div style={{ minHeight: '600px', backgroundColor: '#070b13' }}>
+            {onOpenMarsSurvival && (
+              <div style={{
+                margin: '16px 24px 0 24px',
+                padding: '14px 20px',
+                background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                border: '1.5px solid rgba(239, 68, 68, 0.6)',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '14px',
+                boxShadow: '0 4px 25px rgba(239, 68, 68, 0.25)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <span style={{ fontSize: '28px' }}>🔴</span>
+                  <div>
+                    <div style={{ fontWeight: 900, fontSize: '14px', color: '#fca5a5', fontFamily: 'var(--font-space)' }}>
+                      NASA MARS PLANETARY SURVIVAL SUITE (4 SPECIAL OPERATIONS)
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#cbd5e1', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                      Jezero MOXIE O₂ Extraction · Gale REMS Dust Storm · Valles Marineris Ice Core · Elysium Quake
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenMarsSurvival();
+                    soundFx.playReactorStart();
+                  }}
+                  style={{
+                    padding: '9px 18px',
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 900,
+                    fontSize: '11.5px',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 0 16px rgba(239, 68, 68, 0.6)',
+                  }}
+                >
+                  LAUNCH 4 SURVIVAL OPS ▶
+                </button>
+              </div>
+            )}
             <MissionCampaignMap
               completedMissions={completedMissions}
               onLaunchMission={(missionId) => {
