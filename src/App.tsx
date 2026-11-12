@@ -44,6 +44,7 @@ import { MarsEDLSimulatorModal } from './components/MarsEDLSimulatorModal';
 import { MarsSurvivalModal } from './components/MarsSurvivalModal';
 import { HardcoreSurvivalModal } from './components/HardcoreSurvivalModal';
 import type { HardcoreMissionId } from './missions/survivalMissions';
+import { FullMissionLifecycleModal } from './components/FullMissionLifecycleModal';
 import { AstronautCharacterModal } from './components/AstronautCharacterModal';
 import { LiveMissionActivityModal } from './components/LiveMissionActivityModal';
 import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
@@ -207,6 +208,7 @@ export const App: React.FC = () => {
   const [isMarsSurvivalOpen, setIsMarsSurvivalOpen] = useState(false);
   const [isHardcoreSurvivalOpen, setIsHardcoreSurvivalOpen] = useState(false);
   const [hardcoreInitialMission, setHardcoreInitialMission] = useState<HardcoreMissionId | undefined>();
+  const [isFullExpeditionOpen, setIsFullExpeditionOpen] = useState(false);
   const [isMoonbaseAlphaOpen, setIsMoonbaseAlphaOpen] = useState(false);
   const [isBlackHoleOpen, setIsBlackHoleOpen] = useState(false);
   const [isMoonquakeMapOpen, setIsMoonquakeMapOpen] = useState(false);
@@ -560,6 +562,7 @@ export const App: React.FC = () => {
     setIsMarsEDLOpen(false);
     setIsMarsSurvivalOpen(false);
     setIsHardcoreSurvivalOpen(false);
+    setIsFullExpeditionOpen(false);
     setIsMoonbaseAlphaOpen(false);
     setIsBlackHoleOpen(false);
     setIsMoonquakeMapOpen(false);
@@ -763,6 +766,11 @@ export const App: React.FC = () => {
             closeAllModals();
             setHardcoreInitialMission(mid);
             setIsHardcoreSurvivalOpen(true);
+            soundFx.playReactorStart();
+          }}
+          onOpenFullExpedition={() => {
+            closeAllModals();
+            setIsFullExpeditionOpen(true);
             soundFx.playReactorStart();
           }}
           onOpenMoonbaseAlpha={() => {
@@ -1076,6 +1084,14 @@ export const App: React.FC = () => {
           onClose={() => setIsHardcoreSurvivalOpen(false)}
           initialMissionId={hardcoreInitialMission}
           onMissionCompleted={(_mid, credits) => {
+            awardCadetCredits(credits);
+            soundFx.playVictory();
+          }}
+        />
+        <FullMissionLifecycleModal
+          isOpen={isFullExpeditionOpen}
+          onClose={() => setIsFullExpeditionOpen(false)}
+          onMissionCompleted={(_dest, credits) => {
             awardCadetCredits(credits);
             soundFx.playVictory();
           }}
@@ -1470,6 +1486,12 @@ export const App: React.FC = () => {
                   <span>🔥</span><span>Hardcore Survival (5 Ops)</span>
                 </button>
                 <button
+                  onClick={() => { setIsFullExpeditionOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '6px', border: 'none', background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.25), transparent)', color: '#38bdf8', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 800 }}
+                >
+                  <span>🌍</span><span>Full Round-Trip Expedition</span>
+                </button>
+                <button
                   onClick={() => { setIsExpeditionOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '6px', border: 'none', background: 'transparent', color: '#fb923c', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 700 }}
                 >
@@ -1669,6 +1691,7 @@ export const App: React.FC = () => {
               { icon: <Flame size={16} />, label: '🔴 Mars 2020 EDL (7 Min)', color: '#f87171', action: () => setIsMarsEDLOpen(true) },
               { icon: <ShieldAlert size={16} />, label: '🔴 Mars Planetary Survival (4 Ops)', color: '#f43f5e', action: () => setIsMarsSurvivalOpen(true) },
               { icon: <Flame size={16} />, label: '🔥 Hardcore Survival (5 Missions)', color: '#ef4444', action: () => setIsHardcoreSurvivalOpen(true) },
+              { icon: <Rocket size={16} />, label: '🌍 Full Round-Trip Expedition (8 Stages)', color: '#38bdf8', action: () => setIsFullExpeditionOpen(true) },
               { icon: <RotateCcw size={16} />, label: 'Reset Simulation', color: '#94a3b8', action: handleRestart },
             ].map((item) => (
               <button
@@ -2396,6 +2419,14 @@ export const App: React.FC = () => {
         onClose={() => setIsHardcoreSurvivalOpen(false)}
         initialMissionId={hardcoreInitialMission}
         onMissionCompleted={(_mid, credits) => {
+          awardCadetCredits(credits);
+          soundFx.playVictory();
+        }}
+      />
+      <FullMissionLifecycleModal
+        isOpen={isFullExpeditionOpen}
+        onClose={() => setIsFullExpeditionOpen(false)}
+        onMissionCompleted={(_dest, credits) => {
           awardCadetCredits(credits);
           soundFx.playVictory();
         }}

@@ -52,6 +52,7 @@ interface LandingPageProps {
   onOpenSpaceGamesHub?: () => void;
   onOpenMarsSurvival?: () => void;
   onOpenHardcoreSurvival?: (missionId?: any) => void;
+  onOpenFullExpedition?: () => void;
 }
 
 // ── Starfield Canvas ──────────────────────────────────────────────────────────
@@ -175,6 +176,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenSpaceGamesHub,
   onOpenMarsSurvival,
   onOpenHardcoreSurvival,
+  onOpenFullExpedition,
   onUserUpdate,
 }) => {
   // Active historical astronaut selected by cadet
@@ -286,7 +288,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const [warping, setWarping] = useState(false);
   const [hangarAsset, setHangarAsset] = useState<'ASTRONAUT' | 'ROVER' | 'SPACECRAFT' | 'OUTPOST'>('ASTRONAUT');
-  const [selectedMatchMode, setSelectedMatchMode] = useState<'SPACE_GAMES' | 'HARDCORE_SURVIVAL' | 'MARS_SURVIVAL' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL'>('HARDCORE_SURVIVAL');
+  const [selectedMatchMode, setSelectedMatchMode] = useState<'FULL_EXPEDITION' | 'SPACE_GAMES' | 'HARDCORE_SURVIVAL' | 'MARS_SURVIVAL' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL'>('FULL_EXPEDITION');
   const [showModeDropdown, setShowModeDropdown] = useState(false);
   const [showIntelDossier, setShowIntelDossier] = useState(false);
   const [isSimsHubOpen, setIsSimsHubOpen] = useState(false);
@@ -303,7 +305,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setWarping(true);
     setTimeout(() => {
       setWarping(false);
-      if (selectedMatchMode === 'HARDCORE_SURVIVAL' && onOpenHardcoreSurvival) {
+      if (selectedMatchMode === 'FULL_EXPEDITION' && onOpenFullExpedition) {
+        onOpenFullExpedition();
+      } else if (selectedMatchMode === 'HARDCORE_SURVIVAL' && onOpenHardcoreSurvival) {
         onOpenHardcoreSurvival();
       } else if (selectedMatchMode === 'MARS_SURVIVAL' && onOpenMarsSurvival) {
         onOpenMarsSurvival();
@@ -677,6 +681,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
           )}
 
+          {/* 9. FULL ROUND-TRIP EXPEDITION (VAB -> RETURN) */}
+          {onOpenFullExpedition && (
+            <button
+              onClick={() => handleNavClick(onOpenFullExpedition, 'reactor')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'linear-gradient(180deg, rgba(37, 99, 235, 0.45), rgba(15, 23, 42, 0.95))',
+                borderColor: '#38bdf8',
+                color: '#bae6fd',
+                fontWeight: 900,
+                fontSize: '11px',
+                padding: '4px 12px',
+                gap: '6px',
+                boxShadow: '0 0 16px rgba(56, 189, 248, 0.55)',
+              }}
+              title="Full Round-Trip Expedition: VAB Rocket Assembly -> Pad Weather -> Liftoff -> Landing -> Surface EVA -> Earth Return Splashdown!"
+            >
+              <span>🌍🚀</span>
+              <span>FULL EXPEDITION (VAB ➔ RETURN)</span>
+            </button>
+          )}
+
           {/* 7. CONFIG */}
           {onOpenSettings && (
             <button
@@ -948,7 +975,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div 
               className="pubg-mode-card"
               onClick={() => {
-                const modes: ('HARDCORE_SURVIVAL' | 'MARS_SURVIVAL' | 'SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL')[] = [
+                const modes: ('FULL_EXPEDITION' | 'HARDCORE_SURVIVAL' | 'MARS_SURVIVAL' | 'SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL')[] = [
+                  'FULL_EXPEDITION',
                   'HARDCORE_SURVIVAL',
                   'MARS_SURVIVAL',
                   'SPACE_GAMES',
@@ -969,6 +997,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900, letterSpacing: '0.06em' }}>
+                  {selectedMatchMode === 'FULL_EXPEDITION' && '🌍 FULL ROUND-TRIP EXPEDITION (8 STAGES)'}
                   {selectedMatchMode === 'HARDCORE_SURVIVAL' && '🔥 HARDCORE ORBITAL SURVIVAL (5 MISSIONS)'}
                   {selectedMatchMode === 'MARS_SURVIVAL' && '🔴 MARS SURVIVAL SUITE (4 MISSIONS)'}
                   {selectedMatchMode === 'SPACE_GAMES' && '🪐 DEDICATED SPACE GAMES ARCADE (3 AGE TIERS)'}
@@ -985,6 +1014,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </span>
               </div>
               <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)' }}>
+                {selectedMatchMode === 'FULL_EXPEDITION' && 'VAB Build · Pad Weather · Staging · Landing · Surface EVA · Earth Return'}
                 {selectedMatchMode === 'HARDCORE_SURVIVAL' && 'Kessler Syndrome · Solar Storm · Apollo 13 · Oberth · Suicide Burn'}
                 {selectedMatchMode === 'MARS_SURVIVAL' && "Jezero Delta · Gale REMS Storm · Valles Marineris · Elysium SEIS"}
                 {selectedMatchMode === 'SPACE_GAMES' && "No Man's Sky · KSP · Space Engineers · Star Citizen"}
@@ -997,7 +1027,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {selectedMatchMode === 'MARS_EDL' && 'Jezero Crater Sky Crane EDL'}
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '6px', fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
-                <span>📍 {selectedMatchMode === 'HARDCORE_SURVIVAL' ? 'Newtonian Gravity, Keplerian Solver & Real Telemetry' : selectedMatchMode === 'MARS_SURVIVAL' ? 'NASA PDS, REMS, Mars Trek GIS & Eyes Data' : selectedMatchMode === 'SPACE_GAMES' ? 'Dedicated Arcade Suite (Ages 6-10 / 11-15 / 16+)' : selectedMatchMode === 'EARTH_TO_MOON' ? 'Classified: Advanced Astronauts Only' : selectedMatchMode === 'BLACK_HOLE' ? 'Kerr Event Horizon' : 'Shackleton Rim'}</span>
+                <span>📍 {selectedMatchMode === 'FULL_EXPEDITION' ? 'Tsiolkovsky Equation, 45th Weather Squadron & Full Return Cycle' : selectedMatchMode === 'HARDCORE_SURVIVAL' ? 'Newtonian Gravity, Keplerian Solver & Real Telemetry' : selectedMatchMode === 'MARS_SURVIVAL' ? 'NASA PDS, REMS, Mars Trek GIS & Eyes Data' : selectedMatchMode === 'SPACE_GAMES' ? 'Dedicated Arcade Suite (Ages 6-10 / 11-15 / 16+)' : selectedMatchMode === 'EARTH_TO_MOON' ? 'Classified: Advanced Astronauts Only' : selectedMatchMode === 'BLACK_HOLE' ? 'Kerr Event Horizon' : 'Shackleton Rim'}</span>
                 <span>•</span>
                 <span style={{ color: '#10b981' }}>● Real-Time 3D Simulation</span>
               </div>
@@ -1561,6 +1591,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <span style={{ fontSize: '9px', background: '#f97316', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
                   5 OPS
+                </span>
+              </button>
+            )}
+
+            {/* 8. Dedicated Full Round-Trip Expedition Button */}
+            {onOpenFullExpedition && (
+              <button
+                className="pubg-bottom-tab"
+                onClick={() => handleNavClick(onOpenFullExpedition, 'reactor')}
+                id="pubg-tab-full-expedition"
+                style={{
+                  borderColor: '#38bdf8',
+                  background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.45), rgba(15, 23, 42, 0.98))',
+                  color: '#bae6fd',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  justifyContent: 'space-between',
+                  padding: '7px 12px',
+                  height: '42px',
+                  borderWidth: '1.5px',
+                  boxShadow: '0 0 20px rgba(56, 189, 248, 0.45)',
+                }}
+                title="Full Round-Trip Expedition: VAB Rocket Assembly -> Pad Weather -> Liftoff -> Landing -> Surface EVA -> Earth Return Splashdown!"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>🌍</span>
+                  <span style={{ fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>FULL EXPEDITION</span>
+                </div>
+                <span style={{ fontSize: '9px', background: '#2563eb', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
+                  8 STAGES
                 </span>
               </button>
             )}
