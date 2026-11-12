@@ -453,6 +453,7 @@ export interface AstronautAcademyModalProps {
   onOpenClassroom?: () => void;
   onOpenDepot?: () => void;
   onOpenMarsSurvival?: () => void;
+  onOpenHardcoreSurvival?: () => void;
 }
 
 export const AstronautAcademyModal: React.FC<AstronautAcademyModalProps> = ({
@@ -465,6 +466,7 @@ export const AstronautAcademyModal: React.FC<AstronautAcademyModalProps> = ({
   onOpenClassroom,
   onOpenDepot,
   onOpenMarsSurvival,
+  onOpenHardcoreSurvival,
 }) => {
   const [progression, setProgression] = useState(getCadetProgression);
   const [selectedLessonId, setSelectedLessonId] = useState<string>(LESSONS[0].id);
@@ -894,6 +896,35 @@ export const AstronautAcademyModal: React.FC<AstronautAcademyModalProps> = ({
               >
                 <span>🔴</span>
                 <span>Mars Survival (4 Ops)</span>
+              </button>
+            )}
+
+            {onOpenHardcoreSurvival && (
+              <button
+                id="academy-tab-hardcore-survival"
+                onClick={() => {
+                  onClose();
+                  onOpenHardcoreSurvival();
+                  soundFx.playReactorStart();
+                }}
+                style={{
+                  padding: '7px 13px',
+                  borderRadius: '7px',
+                  border: '1.5px solid #f97316',
+                  backgroundColor: 'rgba(249, 115, 22, 0.22)',
+                  color: '#fed7aa',
+                  fontSize: '0.78rem',
+                  fontWeight: 900,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 14px rgba(249, 115, 22, 0.35)',
+                }}
+                title="Launch 5 Hardcore Orbital Survival Missions (Kessler, Solar Storm, Apollo 13, Oberth, Suicide Burn)"
+              >
+                <span>🔥</span>
+                <span>Hardcore Survival (5 Ops)</span>
               </button>
             )}
 

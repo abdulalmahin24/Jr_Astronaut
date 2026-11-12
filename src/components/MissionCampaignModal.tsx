@@ -14,6 +14,7 @@ interface MissionCampaignModalProps {
   onLaunchMission: (missionId: string) => void;
   onOpenMoonquakeMap?: () => void;
   onOpenMarsSurvival?: () => void;
+  onOpenHardcoreSurvival?: () => void;
 }
 
 export const MissionCampaignModal: React.FC<MissionCampaignModalProps> = ({
@@ -23,6 +24,7 @@ export const MissionCampaignModal: React.FC<MissionCampaignModalProps> = ({
   onLaunchMission,
   onOpenMoonquakeMap,
   onOpenMarsSurvival,
+  onOpenHardcoreSurvival,
 }) => {
   if (!isOpen) return null;
 
@@ -127,6 +129,34 @@ export const MissionCampaignModal: React.FC<MissionCampaignModalProps> = ({
               >
                 <span>🔴</span>
                 <span>4 MARS SURVIVAL OPS</span>
+              </button>
+            )}
+
+            {onOpenHardcoreSurvival && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenHardcoreSurvival();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 14px',
+                  background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.3), rgba(15, 23, 42, 0.9))',
+                  border: '1px solid #f97316',
+                  borderRadius: '10px',
+                  color: '#fed7aa',
+                  fontSize: '11px',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)',
+                  boxShadow: '0 0 14px rgba(249, 115, 22, 0.4)',
+                }}
+                title="Launch 5 Hardcore Orbital Survival Missions"
+              >
+                <span>🔥</span>
+                <span>5 HARDCORE OPS</span>
               </button>
             )}
 

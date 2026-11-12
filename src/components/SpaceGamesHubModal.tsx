@@ -57,6 +57,7 @@ interface SpaceGamesHubModalProps {
   onClose: () => void;
   initialGame?: GameSuiteMode;
   onOpenMarsSurvival?: () => void;
+  onOpenHardcoreSurvival?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
   onClose,
   initialGame = 'HUB',
   onOpenMarsSurvival,
+  onOpenHardcoreSurvival,
 }) => {
   const [activeGame, setActiveGame] = useState<GameSuiteMode>(initialGame);
   const [selectedMission, setSelectedMission] = useState<NasaLevelMission>(NASA_30_MISSIONS[0]);
@@ -376,6 +378,33 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
             >
               <span>🔴</span>
               <span>4 MARS SURVIVAL OPS</span>
+            </button>
+          )}
+
+          {onOpenHardcoreSurvival && (
+            <button
+              onClick={() => {
+                onClose();
+                onOpenHardcoreSurvival();
+              }}
+              style={{
+                background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.35), rgba(15, 23, 42, 0.9))',
+                border: '1.5px solid #f97316',
+                color: '#fed7aa',
+                borderRadius: '8px',
+                padding: '7px 14px',
+                cursor: 'pointer',
+                fontWeight: 900,
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 0 14px rgba(249, 115, 22, 0.4)',
+              }}
+              title="Launch 5 Hardcore Orbital Survival Missions"
+            >
+              <span>🔥</span>
+              <span>5 HARDCORE OPS</span>
             </button>
           )}
 

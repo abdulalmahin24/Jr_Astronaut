@@ -42,6 +42,8 @@ import { FlightCertificateModal } from './components/FlightCertificateModal';
 import { SolarSystemOrreryModal } from './components/SolarSystemOrreryModal';
 import { MarsEDLSimulatorModal } from './components/MarsEDLSimulatorModal';
 import { MarsSurvivalModal } from './components/MarsSurvivalModal';
+import { HardcoreSurvivalModal } from './components/HardcoreSurvivalModal';
+import type { HardcoreMissionId } from './missions/survivalMissions';
 import { AstronautCharacterModal } from './components/AstronautCharacterModal';
 import { LiveMissionActivityModal } from './components/LiveMissionActivityModal';
 import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
@@ -203,6 +205,8 @@ export const App: React.FC = () => {
   const [isOrreryOpen, setIsOrreryOpen] = useState(false);
   const [isMarsEDLOpen, setIsMarsEDLOpen] = useState(false);
   const [isMarsSurvivalOpen, setIsMarsSurvivalOpen] = useState(false);
+  const [isHardcoreSurvivalOpen, setIsHardcoreSurvivalOpen] = useState(false);
+  const [hardcoreInitialMission, setHardcoreInitialMission] = useState<HardcoreMissionId | undefined>();
   const [isMoonbaseAlphaOpen, setIsMoonbaseAlphaOpen] = useState(false);
   const [isBlackHoleOpen, setIsBlackHoleOpen] = useState(false);
   const [isMoonquakeMapOpen, setIsMoonquakeMapOpen] = useState(false);
@@ -555,6 +559,7 @@ export const App: React.FC = () => {
     setIsOrreryOpen(false);
     setIsMarsEDLOpen(false);
     setIsMarsSurvivalOpen(false);
+    setIsHardcoreSurvivalOpen(false);
     setIsMoonbaseAlphaOpen(false);
     setIsBlackHoleOpen(false);
     setIsMoonquakeMapOpen(false);
@@ -754,6 +759,12 @@ export const App: React.FC = () => {
             setIsMarsSurvivalOpen(true);
             soundFx.playReactorStart();
           }}
+          onOpenHardcoreSurvival={(mid) => {
+            closeAllModals();
+            setHardcoreInitialMission(mid);
+            setIsHardcoreSurvivalOpen(true);
+            soundFx.playReactorStart();
+          }}
           onOpenMoonbaseAlpha={() => {
             closeAllModals();
             setIsMoonbaseAlphaOpen(true);
@@ -923,6 +934,12 @@ export const App: React.FC = () => {
             setIsMarsSurvivalOpen(true);
             soundFx.playReactorStart();
           }}
+          onOpenHardcoreSurvival={() => {
+            setIsAcademyModalOpen(false);
+            setIsCampaignMapOpen(false);
+            setIsHardcoreSurvivalOpen(true);
+            soundFx.playReactorStart();
+          }}
         />
         <RealisticTrainingCenterModal
           isOpen={isTrainingCenterOpen}
@@ -1054,6 +1071,15 @@ export const App: React.FC = () => {
           }}
           onLaunchManualMission={(mid) => handleLaunchMissionGame(mid)}
         />
+        <HardcoreSurvivalModal
+          isOpen={isHardcoreSurvivalOpen}
+          onClose={() => setIsHardcoreSurvivalOpen(false)}
+          initialMissionId={hardcoreInitialMission}
+          onMissionCompleted={(_mid, credits) => {
+            awardCadetCredits(credits);
+            soundFx.playVictory();
+          }}
+        />
         <MoonbaseAlphaSimulator
           isOpen={isMoonbaseAlphaOpen}
           onClose={() => setIsMoonbaseAlphaOpen(false)}
@@ -1082,6 +1108,11 @@ export const App: React.FC = () => {
           isOpen={isSpaceGamesHubOpen}
           onClose={() => setIsSpaceGamesHubOpen(false)}
           onOpenMarsSurvival={() => setIsMarsSurvivalOpen(true)}
+          onOpenHardcoreSurvival={() => {
+            setIsSpaceGamesHubOpen(false);
+            setIsHardcoreSurvivalOpen(true);
+            soundFx.playReactorStart();
+          }}
         />
       </>
     );
@@ -1433,6 +1464,12 @@ export const App: React.FC = () => {
                   <ShieldAlert size={14} className="text-rose-400" /><span>🔴 Mars Survival (4 Ops)</span>
                 </button>
                 <button
+                  onClick={() => { setIsHardcoreSurvivalOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '6px', border: 'none', background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.2), transparent)', color: '#ef4444', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 800 }}
+                >
+                  <span>🔥</span><span>Hardcore Survival (5 Ops)</span>
+                </button>
+                <button
                   onClick={() => { setIsExpeditionOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '6px', border: 'none', background: 'transparent', color: '#fb923c', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 700 }}
                 >
@@ -1631,6 +1668,7 @@ export const App: React.FC = () => {
               { icon: <Compass size={16} />, label: '🌌 NASA Eyes Orrery 3D', color: '#38bdf8', action: () => setIsOrreryOpen(true) },
               { icon: <Flame size={16} />, label: '🔴 Mars 2020 EDL (7 Min)', color: '#f87171', action: () => setIsMarsEDLOpen(true) },
               { icon: <ShieldAlert size={16} />, label: '🔴 Mars Planetary Survival (4 Ops)', color: '#f43f5e', action: () => setIsMarsSurvivalOpen(true) },
+              { icon: <Flame size={16} />, label: '🔥 Hardcore Survival (5 Missions)', color: '#ef4444', action: () => setIsHardcoreSurvivalOpen(true) },
               { icon: <RotateCcw size={16} />, label: 'Reset Simulation', color: '#94a3b8', action: handleRestart },
             ].map((item) => (
               <button
@@ -2243,6 +2281,12 @@ export const App: React.FC = () => {
           setIsMarsSurvivalOpen(true);
           soundFx.playReactorStart();
         }}
+        onOpenHardcoreSurvival={() => {
+          setIsAcademyModalOpen(false);
+          setIsCampaignMapOpen(false);
+          setIsHardcoreSurvivalOpen(true);
+          soundFx.playReactorStart();
+        }}
       />
 
       <RealisticTrainingCenterModal
@@ -2347,6 +2391,15 @@ export const App: React.FC = () => {
         }}
         onLaunchManualMission={(mid) => handleLaunchMissionGame(mid)}
       />
+      <HardcoreSurvivalModal
+        isOpen={isHardcoreSurvivalOpen}
+        onClose={() => setIsHardcoreSurvivalOpen(false)}
+        initialMissionId={hardcoreInitialMission}
+        onMissionCompleted={(_mid, credits) => {
+          awardCadetCredits(credits);
+          soundFx.playVictory();
+        }}
+      />
       <MoonbaseAlphaSimulator
         isOpen={isMoonbaseAlphaOpen}
         onClose={() => setIsMoonbaseAlphaOpen(false)}
@@ -2375,6 +2428,11 @@ export const App: React.FC = () => {
         isOpen={isSpaceGamesHubOpen}
         onClose={() => setIsSpaceGamesHubOpen(false)}
         onOpenMarsSurvival={() => setIsMarsSurvivalOpen(true)}
+        onOpenHardcoreSurvival={() => {
+          setIsSpaceGamesHubOpen(false);
+          setIsHardcoreSurvivalOpen(true);
+          soundFx.playReactorStart();
+        }}
       />
 
       <AstronautCharacterModal

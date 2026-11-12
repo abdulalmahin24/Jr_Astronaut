@@ -51,6 +51,7 @@ interface LandingPageProps {
   onOpenCampaign?: () => void;
   onOpenSpaceGamesHub?: () => void;
   onOpenMarsSurvival?: () => void;
+  onOpenHardcoreSurvival?: (missionId?: any) => void;
 }
 
 // ── Starfield Canvas ──────────────────────────────────────────────────────────
@@ -173,6 +174,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenCampaign,
   onOpenSpaceGamesHub,
   onOpenMarsSurvival,
+  onOpenHardcoreSurvival,
   onUserUpdate,
 }) => {
   // Active historical astronaut selected by cadet
@@ -284,7 +286,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const [warping, setWarping] = useState(false);
   const [hangarAsset, setHangarAsset] = useState<'ASTRONAUT' | 'ROVER' | 'SPACECRAFT' | 'OUTPOST'>('ASTRONAUT');
-  const [selectedMatchMode, setSelectedMatchMode] = useState<'SPACE_GAMES' | 'MARS_SURVIVAL' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL'>('MARS_SURVIVAL');
+  const [selectedMatchMode, setSelectedMatchMode] = useState<'SPACE_GAMES' | 'HARDCORE_SURVIVAL' | 'MARS_SURVIVAL' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL'>('HARDCORE_SURVIVAL');
   const [showModeDropdown, setShowModeDropdown] = useState(false);
   const [showIntelDossier, setShowIntelDossier] = useState(false);
   const [isSimsHubOpen, setIsSimsHubOpen] = useState(false);
@@ -301,7 +303,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setWarping(true);
     setTimeout(() => {
       setWarping(false);
-      if (selectedMatchMode === 'MARS_SURVIVAL' && onOpenMarsSurvival) {
+      if (selectedMatchMode === 'HARDCORE_SURVIVAL' && onOpenHardcoreSurvival) {
+        onOpenHardcoreSurvival();
+      } else if (selectedMatchMode === 'MARS_SURVIVAL' && onOpenMarsSurvival) {
         onOpenMarsSurvival();
       } else if (selectedMatchMode === 'SPACE_GAMES' && onOpenSpaceGamesHub) {
         onOpenSpaceGamesHub();
@@ -650,6 +654,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
           )}
 
+          {/* 8. HARDCORE ORBITAL SURVIVAL (5 MISSIONS) */}
+          {onOpenHardcoreSurvival && (
+            <button
+              onClick={() => handleNavClick(onOpenHardcoreSurvival, 'reactor')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'linear-gradient(180deg, rgba(234, 88, 12, 0.4), rgba(15, 23, 42, 0.95))',
+                borderColor: '#f97316',
+                color: '#fed7aa',
+                fontWeight: 900,
+                fontSize: '11px',
+                padding: '4px 12px',
+                gap: '6px',
+                boxShadow: '0 0 16px rgba(249, 115, 22, 0.5)',
+              }}
+              title="5 Hardcore Orbital Survival Missions: Kessler Syndrome, Solar Storm, Apollo 13, Oberth Slingshot & Suicide Burn"
+            >
+              <span>🔥</span>
+              <span>HARDCORE SURVIVAL (5 OPS)</span>
+            </button>
+          )}
+
           {/* 7. CONFIG */}
           {onOpenSettings && (
             <button
@@ -921,7 +948,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div 
               className="pubg-mode-card"
               onClick={() => {
-                const modes: ('MARS_SURVIVAL' | 'SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL')[] = [
+                const modes: ('HARDCORE_SURVIVAL' | 'MARS_SURVIVAL' | 'SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL')[] = [
+                  'HARDCORE_SURVIVAL',
                   'MARS_SURVIVAL',
                   'SPACE_GAMES',
                   'EARTH_TO_MOON',
@@ -941,6 +969,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900, letterSpacing: '0.06em' }}>
+                  {selectedMatchMode === 'HARDCORE_SURVIVAL' && '🔥 HARDCORE ORBITAL SURVIVAL (5 MISSIONS)'}
                   {selectedMatchMode === 'MARS_SURVIVAL' && '🔴 MARS SURVIVAL SUITE (4 MISSIONS)'}
                   {selectedMatchMode === 'SPACE_GAMES' && '🪐 DEDICATED SPACE GAMES ARCADE (3 AGE TIERS)'}
                   {selectedMatchMode === 'EARTH_TO_MOON' && '🚀 ADVANCED ASTRONAUT EXPEDITIONS (LEVEL 5)'}
@@ -956,6 +985,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </span>
               </div>
               <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)' }}>
+                {selectedMatchMode === 'HARDCORE_SURVIVAL' && 'Kessler Syndrome · Solar Storm · Apollo 13 · Oberth · Suicide Burn'}
                 {selectedMatchMode === 'MARS_SURVIVAL' && "Jezero Delta · Gale REMS Storm · Valles Marineris · Elysium SEIS"}
                 {selectedMatchMode === 'SPACE_GAMES' && "No Man's Sky · KSP · Space Engineers · Star Citizen"}
                 {selectedMatchMode === 'EARTH_TO_MOON' && 'New Shepard (10 Min to Space), Artemis V, Apollo 11'}
@@ -967,7 +997,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {selectedMatchMode === 'MARS_EDL' && 'Jezero Crater Sky Crane EDL'}
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '6px', fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
-                <span>📍 {selectedMatchMode === 'MARS_SURVIVAL' ? 'NASA PDS, REMS, Mars Trek GIS & Eyes Data' : selectedMatchMode === 'SPACE_GAMES' ? 'Dedicated Arcade Suite (Ages 6-10 / 11-15 / 16+)' : selectedMatchMode === 'EARTH_TO_MOON' ? 'Classified: Advanced Astronauts Only' : selectedMatchMode === 'BLACK_HOLE' ? 'Kerr Event Horizon' : 'Shackleton Rim'}</span>
+                <span>📍 {selectedMatchMode === 'HARDCORE_SURVIVAL' ? 'Newtonian Gravity, Keplerian Solver & Real Telemetry' : selectedMatchMode === 'MARS_SURVIVAL' ? 'NASA PDS, REMS, Mars Trek GIS & Eyes Data' : selectedMatchMode === 'SPACE_GAMES' ? 'Dedicated Arcade Suite (Ages 6-10 / 11-15 / 16+)' : selectedMatchMode === 'EARTH_TO_MOON' ? 'Classified: Advanced Astronauts Only' : selectedMatchMode === 'BLACK_HOLE' ? 'Kerr Event Horizon' : 'Shackleton Rim'}</span>
                 <span>•</span>
                 <span style={{ color: '#10b981' }}>● Real-Time 3D Simulation</span>
               </div>
@@ -1150,6 +1180,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <span>✦ 3D PLANETARY SIMULATION LABS</span>
                     <span style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setIsSimsHubOpen(false)}>✕</span>
                   </div>
+                  {onOpenHardcoreSurvival && (
+                    <button
+                      className="pubg-hub-subitem"
+                      style={{ border: '1px solid rgba(249, 115, 22, 0.5)', background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.22), rgba(15, 23, 42, 0.95))' }}
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenHardcoreSurvival, 'reactor'); }}
+                    >
+                      <span style={{ fontSize: '20px' }}>🔥</span>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 800, color: '#fed7aa', fontSize: '12px' }}>Hardcore Survival Mode (5 Ops)</div>
+                        <div style={{ fontSize: '10px', color: '#fb923c' }}>Newtonian Gravity · Kessler · Oberth · Suicide Burn</div>
+                      </div>
+                    </button>
+                  )}
                   {onOpenMarsSurvival && (
                     <button
                       className="pubg-hub-subitem"
@@ -1488,6 +1531,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <span style={{ fontSize: '9px', background: '#ef4444', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
                   4 OPS
+                </span>
+              </button>
+            )}
+
+            {/* 7. Dedicated Hardcore Survival Mode Button */}
+            {onOpenHardcoreSurvival && (
+              <button
+                className="pubg-bottom-tab"
+                onClick={() => handleNavClick(onOpenHardcoreSurvival, 'reactor')}
+                id="pubg-tab-hardcore-survival"
+                style={{
+                  borderColor: '#f97316',
+                  background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.38), rgba(15, 23, 42, 0.98))',
+                  color: '#fed7aa',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  justifyContent: 'space-between',
+                  padding: '7px 12px',
+                  height: '42px',
+                  borderWidth: '1.5px',
+                  boxShadow: '0 0 18px rgba(249, 115, 22, 0.4)',
+                }}
+                title="Launch 5 Hardcore Orbital Survival Missions (Kessler, Solar Storm, Apollo 13, Oberth, Suicide Burn)"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>🔥</span>
+                  <span style={{ fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>HARDCORE SURVIVAL</span>
+                </div>
+                <span style={{ fontSize: '9px', background: '#f97316', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
+                  5 OPS
                 </span>
               </button>
             )}
