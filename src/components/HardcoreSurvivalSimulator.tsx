@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import confetti from 'canvas-confetti';
 import {
   X,
@@ -44,6 +45,573 @@ import { soundFx } from '../utils/audioEffects';
 import { awardCadetCredits } from '../utils/gearBonusHelper';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { NasaDataModal } from './NasaDataModal';
+
+// ============================================================================
+// PHOTOREALISTIC AEROSPACE CRAFT & PLANETARY RENDERING ENGINE
+// ============================================================================
+
+interface RealisticCraft {
+  shipGroup: THREE.Group;
+  plumeCore: THREE.Mesh;
+  plumeOuter: THREE.Mesh;
+  shockDiamonds: THREE.Mesh[];
+  engineLight: THREE.PointLight;
+  engineThroat: THREE.Mesh;
+  heatShieldMesh: THREE.Mesh;
+  rcsPuffs: Record<string, THREE.Mesh>;
+  solarWings: THREE.Group[];
+  update: (throttle: number, time: number, rcsActive: boolean, heatAblationPct: number) => void;
+}
+
+function createPhotorealisticSpacecraft(): RealisticCraft {
+  const shipGroup = new THREE.Group();
+
+  // ─── 1. COMMAND / CREW MODULE (ORION / APOLLO STYLE CAPSULE) ───
+  const cmGroup = new THREE.Group();
+  cmGroup.position.y = 1.05;
+
+  // Truncated Conic Aerodynamic Capsule Hull
+  const cmGeo = new THREE.CylinderGeometry(0.5, 1.25, 1.35, 32);
+  const cmMat = new THREE.MeshStandardMaterial({
+    color: 0xf1f5f9,
+    metalness: 0.28,
+    roughness: 0.35,
+  });
+  const cmMesh = new THREE.Mesh(cmGeo, cmMat);
+  cmMesh.castShadow = true;
+  cmMesh.receiveShadow = true;
+  cmGroup.add(cmMesh);
+
+  // Aft Heat Shield (PICA-X / Phenolic Carbon Ablative Shield)
+  const hsGeo = new THREE.CylinderGeometry(1.28, 1.25, 0.18, 32);
+  const hsMat = new THREE.MeshStandardMaterial({
+    color: 0x1e293b,
+    metalness: 0.75,
+    roughness: 0.35,
+    emissive: 0x000000,
+    emissiveIntensity: 0,
+  });
+  const heatShieldMesh = new THREE.Mesh(hsGeo, hsMat);
+  heatShieldMesh.position.y = -0.72;
+  cmGroup.add(heatShieldMesh);
+
+  // Forward Docking Ring (IDA - International Docking Adapter)
+  const dockRingGeo = new THREE.TorusGeometry(0.38, 0.05, 16, 32);
+  const dockRingMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.85, roughness: 0.2 });
+  const dockRing = new THREE.Mesh(dockRingGeo, dockRingMat);
+  dockRing.rotation.x = Math.PI / 2;
+  dockRing.position.y = 0.72;
+  cmGroup.add(dockRing);
+
+  // Docking Alignment Target Cross
+  const crossMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+  const crossBar1 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.03, 0.02), crossMat);
+  crossBar1.position.y = 0.73;
+  const crossBar2 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.32, 0.02), crossMat);
+  crossBar2.position.y = 0.73;
+  cmGroup.add(crossBar1);
+  cmGroup.add(crossBar2);
+
+  // Forward Astronaut Observation Viewports (Tinted reflective glass)
+  const windowMat = new THREE.MeshStandardMaterial({
+    color: 0x0f172a,
+    roughness: 0.05,
+    metalness: 0.95,
+    emissive: 0x0284c7,
+    emissiveIntensity: 0.45,
+  });
+  for (let w = -1; w <= 1; w += 2) {
+    const winGeo = new THREE.BoxGeometry(0.24, 0.18, 0.04);
+    const winMesh = new THREE.Mesh(winGeo, windowMat);
+    winMesh.position.set(w * 0.38, 0.22, 0.82);
+    winMesh.rotation.y = w * 0.38;
+    winMesh.rotation.x = -0.45;
+    cmGroup.add(winMesh);
+  }
+
+  // NASA Red Insignia Stripe
+  const stripeGeo = new THREE.BoxGeometry(0.75, 0.08, 0.03);
+  const stripeMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.5 });
+  const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+  stripe.position.set(0, -0.15, 1.08);
+  cmGroup.add(stripe);
+
+  shipGroup.add(cmGroup);
+
+  // ─── 2. SERVICE MODULE (PROPULSION & POWER STAGE) ───
+  const smGroup = new THREE.Group();
+  smGroup.position.y = -0.75;
+
+  // Main Radiator Body
+  const smGeo = new THREE.CylinderGeometry(1.22, 1.22, 2.1, 32);
+  const smMat = new THREE.MeshStandardMaterial({
+    color: 0xe2e8f0,
+    metalness: 0.35,
+    roughness: 0.42,
+  });
+  const smMesh = new THREE.Mesh(smGeo, smMat);
+  smMesh.castShadow = true;
+  smMesh.receiveShadow = true;
+  smGroup.add(smMesh);
+
+  // Gold Kapton MLI Foil Wrap (Propulsion Bay)
+  const mliGeo = new THREE.CylinderGeometry(1.23, 1.23, 0.55, 32);
+  const mliMat = new THREE.MeshStandardMaterial({
+    color: 0xd97706,
+    metalness: 0.9,
+    roughness: 0.22,
+  });
+  const mliMesh = new THREE.Mesh(mliGeo, mliMat);
+  mliMesh.position.y = -0.75;
+  smGroup.add(mliMesh);
+
+  // High-Gain S-Band / X-Band Communication Dish
+  const hgaGroup = new THREE.Group();
+  hgaGroup.position.set(1.42, 0.4, 0);
+  const hgaBoom = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.03, 0.65, 8),
+    new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 })
+  );
+  hgaBoom.rotation.z = Math.PI / 2.8;
+  hgaGroup.add(hgaBoom);
+
+  const dishGeo = new THREE.SphereGeometry(0.48, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.3);
+  const dishMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    metalness: 0.75,
+    roughness: 0.25,
+    side: THREE.DoubleSide,
+  });
+  const dishMesh = new THREE.Mesh(dishGeo, dishMat);
+  dishMesh.position.set(0.45, 0.35, 0);
+  dishMesh.rotation.z = -Math.PI / 3;
+  hgaGroup.add(dishMesh);
+  smGroup.add(hgaGroup);
+
+  // 4 Quad RCS Thruster Pods
+  const rcsPuffs: Record<string, THREE.Mesh> = {};
+  const rcsPositions = [
+    { name: 'POS_X', x: 1.25, z: 0 },
+    { name: 'NEG_X', x: -1.25, z: 0 },
+    { name: 'POS_Z', x: 0, z: 1.25 },
+    { name: 'NEG_Z', x: 0, z: -1.25 },
+  ];
+  const rcsBlockMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.85, roughness: 0.2 });
+  const puffMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+
+  rcsPositions.forEach((rcs) => {
+    const block = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), rcsBlockMat);
+    block.position.set(rcs.x, -0.2, rcs.z);
+    smGroup.add(block);
+
+    // Micro nozzles
+    for (let n = -1; n <= 1; n += 2) {
+      const noz = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 8), rcsBlockMat);
+      noz.position.set(rcs.x * 1.05, -0.2 + n * 0.06, rcs.z * 1.05);
+      smGroup.add(noz);
+    }
+
+    // RCS gas puff cone
+    const puff = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.75, 12), puffMat);
+    puff.position.set(rcs.x * 1.35, -0.2, rcs.z * 1.35);
+    puff.rotation.z = rcs.x > 0 ? -Math.PI / 2 : (rcs.x < 0 ? Math.PI / 2 : 0);
+    puff.rotation.x = rcs.z > 0 ? Math.PI / 2 : (rcs.z < 0 ? -Math.PI / 2 : 0);
+    smGroup.add(puff);
+    rcsPuffs[rcs.name] = puff;
+  });
+
+  // ─── 3. 4 ULTRAFLEX SOLAR ARRAY WINGS (X-FORMATION) ───
+  const solarWings: THREE.Group[] = [];
+  const solarCellMat = new THREE.MeshStandardMaterial({
+    color: 0x1e3a8a,
+    metalness: 0.9,
+    roughness: 0.12,
+    emissive: 0x0f172a,
+    emissiveIntensity: 0.3,
+  });
+
+  for (let wing = 0; wing < 4; wing++) {
+    const wingAngle = (wing * Math.PI) / 2 + Math.PI / 4;
+    const wingGroup = new THREE.Group();
+    wingGroup.position.set(Math.cos(wingAngle) * 1.25, 0.1, Math.sin(wingAngle) * 1.25);
+    wingGroup.rotation.y = -wingAngle;
+
+    // Articulated boom arm
+    const boomGeo = new THREE.BoxGeometry(0.85, 0.06, 0.06);
+    const boom = new THREE.Mesh(boomGeo, rcsBlockMat);
+    boom.position.x = 0.42;
+    wingGroup.add(boom);
+
+    // 3 Solar Array Panels
+    for (let p = 0; p < 3; p++) {
+      const panelGroup = new THREE.Group();
+      panelGroup.position.set(1.1 + p * 0.92, 0, 0);
+
+      const panelGeo = new THREE.BoxGeometry(0.86, 0.02, 0.52);
+      const panelMesh = new THREE.Mesh(panelGeo, solarCellMat);
+      panelMesh.castShadow = true;
+      panelGroup.add(panelMesh);
+
+      // Gold copper busbars
+      const busbar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.86, 0.025, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 })
+      );
+      panelGroup.add(busbar);
+
+      wingGroup.add(panelGroup);
+    }
+
+    smGroup.add(wingGroup);
+    solarWings.push(wingGroup);
+  }
+
+  shipGroup.add(smGroup);
+
+  // ─── 4. HIGH-PERFORMANCE AJ10 / RS-25 ROCKET ENGINE BELL ───
+  const engineGroup = new THREE.Group();
+  engineGroup.position.y = -2.1;
+
+  // Gimbal Ring
+  const gimbalRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.36, 0.04, 16, 24),
+    new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.2 })
+  );
+  gimbalRing.rotation.x = Math.PI / 2;
+  engineGroup.add(gimbalRing);
+
+  // Flared Niobium Bell Nozzle
+  const bellGeo = new THREE.CylinderGeometry(0.28, 0.72, 1.15, 32, 1, true);
+  const bellMat = new THREE.MeshStandardMaterial({
+    color: 0x334155,
+    metalness: 0.94,
+    roughness: 0.15,
+    side: THREE.DoubleSide,
+  });
+  const bellMesh = new THREE.Mesh(bellGeo, bellMat);
+  bellMesh.position.y = -0.58;
+  engineGroup.add(bellMesh);
+
+  // Hot Ceramic Interior Throat (Glows at high throttle)
+  const throatGeo = new THREE.ConeGeometry(0.26, 0.5, 24);
+  const throatMat = new THREE.MeshStandardMaterial({
+    color: 0x111827,
+    emissive: 0xef4444,
+    emissiveIntensity: 0,
+    roughness: 0.5,
+  });
+  const engineThroat = new THREE.Mesh(throatGeo, throatMat);
+  engineThroat.position.y = -0.22;
+  engineGroup.add(engineThroat);
+
+  // ─── 5. VOLUMETRIC SUPERSONIC EXHAUST PLUME ───
+  // Layer 1: Supersonic Core Flame (Blinding Cyan/White)
+  const corePlumeGeo = new THREE.ConeGeometry(0.32, 3.2, 24);
+  const corePlumeMat = new THREE.MeshBasicMaterial({
+    color: 0x67e8f9,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+  });
+  const plumeCore = new THREE.Mesh(corePlumeGeo, corePlumeMat);
+  plumeCore.rotation.x = Math.PI;
+  plumeCore.position.y = -2.7;
+  engineGroup.add(plumeCore);
+
+  // Layer 2: Mach Shock Diamonds (3 Nodes)
+  const shockDiamonds: THREE.Mesh[] = [];
+  const diamondMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+  });
+  for (let s = 0; s < 3; s++) {
+    const diaMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), diamondMat);
+    diaMesh.position.y = -1.8 - s * 0.7;
+    engineGroup.add(diaMesh);
+    shockDiamonds.push(diaMesh);
+  }
+
+  // Layer 3: Expanding Vacuum Plume Envelope (Amber-Orange)
+  const outerPlumeGeo = new THREE.ConeGeometry(0.75, 4.8, 24);
+  const outerPlumeMat = new THREE.MeshBasicMaterial({
+    color: 0xf97316,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+  });
+  const plumeOuter = new THREE.Mesh(outerPlumeGeo, outerPlumeMat);
+  plumeOuter.rotation.x = Math.PI;
+  plumeOuter.position.y = -3.5;
+  engineGroup.add(plumeOuter);
+
+  // Layer 4: Engine Light
+  const engineLight = new THREE.PointLight(0xf97316, 0, 45);
+  engineLight.position.y = -1.2;
+  engineGroup.add(engineLight);
+
+  shipGroup.add(engineGroup);
+
+  // Dynamic Update Method
+  const update = (throttle: number, time: number, rcsActive: boolean, heatAblationPct: number) => {
+    const thrNorm = Math.max(0, Math.min(100, throttle)) / 100;
+
+    // Plumes
+    if (thrNorm > 0) {
+      const flicker = 1 + (Math.random() - 0.5) * 0.15;
+      (plumeCore.material as THREE.MeshBasicMaterial).opacity = (0.45 + thrNorm * 0.55) * flicker;
+      plumeCore.scale.set(1, (0.5 + thrNorm * 1.8) * flicker, 1);
+
+      (plumeOuter.material as THREE.MeshBasicMaterial).opacity = (0.2 + thrNorm * 0.65) * flicker;
+      plumeOuter.scale.set(1 + thrNorm * 0.4, (0.5 + thrNorm * 1.8) * flicker, 1 + thrNorm * 0.4);
+
+      shockDiamonds.forEach((dia, idx) => {
+        (dia.material as THREE.MeshBasicMaterial).opacity = (0.35 + thrNorm * 0.65) * (1 - idx * 0.2);
+        dia.scale.setScalar(0.8 + thrNorm * 0.6 + Math.sin(time * 25 + idx) * 0.15);
+      });
+
+      (engineThroat.material as THREE.MeshStandardMaterial).emissiveIntensity = thrNorm * 2.5;
+      engineLight.intensity = thrNorm * 12;
+    } else {
+      (plumeCore.material as THREE.MeshBasicMaterial).opacity = 0;
+      (plumeOuter.material as THREE.MeshBasicMaterial).opacity = 0;
+      shockDiamonds.forEach((dia) => {
+        (dia.material as THREE.MeshBasicMaterial).opacity = 0;
+      });
+      (engineThroat.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
+      engineLight.intensity = 0;
+    }
+
+    // RCS Puffs
+    puffMat.opacity = rcsActive ? 0.8 : 0;
+
+    // Heat Shield incandescence during re-entry or Oberth atmospheric heating
+    if (heatAblationPct > 0) {
+      (heatShieldMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0xef4444);
+      (heatShieldMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = Math.min(3.0, heatAblationPct * 3.0);
+    } else {
+      (heatShieldMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
+    }
+
+    // Gentle solar array tracking
+    solarWings.forEach((w, i) => {
+      w.rotation.z = Math.sin(time * 0.2 + i * 0.5) * 0.04;
+    });
+  };
+
+  return {
+    shipGroup,
+    plumeCore,
+    plumeOuter,
+    shockDiamonds,
+    engineLight,
+    engineThroat,
+    heatShieldMesh,
+    rcsPuffs,
+    solarWings,
+    update,
+  };
+}
+
+function createPhotorealisticPlanet(
+  bodyType: string,
+  textureLoader: THREE.TextureLoader
+) {
+  const planetGroup = new THREE.Group();
+  let surfaceMesh: THREE.Mesh;
+  let cloudsMesh: THREE.Mesh | undefined;
+  let atmoHalo: THREE.Mesh | undefined;
+  let outerHaze: THREE.Mesh | undefined;
+  let atmoInterfaceRing: THREE.Mesh | undefined;
+
+  if (bodyType === 'EARTH') {
+    const R = 36;
+    const earthGeo = new THREE.SphereGeometry(R, 96, 96);
+    const earthTex = textureLoader.load('/assets/earth_orbit.jpg');
+    earthTex.wrapS = THREE.RepeatWrapping;
+    earthTex.wrapT = THREE.ClampToEdgeWrapping;
+
+    const earthMat = new THREE.MeshStandardMaterial({
+      map: earthTex,
+      roughness: 0.65,
+      metalness: 0.12,
+      emissive: 0x021020,
+      emissiveIntensity: 0.18,
+    });
+    surfaceMesh = new THREE.Mesh(earthGeo, earthMat);
+    surfaceMesh.receiveShadow = true;
+    planetGroup.add(surfaceMesh);
+
+    // Drifting Cloud Deck
+    const cloudsGeo = new THREE.SphereGeometry(R * 1.008, 64, 64);
+    const cloudsTex = textureLoader.load('/assets/planets/earth_clouds.png');
+    cloudsTex.wrapS = THREE.RepeatWrapping;
+    const cloudsMat = new THREE.MeshStandardMaterial({
+      map: cloudsTex,
+      transparent: true,
+      opacity: 0.45,
+      blending: THREE.NormalBlending,
+      roughness: 0.9,
+    });
+    cloudsMesh = new THREE.Mesh(cloudsGeo, cloudsMat);
+    planetGroup.add(cloudsMesh);
+
+    // Inner Rayleigh Scattering Atmospheric Limb
+    const atmoGeo = new THREE.SphereGeometry(R * 1.025, 64, 64);
+    const atmoMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.42,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+    });
+    atmoHalo = new THREE.Mesh(atmoGeo, atmoMat);
+    planetGroup.add(atmoHalo);
+
+    // Outer Soft Stratospheric Haze
+    const hazeGeo = new THREE.SphereGeometry(R * 1.055, 48, 48);
+    const hazeMat = new THREE.MeshBasicMaterial({
+      color: 0x0284c7,
+      transparent: true,
+      opacity: 0.18,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+    });
+    outerHaze = new THREE.Mesh(hazeGeo, hazeMat);
+    planetGroup.add(outerHaze);
+
+    // 120km Atmospheric Entry Interface Guide Ring
+    const ringGeo = new THREE.RingGeometry(R * 1.018, R * 1.022, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.45,
+    });
+    atmoInterfaceRing = new THREE.Mesh(ringGeo, ringMat);
+    atmoInterfaceRing.rotation.x = -Math.PI / 2;
+    planetGroup.add(atmoInterfaceRing);
+  } else if (bodyType === 'MOON') {
+    const R = 24;
+    const moonGeo = new THREE.SphereGeometry(R, 96, 96);
+    const moonTex = textureLoader.load('/assets/moon_texture.jpg');
+    const moonMat = new THREE.MeshStandardMaterial({
+      map: moonTex,
+      bumpMap: moonTex,
+      bumpScale: 0.45,
+      roughness: 0.94,
+      metalness: 0.04,
+    });
+    surfaceMesh = new THREE.Mesh(moonGeo, moonMat);
+    surfaceMesh.receiveShadow = true;
+    planetGroup.add(surfaceMesh);
+  } else if (bodyType === 'GAS_GIANT') {
+    const R = 48;
+    const jupGeo = new THREE.SphereGeometry(R, 96, 96);
+    const jupTex = textureLoader.load('/assets/planets/jupiter.jpg');
+    const jupMat = new THREE.MeshStandardMaterial({
+      map: jupTex,
+      roughness: 0.72,
+      metalness: 0.08,
+    });
+    surfaceMesh = new THREE.Mesh(jupGeo, jupMat);
+    surfaceMesh.receiveShadow = true;
+    planetGroup.add(surfaceMesh);
+
+    // Jovian Amber Atmospheric Glow
+    const jupAtmoGeo = new THREE.SphereGeometry(R * 1.035, 64, 64);
+    const jupAtmoMat = new THREE.MeshBasicMaterial({
+      color: 0xf59e0b,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+    });
+    atmoHalo = new THREE.Mesh(jupAtmoGeo, jupAtmoMat);
+    planetGroup.add(atmoHalo);
+  } else {
+    // MARS
+    const R = 28;
+    const marsGeo = new THREE.SphereGeometry(R, 96, 96);
+    const marsTex = textureLoader.load('/assets/mars_texture.jpg');
+    const marsMat = new THREE.MeshStandardMaterial({
+      map: marsTex,
+      bumpMap: marsTex,
+      bumpScale: 0.35,
+      roughness: 0.88,
+      metalness: 0.05,
+    });
+    surfaceMesh = new THREE.Mesh(marsGeo, marsMat);
+    surfaceMesh.receiveShadow = true;
+    planetGroup.add(surfaceMesh);
+
+    const marsAtmoGeo = new THREE.SphereGeometry(R * 1.02, 48, 48);
+    const marsAtmoMat = new THREE.MeshBasicMaterial({
+      color: 0xf97316,
+      transparent: true,
+      opacity: 0.25,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+    });
+    atmoHalo = new THREE.Mesh(marsAtmoGeo, marsAtmoMat);
+    planetGroup.add(atmoHalo);
+  }
+
+  return { planetGroup, surfaceMesh, cloudsMesh, atmoHalo, outerHaze, atmoInterfaceRing };
+}
+
+function createDebrisMeshes(scene: THREE.Scene, count: number): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = [];
+
+  const panelMat = new THREE.MeshStandardMaterial({
+    color: 0x1e3a8a,
+    metalness: 0.9,
+    roughness: 0.15,
+  });
+  const goldFoilMat = new THREE.MeshStandardMaterial({
+    color: 0xd97706,
+    metalness: 0.95,
+    roughness: 0.25,
+  });
+  const metalMat = new THREE.MeshStandardMaterial({
+    color: 0x94a3b8,
+    metalness: 0.85,
+    roughness: 0.3,
+  });
+  const charredMat = new THREE.MeshStandardMaterial({
+    color: 0x334155,
+    metalness: 0.6,
+    roughness: 0.7,
+  });
+
+  for (let i = 0; i < count; i++) {
+    let mesh: THREE.Mesh;
+    const variant = i % 4;
+
+    if (variant === 0) {
+      // Shattered Solar Array Panel
+      mesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.65), panelMat);
+    } else if (variant === 1) {
+      // Rocket Tank / Interstage Cylinder
+      mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.4, 12), metalMat);
+    } else if (variant === 2) {
+      // Defunct Satellite Body
+      mesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.85), goldFoilMat);
+    } else {
+      // Jagged Titanium Fragment
+      mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48, 1), charredMat);
+      mesh.scale.set(1.5, 0.45, 1.2);
+    }
+
+    mesh.castShadow = true;
+    mesh.visible = false;
+    scene.add(mesh);
+    meshes.push(mesh);
+  }
+
+  return meshes;
+}
 
 interface HardcoreSurvivalSimulatorProps {
   initialMissionId?: HardcoreMissionId;
@@ -90,6 +658,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     heatShield: 100,
     countdownTimer: 300,
     shakeIntensity: 0,
+    rcsTimer: 0,
     maxAltitudeKm: 0,
     outcome: 'IN_PROGRESS' as 'IN_PROGRESS' | 'SUCCESS' | 'FAILED',
     failureReason: '',
@@ -116,6 +685,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       yawRad: 0,
       orbitalTheta: 0,
       invulnTimer: 0,
+      rcsTimer: 0,
       throttle: 0,
       fuel: mission.initialFuelPct,
       hull: 100,
@@ -167,19 +737,22 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         setTelemetry((prev) => ({ ...prev, throttlePct: 0 }));
       } else if (key === 'a') {
         physStateRef.current.pitchRad += 0.05;
+        physStateRef.current.rcsTimer = 0.3;
         setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
       } else if (key === 'd') {
         physStateRef.current.pitchRad -= 0.05;
+        physStateRef.current.rcsTimer = 0.3;
         setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
       } else if (key === ' ' || e.code === 'Space') {
-        // RCS Pulse
+        // RCS Translation Pulse
         e.preventDefault();
+        physStateRef.current.rcsTimer = 0.3;
         if (activeMission.rcsOnly) {
           physStateRef.current.pitchRad += 0.04;
           physStateRef.current.vxKms += 0.06;
           physStateRef.current.countdownTimer = Math.max(0, physStateRef.current.countdownTimer - 1.2);
-          if (soundEnabled) soundFx.playThruster();
         }
+        if (soundEnabled) soundFx.playThruster();
       } else if (key === 'c') {
         setCameraMode((prev) => (prev === 'orbit' ? 'chase' : prev === 'chase' ? 'cockpit' : 'orbit'));
       }
@@ -213,112 +786,87 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // 2. Lighting
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
-    sunLight.position.set(200, 150, 300);
+    // 2. Realistic Space Lighting
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 3.2);
+    sunLight.position.set(250, 180, 220);
+    sunLight.castShadow = true;
     scene.add(sunLight);
 
-    const ambientLight = new THREE.AmbientLight(0x1e293b, 0.8);
+    // Planetary Albedo Bounce Light (Soft blue light bouncing from Earth onto the underside of the spacecraft)
+    const albedoColor = activeMission.targetBody === 'EARTH' ? 0x38bdf8 : (activeMission.targetBody === 'GAS_GIANT' ? 0xf59e0b : 0x94a3b8);
+    const albedoLight = new THREE.DirectionalLight(albedoColor, 0.75);
+    albedoLight.position.set(0, -100, 0);
+    scene.add(albedoLight);
+
+    const ambientLight = new THREE.AmbientLight(0x0f172a, 0.4);
     scene.add(ambientLight);
 
-    const exhaustLight = new THREE.PointLight(0xf97316, 0, 50);
-    scene.add(exhaustLight);
-
-    // 3. Deep Space Starfield
+    // 3. Multi-Spectral Deep Space Starfield (4,000 Stars with Realistic Stellar Spectral Types)
+    const starCount = 4000;
     const starsGeo = new THREE.BufferGeometry();
-    const starCount = 2500;
     const starPositions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i += 3) {
-      starPositions[i] = (Math.random() - 0.5) * 4000;
-      starPositions[i + 1] = (Math.random() - 0.5) * 4000;
-      starPositions[i + 2] = (Math.random() - 0.5) * 4000;
+    const starColors = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount; i++) {
+      const idx = i * 3;
+      const r = 2500 + Math.random() * 2000;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+      starPositions[idx] = r * Math.sin(phi) * Math.cos(theta);
+      starPositions[idx + 1] = r * Math.sin(phi) * Math.sin(theta);
+      starPositions[idx + 2] = r * Math.cos(phi);
+
+      const spec = Math.random();
+      if (spec > 0.85) {
+        // Hot blue star (O/B type)
+        starColors[idx] = 0.65;
+        starColors[idx + 1] = 0.85;
+        starColors[idx + 2] = 1.0;
+      } else if (spec > 0.6) {
+        // White star (A/F type)
+        starColors[idx] = 0.95;
+        starColors[idx + 1] = 0.95;
+        starColors[idx + 2] = 1.0;
+      } else if (spec > 0.25) {
+        // Yellow solar analogue (G type)
+        starColors[idx] = 1.0;
+        starColors[idx + 1] = 0.95;
+        starColors[idx + 2] = 0.75;
+      } else {
+        // Red dwarf (M type)
+        starColors[idx] = 1.0;
+        starColors[idx + 1] = 0.6;
+        starColors[idx + 2] = 0.45;
+      }
     }
     starsGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.8, transparent: true, opacity: 0.85 });
+    starsGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+    const starsMat = new THREE.PointsMaterial({
+      size: 2.2,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      sizeAttenuation: false,
+    });
     const starField = new THREE.Points(starsGeo, starsMat);
     scene.add(starField);
 
-    // 4. Central Celestial Body Mesh
+    // 4. Central Photorealistic Celestial Body
     const bodyConfig = CELESTIAL_BODIES[activeMission.targetBody];
-    const bodyRadiusScale = 12; // Scaled for 3D viewport
-    const bodyGeo = new THREE.SphereGeometry(bodyRadiusScale, 64, 64);
+    const textureLoader = new THREE.TextureLoader();
+    const planet = createPhotorealisticPlanet(activeMission.targetBody, textureLoader);
+    scene.add(planet.planetGroup);
 
-    let bodyMat: THREE.Material;
-    if (activeMission.targetBody === 'EARTH') {
-      bodyMat = new THREE.MeshStandardMaterial({
-        color: 0x1d4ed8,
-        roughness: 0.6,
-        metalness: 0.1,
-        emissive: 0x0a192f,
-        emissiveIntensity: 0.2,
-      });
-    } else if (activeMission.targetBody === 'MOON') {
-      bodyMat = new THREE.MeshStandardMaterial({
-        color: 0x94a3b8,
-        roughness: 0.9,
-        metalness: 0.05,
-      });
-    } else {
-      // GAS GIANT (Striped Jovian atmosphere)
-      bodyMat = new THREE.MeshStandardMaterial({
-        color: 0xd97706,
-        roughness: 0.7,
-        metalness: 0.1,
-        emissive: 0x451a03,
-        emissiveIntensity: 0.3,
-      });
-    }
+    // 5. Authentic NASA Spacecraft (Command Capsule + Service Module + Solar Wings + Engine)
+    const craft = createPhotorealisticSpacecraft();
+    scene.add(craft.shipGroup);
 
-    const planetMesh = new THREE.Mesh(bodyGeo, bodyMat);
-    planetMesh.position.set(0, -bodyRadiusScale - 10, -30);
-    scene.add(planetMesh);
-
-    // Atmosphere Glow Mesh
-    if (bodyConfig.atmosphereHeightKm > 0) {
-      const atmoGeo = new THREE.SphereGeometry(bodyRadiusScale * 1.035, 48, 48);
-      const atmoMat = new THREE.MeshBasicMaterial({
-        color: activeMission.targetBody === 'GAS_GIANT' ? 0xf59e0b : 0x38bdf8,
-        transparent: true,
-        opacity: 0.25,
-        side: THREE.BackSide,
-      });
-      const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
-      planetMesh.add(atmoMesh);
-    }
-
-    // 5. 3D Spacecraft Group
-    const shipGroup = new THREE.Group();
-
-    // Command Module (Cone)
-    const cmGeo = new THREE.ConeGeometry(0.7, 1.4, 16);
-    const cmMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 });
-    const cmMesh = new THREE.Mesh(cmGeo, cmMat);
-    cmMesh.position.y = 1.0;
-    shipGroup.add(cmMesh);
-
-    // Service Module (Cylinder)
-    const smGeo = new THREE.CylinderGeometry(0.7, 0.7, 1.8, 16);
-    const smMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.4, roughness: 0.4 });
-    const smMesh = new THREE.Mesh(smGeo, smMat);
-    smMesh.position.y = -0.4;
-    shipGroup.add(smMesh);
-
-    // Engine Bell
-    const bellGeo = new THREE.CylinderGeometry(0.25, 0.55, 0.6, 16);
-    const bellMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.1 });
-    const bellMesh = new THREE.Mesh(bellGeo, bellMat);
-    bellMesh.position.y = -1.6;
-    shipGroup.add(bellMesh);
-
-    // Fiery Engine Plume
-    const plumeGeo = new THREE.ConeGeometry(0.45, 2.4, 16);
-    const plumeMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0 });
-    const plumeMesh = new THREE.Mesh(plumeGeo, plumeMat);
-    plumeMesh.rotation.x = Math.PI;
-    plumeMesh.position.y = -3.0;
-    shipGroup.add(plumeMesh);
-
-    scene.add(shipGroup);
+    // Interactive 360° OrbitControls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 3.5;
+    controls.maxDistance = 140;
 
     // 6. Orbital Trajectory Prediction Line
     const trajectoryPoints = 120;
@@ -328,7 +876,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     const trajMat = new THREE.LineBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
-      opacity: activeMission.hideTrajectoryLine ? 0 : 0.7,
+      opacity: activeMission.hideTrajectoryLine ? 0 : 0.8,
       linewidth: 2,
     });
     const trajLine = new THREE.Line(trajGeo, trajMat);
@@ -337,14 +885,15 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     // 7. Debris Meshes for Kessler Syndrome
     debrisMeshesRef.current = [];
     if (activeMission.hasDebrisField) {
-      const debMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-      for (let i = 0; i < 70; i++) {
-        const dGeo = new THREE.DodecahedronGeometry(0.25 + Math.random() * 0.4);
-        const dMesh = new THREE.Mesh(dGeo, debMat);
-        scene.add(dMesh);
-        debrisMeshesRef.current.push(dMesh);
-      }
+      debrisMeshesRef.current = createDebrisMeshes(scene, 45);
     }
+
+    // 3D Threat Target Reticle (Snaps to nearest approaching debris hazard)
+    const reticleGeo = new THREE.OctahedronGeometry(1.2, 0);
+    const reticleMat = new THREE.MeshBasicMaterial({ color: 0xef4444, wireframe: true });
+    const threatReticle = new THREE.Mesh(reticleGeo, reticleMat);
+    threatReticle.visible = false;
+    scene.add(threatReticle);
 
     // 8. 60FPS Physics Simulation & Render Loop
     let animId: number;
@@ -358,6 +907,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       lastTime = now;
 
       const p = physStateRef.current;
+      let nearestDebrisList: Array<{ x: number; y: number; z: number; distanceKm: number }> = [];
 
       if (!isPaused && p.outcome === 'IN_PROGRESS') {
         p.time += dt;
@@ -465,7 +1015,6 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
 
         // Debris collision & proximity tracking for Mission 1 (Kessler Syndrome)
         if (p.invulnTimer > 0) p.invulnTimer -= dt;
-        let nearestDebrisList: Array<{ x: number; y: number; z: number; distanceKm: number }> = [];
         if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
           const px = p.rKm * Math.cos(p.orbitalTheta);
           const pz = p.rKm * Math.sin(p.orbitalTheta);
@@ -592,33 +1141,79 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         }
       }
 
-      // 9. Three.js Visual Plume & Exhaust Light
+      // 9. Update Spacecraft Model Visuals & Rocket Engine Dynamics
       const thr = p.throttle;
-      plumeMat.opacity = thr > 0 ? 0.3 + (thr / 100) * 0.7 : 0;
-      plumeMesh.scale.set(1, 0.6 + (thr / 100) * 2.0, 1);
-      exhaustLight.intensity = (thr / 100) * 8.0;
+      const heatAblation = activeMission.hasHeatShield ? (100 - p.heatShield) / 100 : 0;
+      const reEntryHeat = (p.altKm < 120 && p.vKms > 6) ? Math.min(1.0, (120 - p.altKm) / 60) : 0;
+      craft.update(thr, p.time, p.rcsTimer > 0, Math.max(heatAblation, reEntryHeat));
 
       // Update 3D Spacecraft orientation & visual response
-      shipGroup.rotation.z = -p.pitchRad;
-      shipGroup.rotation.x = Math.sin(p.time * 2.5) * 0.03;
-      shipGroup.rotation.y = (p.yawRad || 0) + Math.cos(p.time * 1.5) * 0.02;
+      craft.shipGroup.rotation.z = -p.pitchRad;
+      craft.shipGroup.rotation.x = Math.sin(p.time * 2.5) * 0.02;
+      craft.shipGroup.rotation.y = (p.yawRad || 0) + Math.cos(p.time * 1.5) * 0.015;
 
-      // 10. Update 3D Debris Meshes
+      // 10. Update Central Celestial Body Placement & Rotation
+      const R = activeMission.targetBody === 'GAS_GIANT' ? 48 : (activeMission.targetBody === 'MOON' ? 24 : 36);
+      const altRatio = Math.min(2.5, p.altKm / Math.max(1, bodyConfig.radiusKm));
+      const planetDist = R + 4.5 + altRatio * (R * 2.2);
+      planet.planetGroup.position.set(0, -planetDist, -8);
+
+      // Rotate planet surface & drifting cloud layer independently
+      planet.surfaceMesh.rotation.y += 0.0006;
+      if (planet.cloudsMesh) planet.cloudsMesh.rotation.y += 0.00095;
+      starField.rotation.y += 0.0001;
+
+      // 11. Update 3D Space Debris Meshes & Threat Reticle (Kessler Syndrome)
       if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
         const px = p.rKm * Math.cos(p.orbitalTheta);
         const pz = p.rKm * Math.sin(p.orbitalTheta);
+
+        let closestVisibleMesh: THREE.Mesh | null = null;
+        let closestVisDist = 9999;
+
         for (let i = 0; i < debrisMeshesRef.current.length; i++) {
           const dMesh = debrisMeshesRef.current[i];
           const dData = debrisFieldRef.current[i];
           if (dMesh && dData) {
-            dMesh.position.set((dData.x - px) * 0.08, dData.y * 0.08, (dData.z - pz) * 0.08);
-            dMesh.rotation.x += 0.02;
-            dMesh.rotation.y += 0.03;
+            const dx = dData.x - px;
+            const dy = dData.y;
+            const dz = dData.z - pz;
+            const distKm = Math.hypot(dx, dy, dz);
+
+            // Display debris within 160 km in visible frustum range
+            if (distKm < 160) {
+              dMesh.visible = true;
+              const visDist = 3.8 + (distKm / 160) * 44;
+              const normX = dx / Math.max(0.1, distKm);
+              const normY = dy / Math.max(0.1, distKm);
+              const normZ = dz / Math.max(0.1, distKm);
+
+              dMesh.position.set(normX * visDist, normY * visDist, normZ * visDist);
+              dMesh.rotation.x += 0.035;
+              dMesh.rotation.y += 0.045;
+
+              if (visDist < closestVisDist) {
+                closestVisDist = visDist;
+                closestVisibleMesh = dMesh;
+              }
+            } else {
+              dMesh.visible = false;
+            }
           }
+        }
+
+        // Snap 3D Threat Target Reticle to closest approaching debris object
+        if (nearestDebrisList[0] && nearestDebrisList[0].distanceKm < 35 && closestVisibleMesh) {
+          threatReticle.visible = true;
+          threatReticle.position.copy(closestVisibleMesh.position);
+          threatReticle.rotation.y += 0.08;
+          threatReticle.rotation.z += 0.05;
+        } else {
+          threatReticle.visible = false;
         }
       }
 
-      // 11. Update Predicted Orbit Trajectory Line (if not blinded)
+      // 12. Update Predicted Orbit Trajectory Line (if not blinded)
       if (!activeMission.hideTrajectoryLine) {
         const positions = trajGeo.attributes.position.array as Float32Array;
         const trajMu = bodyConfig.mu;
@@ -631,34 +1226,39 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
 
         for (let i = 0; i < trajectoryPoints; i++) {
           const theta = (i / trajectoryPoints) * Math.PI * 2;
-          const rCurve = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
-          const scaleR = (rCurve / bodyConfig.radiusKm) * bodyRadiusScale;
+          const rCurve = (a * (1 - e * e)) / Math.max(0.01, 1 + e * Math.cos(theta));
+          const scaleR = (rCurve / bodyConfig.radiusKm) * R;
 
           positions[i * 3] = Math.cos(theta) * scaleR;
-          positions[i * 3 + 1] = 0;
-          positions[i * 3 + 2] = Math.sin(theta) * scaleR - 30;
+          positions[i * 3 + 1] = Math.sin(p.pitchRad * 0.2) * 1.5;
+          positions[i * 3 + 2] = Math.sin(theta) * scaleR - 8;
         }
         trajGeo.attributes.position.needsUpdate = true;
       }
 
-      // 12. Camera View & Dynamic Shake
+      // 13. Camera View & Dynamic Shake
       const shakeX = (Math.random() - 0.5) * p.shakeIntensity * 0.35;
       const shakeY = (Math.random() - 0.5) * p.shakeIntensity * 0.35;
 
-      if (cameraMode === 'chase') {
-        camera.position.set(0 + shakeX, 3.5 + shakeY, 12);
-        camera.lookAt(shipGroup.position);
+      if (cameraMode === 'orbit') {
+        controls.enabled = true;
+        controls.target.copy(craft.shipGroup.position);
+        controls.update();
       } else if (cameraMode === 'cockpit') {
-        camera.position.set(0 + shakeX, 1.2 + shakeY, 0.5);
-        camera.lookAt(0, 5, -20);
+        controls.enabled = false;
+        camera.position.set(0 + shakeX, 1.35 + shakeY, 0.45);
+        camera.lookAt(0, 1.2, -30);
       } else {
-        camera.position.set(0 + shakeX, 18 + shakeY, 32);
-        camera.lookAt(planetMesh.position);
+        // Dynamic Chase Camera with G-force lag
+        controls.enabled = false;
+        const chasePos = new THREE.Vector3(
+          0 + shakeX,
+          3.6 + shakeY - p.pitchRad * 1.2,
+          11.5 + shakeX
+        );
+        camera.position.lerp(chasePos, dt * 5.0);
+        camera.lookAt(craft.shipGroup.position.clone().add(new THREE.Vector3(0, 0.4, 0)));
       }
-
-      // Slowly rotate planet & stars
-      planetMesh.rotation.y += 0.0008;
-      starField.rotation.y += 0.0001;
 
       renderer.render(scene, camera);
     };
@@ -679,6 +1279,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
+      controls.dispose();
       disposeThreeScene(renderer, scene, container);
     };
   }, [activeMission, cameraMode, isPaused, soundEnabled]);

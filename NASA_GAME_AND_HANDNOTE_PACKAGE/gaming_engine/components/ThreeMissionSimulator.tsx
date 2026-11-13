@@ -634,6 +634,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const cockpitLookRef = useRef({ yaw: 0, pitch: 0 });
   const ingenuityRotor1Ref = useRef<THREE.Mesh | null>(null);
   const ingenuityRotor2Ref = useRef<THREE.Mesh | null>(null);
+  const ingenuityGroupRef = useRef<THREE.Group | null>(null);
   const umbilicalArmsRef = useRef<THREE.Group[]>([]);
   const stage1MeshRef = useRef<THREE.Group | null>(null);
   const stage2MeshRef = useRef<THREE.Group | null>(null);
@@ -752,7 +753,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     simStateRef.current.statusText = `${cfg.badge} ${cfg.label} ACTIVE [${cfg.ageRange}] · ${cfg.tagline}`;
     simStateRef.current.statusColor = tier === 'cadet' ? '#38bdf8' : tier === 'officer' ? '#fbbf24' : '#c084fc';
     if (guidanceCorridorRef.current) {
-      guidanceCorridorRef.current.visible = tier === 'cadet';
+      guidanceCorridorRef.current.visible = tier === 'cadet' && mission.gameType !== 'rover';
     }
   };
 
@@ -1679,12 +1680,12 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     const scene = new THREE.Scene();
     const isMarsRover = mission.gameType === 'rover' && !isLunar;
     const spaceVoidColor = visualTone === 'TACTICAL_HUD' ? 0x010804 : 0x020409;
-    const marsSkyColor = 0xb45309;
+    const marsSkyColor = 0x8f5d43; // Authentic Jezero Crater dusty ochre-butterscotch daylight sky
 
     const daySkyColor = new THREE.Color(0.22, 0.74, 0.97); // Daytime Florida Coast Azure
     if (isMarsRover) {
       scene.background = new THREE.Color(marsSkyColor);
-      scene.fog = new THREE.FogExp2(0x9a3412, 0.0016);
+      scene.fog = new THREE.FogExp2(0x825239, 0.0014); // Soft ferric atmospheric dust haze
     } else if (mission.gameType === 'launch') {
       // Photorealistic Florida Daytime Sky on Pad
       scene.background = daySkyColor;
@@ -1802,8 +1803,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
     // 2. Multi-Source Lighting
     const sunLight = new THREE.DirectionalLight(
-      isMarsRover ? 0xffedd5 : 0xfffaed,
-      isMarsRover ? 3.4 : (mission.gameType === 'launch' ? 3.8 : (visualTone === 'CINEMATIC_GRADE' ? 3.5 : 2.9))
+      isMarsRover ? 0xfff3e2 : 0xfffaed,
+      isMarsRover ? 2.6 : (mission.gameType === 'launch' ? 3.8 : (visualTone === 'CINEMATIC_GRADE' ? 3.5 : 2.9))
     );
     sunLight.position.set(280, 480, 220);
     sunLight.castShadow = true;
@@ -1855,11 +1856,11 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
     const ambientLight = new THREE.AmbientLight(
       isMarsRover
-        ? 0x9a3412
+        ? 0x5a3c2c // Warm dusty Mars atmospheric ambient fill
         : mission.gameType === 'launch'
         ? 0xbae6fd // Warm Florida daylight ambient
         : 0x0e1b2f,
-      isMarsRover ? 1.6 : (mission.gameType === 'launch' ? 1.15 : 0.7)
+      isMarsRover ? 0.75 : (mission.gameType === 'launch' ? 1.15 : 0.7)
     );
     scene.add(ambientLight);
 
@@ -1868,7 +1869,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       earthAlbedoLight.position.set(0, -300, 0);
       scene.add(earthAlbedoLight);
     } else {
-      const marsAlbedoLight = new THREE.DirectionalLight(0xc2410c, 1.2);
+      // Natural diffuse ground bounce from rusty hematite regolith
+      const marsAlbedoLight = new THREE.DirectionalLight(0x5c3826, 0.45);
       marsAlbedoLight.position.set(0, 50, 0);
       scene.add(marsAlbedoLight);
     }
@@ -3622,10 +3624,10 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         const marsMat = new THREE.MeshStandardMaterial({
           map: marsTex,
           bumpMap: marsTex,
-          bumpScale: 0.6,
-          color: 0xc2410c,
-          roughness: 0.88,
-          metalness: 0.05,
+          bumpScale: 0.45,
+          color: 0x7c452e, // Authentic Jezero Crater oxidized regolith
+          roughness: 0.94,
+          metalness: 0.02,
           side: THREE.DoubleSide,
         });
         const marsTerrain = new THREE.Mesh(marsGeo, marsMat);
@@ -3633,39 +3635,92 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         marsTerrain.receiveShadow = true;
         scene.add(marsTerrain);
 
-        // Scattered Authentic Martian Boulders & Basalt Rocks
-        const rockColors = [0x3b1d11, 0x4a2416, 0x2e180d, 0x5a2d1c, 0x38190d];
-        const baseRockGeo = new THREE.DodecahedronGeometry(1, 1);
-        for (let r = 0; r < 75; r++) {
-          const rRad = 0.6 + Math.random() * 2.2;
-          const rockMat = new THREE.MeshStandardMaterial({
-            color: rockColors[r % rockColors.length],
-            roughness: 0.94,
-            metalness: 0.08,
-            bumpMap: marsTex,
-            bumpScale: 0.35,
-          });
-          const rock = new THREE.Mesh(baseRockGeo, rockMat);
+        // ─── PHOTOREALISTIC PROCEDURALLY DEFORMED MARTIAN BOULDERS & PEBBLES ───
+        // Generates organic weathered rock archetypes (ventifacts, tabular mudstones, impact ejecta)
+        const createDeformedRockGeometry = (baseRadius: number, archetype: number) => {
+          const geo = new THREE.IcosahedronGeometry(baseRadius, 2);
+          const pos = geo.attributes.position;
+          const v = new THREE.Vector3();
+          for (let i = 0; i < pos.count; i++) {
+            v.fromBufferAttribute(pos, i);
+            // Multi-harmonic 3D organic geological noise
+            const n1 = Math.sin(v.x * 2.8) * Math.cos(v.y * 2.8) * Math.sin(v.z * 2.8);
+            const n2 = Math.cos(v.x * 5.4 + 1.2) * Math.sin(v.z * 5.4);
+            const noise = 1.0 + n1 * 0.24 + n2 * 0.12;
+            v.multiplyScalar(noise);
+
+            // Archetype 0: Tabular layered sedimentary delta slab (flattened along Y)
+            if (archetype === 0) {
+              v.y *= 0.52;
+              v.x *= 1.35;
+            }
+            // Archetype 1: Ventifact wind-fluted basalt boulder (tapered along prevailing wind axis)
+            else if (archetype === 1) {
+              if (v.z > 0) {
+                v.x *= 0.82;
+                v.y *= 0.85;
+              }
+            }
+            // Archetype 2: Angular fractured impact ejecta block
+            else if (archetype === 2) {
+              v.x += (Math.sin(v.y * 4) > 0 ? 0.15 : -0.15) * baseRadius;
+            }
+
+            // Naturally flatten bottom face so boulder sits firmly embedded in regolith
+            if (v.y < -baseRadius * 0.22) {
+              v.y *= 0.45;
+            }
+
+            pos.setXYZ(i, v.x, v.y, v.z);
+          }
+          geo.computeVertexNormals();
+          return geo;
+        };
+
+        const rockGeos = [
+          createDeformedRockGeometry(1.0, 0), // Tabular mudstone slab
+          createDeformedRockGeometry(1.0, 1), // Wind-fluted ventifact
+          createDeformedRockGeometry(1.0, 2), // Angular impact fragment
+          createDeformedRockGeometry(0.5, 1), // Small weathered pebble
+        ];
+
+        // Authentic NASA Jezero / Gale Crater rock color palette:
+        // Dark volcanic basalt, hematite-coated mudstone, desert varnish crust, dusty tan crevices
+        const rockMats = [
+          new THREE.MeshStandardMaterial({ color: 0x271e19, roughness: 0.94, metalness: 0.10, bumpMap: marsTex, bumpScale: 0.4 }),
+          new THREE.MeshStandardMaterial({ color: 0x3d261c, roughness: 0.91, metalness: 0.08, bumpMap: marsTex, bumpScale: 0.45 }),
+          new THREE.MeshStandardMaterial({ color: 0x31231a, roughness: 0.88, metalness: 0.14, bumpMap: marsTex, bumpScale: 0.35 }),
+          new THREE.MeshStandardMaterial({ color: 0x4a2e21, roughness: 0.95, metalness: 0.04, bumpMap: marsTex, bumpScale: 0.5 }),
+          new THREE.MeshStandardMaterial({ color: 0x543628, roughness: 0.96, metalness: 0.02, bumpMap: marsTex, bumpScale: 0.4 }),
+        ];
+
+        // Distribute 110 varied boulders & pebbles across Jezero Crater floor
+        for (let r = 0; r < 110; r++) {
+          const isPebble = r < 50;
+          const isLargeBoulder = r >= 95;
+          const rRad = isPebble ? (0.25 + Math.random() * 0.4) : (isLargeBoulder ? (1.8 + Math.random() * 1.5) : (0.7 + Math.random() * 0.9));
+          const geoIdx = isPebble ? 3 : (r % 3);
+          const matIdx = (r + geoIdx) % rockMats.length;
+
+          const rock = new THREE.Mesh(rockGeos[geoIdx], rockMats[matIdx]);
           const a = Math.random() * Math.PI * 2;
-          const d = 14 + Math.random() * 180;
+          const d = isPebble ? (6 + Math.random() * 45) : (18 + Math.random() * 160);
           const rockX = Math.cos(a) * d;
           const rockZ = Math.sin(a) * d;
 
-          // Organic tabular/flattened scaling to look like real weathered Martian rocks
-          const sx = rRad * (0.8 + Math.random() * 0.7);
-          const sy = rRad * (0.35 + Math.random() * 0.45);
-          const sz = rRad * (0.8 + Math.random() * 0.7);
+          const sx = rRad * (0.85 + Math.random() * 0.35);
+          const sy = rRad * (0.65 + Math.random() * 0.3);
+          const sz = rRad * (0.85 + Math.random() * 0.35);
           rock.scale.set(sx, sy, sz);
 
-          // Random 3-axis geological tilt
           rock.rotation.set(
+            (Math.random() - 0.5) * 0.4, // Subtle tilt so flattened base remains downward
             Math.random() * Math.PI * 2,
-            Math.random() * Math.PI * 2,
-            Math.random() * Math.PI * 2
+            (Math.random() - 0.5) * 0.4
           );
 
-          // Embed lower half naturally in Martian regolith
-          const rockY = getTerrainHeight(rockX, rockZ, false) + sy * 0.25;
+          // Embed lower third naturally into the regolith
+          const rockY = getTerrainHeight(rockX, rockZ, false) + sy * 0.12;
           rock.position.set(rockX, rockY, rockZ);
           rock.castShadow = true;
           rock.receiveShadow = true;
@@ -3987,46 +4042,83 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           playerVehicle.position.set(0, 0.05, 0);
           playerVehicleRef.current = playerVehicle;
 
-          // ─── 3D INGENUITY MARS HELICOPTER (SCOUTING AHEAD) ───
+          // ─── 3D INGENUITY MARS HELICOPTER (STATIONED AT WRIGHT BROTHERS FIELD) ───
           const ingGroup = new THREE.Group();
-          const ingGroundY = getTerrainHeight(0, -8.0, false);
-          ingGroup.position.set(0, ingGroundY + 2.2, -8.0);
+          const initIngGroundY = getTerrainHeight(14, -20, false);
+          ingGroup.position.set(14, initIngGroundY + 0.35, -20);
+          ingenuityGroupRef.current = ingGroup;
 
-          const fusGeo = new THREE.BoxGeometry(0.6, 0.5, 0.6);
-          const fusMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 });
+          // Avionics Cube with Gold MLI Insulation
+          const fusGeo = new THREE.BoxGeometry(0.55, 0.48, 0.55);
+          const fusMat = new THREE.MeshStandardMaterial({
+            color: 0xd97706,
+            metalness: 0.95,
+            roughness: 0.18,
+          });
           const fus = new THREE.Mesh(fusGeo, fusMat);
           ingGroup.add(fus);
 
-          const solGeo = new THREE.BoxGeometry(0.7, 0.04, 0.7);
-          const solMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.9, roughness: 0.1 });
+          // Top Rectangular Sapphire Solar Array
+          const solGeo = new THREE.BoxGeometry(0.72, 0.03, 0.72);
+          const solMat = new THREE.MeshStandardMaterial({
+            color: 0x1e3a8a,
+            metalness: 0.92,
+            roughness: 0.12,
+          });
           const sol = new THREE.Mesh(solGeo, solMat);
-          sol.position.y = 0.28;
+          sol.position.y = 0.42;
           ingGroup.add(sol);
 
-          const legPositions = [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]];
+          // Mast Antenna & Downward Nav-Cam Sensor
+          const mastGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.35, 6);
+          const mastMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.9 });
+          const mast = new THREE.Mesh(mastGeo, mastMat);
+          mast.position.set(0, 0.58, 0);
+          ingGroup.add(mast);
+
+          // 4 Splayed Carbon-Composite Landing Legs with Foot Pads
+          const legPositions = [[-0.38, -0.38], [0.38, -0.38], [-0.38, 0.38], [0.38, 0.38]];
           legPositions.forEach(([lx, lz]) => {
-            const legGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6);
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+            const legGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.65, 6);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
             const leg = new THREE.Mesh(legGeo, legMat);
-            leg.position.set(lx * 1.4, -0.35, lz * 1.4);
-            leg.rotation.z = lx * 0.5;
-            leg.rotation.x = -lz * 0.5;
+            leg.position.set(lx * 1.35, -0.24, lz * 1.35);
+            leg.rotation.z = lx * 0.55;
+            leg.rotation.x = -lz * 0.55;
             ingGroup.add(leg);
+
+            // Foot pad
+            const padGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8);
+            const pad = new THREE.Mesh(padGeo, legMat);
+            pad.position.set(lx * 1.7, -0.35, lz * 1.7);
+            ingGroup.add(pad);
           });
 
-          const b1Geo = new THREE.BoxGeometry(2.4, 0.02, 0.14);
-          const bMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
-          const blade1 = new THREE.Mesh(b1Geo, bMat);
-          blade1.position.y = 0.5;
-          ingGroup.add(blade1);
-          ingenuityRotor1Ref.current = blade1;
+          // Dual Counter-Rotating Carbon Fiber Rotors
+          const bMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.3 });
+          const rotorGroup1 = new THREE.Group();
+          rotorGroup1.position.y = 0.22;
+          const blade1 = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.018, 0.13), bMat);
+          rotorGroup1.add(blade1);
+          // High-speed rotor blur disc
+          const blurMat = new THREE.MeshBasicMaterial({ color: 0x334155, transparent: true, opacity: 0.22, side: THREE.DoubleSide });
+          const blurDisk1 = new THREE.Mesh(new THREE.CircleGeometry(1.15, 24), blurMat);
+          blurDisk1.rotation.x = -Math.PI / 2;
+          rotorGroup1.add(blurDisk1);
+          ingGroup.add(rotorGroup1);
+          ingenuityRotor1Ref.current = rotorGroup1 as any;
 
-          const blade2 = new THREE.Mesh(b1Geo, bMat);
-          blade2.position.y = 0.68;
-          ingGroup.add(blade2);
-          ingenuityRotor2Ref.current = blade2;
+          const rotorGroup2 = new THREE.Group();
+          rotorGroup2.position.y = 0.34;
+          const blade2 = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.018, 0.13), bMat);
+          rotorGroup2.add(blade2);
+          const blurDisk2 = new THREE.Mesh(new THREE.CircleGeometry(1.15, 24), blurMat);
+          blurDisk2.rotation.x = -Math.PI / 2;
+          rotorGroup2.add(blurDisk2);
+          ingGroup.add(rotorGroup2);
+          ingenuityRotor2Ref.current = rotorGroup2 as any;
 
-          playerVehicle.add(ingGroup);
+          scene.add(ingGroup); // Added to scene independently, NOT glued to the rover!
           scene.add(playerVehicle);
         }
       }
@@ -4579,34 +4671,34 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     // Inspired by flight school rings in Star Citizen, Subdivision Infinity & Morphite
     const guidanceGroup = new THREE.Group();
     guidanceCorridorRef.current = guidanceGroup;
-    // Guidance flight rings are reserved for spaceflight & aerial descent, not surface rovers
+    // Guidance flight rings are reserved for spaceflight & aerial descent, strictly omitted for surface rovers
     guidanceGroup.visible = ageTierRef.current === 'cadet' && mission.gameType !== 'rover';
 
-    const gateCount = 7;
-    for (let g = 0; g < gateCount; g++) {
-      const gateGeo = new THREE.TorusGeometry(3.6, 0.14, 16, 32);
-      const gateMat = new THREE.MeshBasicMaterial({
-        color: g % 2 === 0 ? 0x38bdf8 : 0x22c55e,
-        transparent: true,
-        opacity: 0.75,
-        wireframe: true,
-      });
-      const gateMesh = new THREE.Mesh(gateGeo, gateMat);
+    if (mission.gameType !== 'rover') {
+      const gateCount = 7;
+      for (let g = 0; g < gateCount; g++) {
+        const gateGeo = new THREE.TorusGeometry(3.6, 0.14, 16, 32);
+        const gateMat = new THREE.MeshBasicMaterial({
+          color: g % 2 === 0 ? 0x38bdf8 : 0x22c55e,
+          transparent: true,
+          opacity: 0.75,
+          wireframe: true,
+        });
+        const gateMesh = new THREE.Mesh(gateGeo, gateMat);
 
-      if (mission.gameType === 'lunar_landing') {
-        gateMesh.rotation.x = Math.PI / 2;
-        gateMesh.position.set(0, 10 + g * 11, 0);
-      } else if (mission.gameType === 'launch') {
-        gateMesh.rotation.x = Math.PI / 2;
-        gateMesh.position.set(0, 15 + g * 40, 0);
-      } else if (mission.gameType === 'rover') {
-        gateMesh.position.set(Math.sin(g * 0.5) * 8, 2.5, -15 - g * 22);
-      } else if (mission.gameType === 'docking') {
-        gateMesh.position.set(0, 0, 12 + g * 35);
-      } else {
-        gateMesh.position.set(0, 0, -15 - g * 18);
+        if (mission.gameType === 'lunar_landing') {
+          gateMesh.rotation.x = Math.PI / 2;
+          gateMesh.position.set(0, 10 + g * 11, 0);
+        } else if (mission.gameType === 'launch') {
+          gateMesh.rotation.x = Math.PI / 2;
+          gateMesh.position.set(0, 15 + g * 40, 0);
+        } else if (mission.gameType === 'docking') {
+          gateMesh.position.set(0, 0, 12 + g * 35);
+        } else {
+          gateMesh.position.set(0, 0, -15 - g * 18);
+        }
+        guidanceGroup.add(gateMesh);
       }
-      guidanceGroup.add(gateMesh);
     }
     scene.add(guidanceGroup);
 
@@ -5585,6 +5677,23 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           state.velocityKms = isMoving ? 0.015 : 0;
           const roverGroundOffset = isSojourner ? 0.25 : (isSpiritOpp ? 0.4 : (isApolloLrv ? 0.6 : 0.05));
           playerVehicle.position.y = THREE.MathUtils.lerp(playerVehicle.position.y, groundY + roverGroundOffset, dt * 10);
+
+          // Authentic Rocker-Bogie 6-Wheel Terrain Slope Conforming
+          const fwdX = -Math.sin(playerVehicle.rotation.y);
+          const fwdZ = -Math.cos(playerVehicle.rotation.y);
+          const rightX = Math.cos(playerVehicle.rotation.y);
+          const rightZ = -Math.sin(playerVehicle.rotation.y);
+
+          const hFront = getTerrainHeight(rx + fwdX * 2.2, rz + fwdZ * 2.2, isLunar);
+          const hBack = getTerrainHeight(rx - fwdX * 2.2, rz - fwdZ * 2.2, isLunar);
+          const hRight = getTerrainHeight(rx + rightX * 1.6, rz + rightZ * 1.6, isLunar);
+          const hLeft = getTerrainHeight(rx - rightX * 1.6, rz - rightZ * 1.6, isLunar);
+
+          const targetPitch = Math.atan2(hFront - hBack, 4.4);
+          const targetRoll = Math.atan2(hRight - hLeft, 3.2);
+
+          playerVehicle.rotation.x = THREE.MathUtils.lerp(playerVehicle.rotation.x, targetPitch, dt * 6);
+          playerVehicle.rotation.z = THREE.MathUtils.lerp(playerVehicle.rotation.z, targetRoll, dt * 6);
         }
 
         // Rotate waypoint diamond markers
@@ -5596,9 +5705,43 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           }
         });
 
-        // Spin Ingenuity rotors if present
-        if (ingenuityRotor1Ref.current) ingenuityRotor1Ref.current.rotation.y += dt * 45;
-        if (ingenuityRotor2Ref.current) ingenuityRotor2Ref.current.rotation.y -= dt * 45;
+        // Dynamic Ingenuity Helicopter Operations & Autonomous Aerial Scouting
+        if (ingenuityGroupRef.current) {
+          const ing = ingenuityGroupRef.current;
+          if (ingenuityRotor1Ref.current) ingenuityRotor1Ref.current.rotation.y += dt * 65;
+          if (ingenuityRotor2Ref.current) ingenuityRotor2Ref.current.rotation.y -= dt * 65;
+
+          const isMoving = state.keys['w'] || state.keys['arrowup'] || state.keys['s'] || state.keys['arrowdown'];
+          if (isMoving) {
+            // Autonomous aerial reconnaissance surveying 24 meters ahead of rover
+            const fwdX = -Math.sin(playerVehicle.rotation.y);
+            const fwdZ = -Math.cos(playerVehicle.rotation.y);
+            const rX = Math.cos(playerVehicle.rotation.y);
+            const rZ = -Math.sin(playerVehicle.rotation.y);
+
+            const scoutTargetX = playerVehicle.position.x + fwdX * 24 + rX * (Math.sin(time * 0.002) * 12);
+            const scoutTargetZ = playerVehicle.position.z + fwdZ * 24 + rZ * (Math.sin(time * 0.002) * 12);
+            const groundYAtScout = getTerrainHeight(scoutTargetX, scoutTargetZ, false);
+            const scoutTargetY = groundYAtScout + 4.8 + Math.sin(time * 0.004) * 0.4;
+
+            ing.position.x = THREE.MathUtils.lerp(ing.position.x, scoutTargetX, dt * 1.4);
+            ing.position.z = THREE.MathUtils.lerp(ing.position.z, scoutTargetZ, dt * 1.4);
+            ing.position.y = THREE.MathUtils.lerp(ing.position.y, scoutTargetY, dt * 2.2);
+
+            // Aerodynamic roll & pitch banking into survey flight path
+            ing.rotation.y = playerVehicle.rotation.y;
+            ing.rotation.z = Math.sin(time * 0.002) * 0.22;
+            ing.rotation.x = 0.12;
+          } else {
+            // Hover or gently settle
+            const groundYAtIng = getTerrainHeight(ing.position.x, ing.position.z, false);
+            if (ing.position.y > groundYAtIng + 0.45) {
+              ing.position.y = THREE.MathUtils.lerp(ing.position.y, groundYAtIng + 0.35, dt * 0.8);
+              ing.rotation.z = THREE.MathUtils.lerp(ing.rotation.z, 0, dt * 2);
+              ing.rotation.x = THREE.MathUtils.lerp(ing.rotation.x, 0, dt * 2);
+            }
+          }
+        }
 
         // Track active waypoint
         const activeWp = waypoints.find((w) => !w.collected);
