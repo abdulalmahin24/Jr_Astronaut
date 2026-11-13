@@ -376,7 +376,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const mountRef = useRef<HTMLDivElement>(null);
   const navballCanvasRef = useRef<HTMLCanvasElement>(null);
   const seismographCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [cameraMode, setCameraMode] = useState<CameraMode>(mission.gameType === 'launch' ? 'chase' : 'orbit');
+  const [cameraMode, setCameraMode] = useState<CameraMode>(mission.gameType === 'launch' || mission.gameType === 'rover' ? 'chase' : 'orbit');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [showBriefing, setShowBriefing] = useState<boolean>(false);
   const [visualTone, setVisualTone] = useState<VisualToneMode>('REALISTIC_NASA');
@@ -1414,7 +1414,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
     const gY = getTerrainHeight(0, 0, isLunar);
     if (playerVehicleRef.current) {
-      playerVehicleRef.current.position.set(0, type === 'sky_crane' ? gY + 18 : (type === 'airbag_bounce' ? gY + 24 : gY + 1.4), 0);
+      playerVehicleRef.current.position.set(0, type === 'sky_crane' ? gY + 16 : (type === 'airbag_bounce' ? gY + 24 : gY + 1.4), 0);
     }
     if (skyCraneGroupRef.current) {
       skyCraneGroupRef.current.position.set(0, gY + 22, 0);
@@ -1452,6 +1452,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     audioSynthRef.current.playQuindarBeep();
     const state = simStateRef.current;
     state.roverLandingPhase = 'landed';
+    state.skyCraneFlyaway = false;
     if (skyCraneGroupRef.current) skyCraneGroupRef.current.visible = false;
     skyCraneCablesRef.current.forEach((c) => (c.visible = false));
     if (airbagClusterRef.current) airbagClusterRef.current.visible = false;
@@ -1461,7 +1462,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       const curX = playerVehicleRef.current.position.x;
       const curZ = playerVehicleRef.current.position.z;
       const gY = getTerrainHeight(curX, curZ, isLunar);
-      const rOffset = isSojourner ? 0.25 : (isSpiritOpp ? 0.4 : (isApolloLrv ? 0.6 : 0.48));
+      const rOffset = isSojourner ? 0.25 : (isSpiritOpp ? 0.4 : (isApolloLrv ? 0.6 : 0.05));
       playerVehicleRef.current.position.y = gY + rOffset;
     }
     state.statusText = 'ROVER SYSTEMS ACTIVE · DRIVE WITH [W][A][S][D] TO COLLECT REGOLITH SAMPLES';
@@ -1702,7 +1703,11 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     } else if (mission.gameType === 'launch') {
       camera.position.set(24, 26, 52);
     } else if (mission.gameType === 'rover') {
-      camera.position.set(0, 5, 14);
+      if (simStateRef.current.roverLandingPhase === 'sky_crane') {
+        camera.position.set(12, 10, 16);
+      } else {
+        camera.position.set(0, 3.8, 11);
+      }
     } else if (mission.gameType === 'docking') {
       camera.position.set(0, 4.5, 52);
     } else if (mission.gameType === 'telescope') {
@@ -2171,22 +2176,37 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       url: string,
       targetGroup: THREE.Group,
       targetSize: number,
-      onLoaded?: (mesh: THREE.Group) => void
+      onLoaded?: (mesh: THREE.Group) => void,
+      alignBottom: boolean = false,
+      rotationY: number = 0
     ) => {
       gltfLoader.load(
         url,
         (gltf) => {
           const model = gltf.scene;
+          if (rotationY !== 0) {
+            model.rotation.y = rotationY;
+          }
+          model.updateMatrixWorld(true);
+
           const box = new THREE.Box3().setFromObject(model);
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z) || 1;
           const scale = targetSize / maxDim;
           model.scale.setScalar(scale);
 
-          const center = box.getCenter(new THREE.Vector3());
-          model.position.x = -center.x * scale;
-          model.position.y = -center.y * scale;
-          model.position.z = -center.z * scale;
+          model.updateMatrixWorld(true);
+          const scaledBox = new THREE.Box3().setFromObject(model);
+          const center = scaledBox.getCenter(new THREE.Vector3());
+
+          model.position.x -= center.x;
+          if (alignBottom) {
+            // Guarantee that the bottom of the lowest part (wheels/skids) rests exactly at local Y = 0
+            model.position.y -= scaledBox.min.y;
+          } else {
+            model.position.y -= center.y;
+          }
+          model.position.z -= center.z;
 
           model.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
@@ -3613,19 +3633,42 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         marsTerrain.receiveShadow = true;
         scene.add(marsTerrain);
 
-        // Scattered Red Martian Boulders (planted firmly on Martian terrain!)
-        for (let r = 0; r < 50; r++) {
-          const rRad = 1.0 + Math.random() * 2.0;
-          const rGeo = new THREE.DodecahedronGeometry(rRad);
-          const rMat = new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.9 });
-          const rock = new THREE.Mesh(rGeo, rMat);
+        // Scattered Authentic Martian Boulders & Basalt Rocks
+        const rockColors = [0x3b1d11, 0x4a2416, 0x2e180d, 0x5a2d1c, 0x38190d];
+        const baseRockGeo = new THREE.DodecahedronGeometry(1, 1);
+        for (let r = 0; r < 75; r++) {
+          const rRad = 0.6 + Math.random() * 2.2;
+          const rockMat = new THREE.MeshStandardMaterial({
+            color: rockColors[r % rockColors.length],
+            roughness: 0.94,
+            metalness: 0.08,
+            bumpMap: marsTex,
+            bumpScale: 0.35,
+          });
+          const rock = new THREE.Mesh(baseRockGeo, rockMat);
           const a = Math.random() * Math.PI * 2;
-          const d = 15 + Math.random() * 160;
+          const d = 14 + Math.random() * 180;
           const rockX = Math.cos(a) * d;
           const rockZ = Math.sin(a) * d;
-          const rockY = getTerrainHeight(rockX, rockZ, false) + rRad * 0.5;
+
+          // Organic tabular/flattened scaling to look like real weathered Martian rocks
+          const sx = rRad * (0.8 + Math.random() * 0.7);
+          const sy = rRad * (0.35 + Math.random() * 0.45);
+          const sz = rRad * (0.8 + Math.random() * 0.7);
+          rock.scale.set(sx, sy, sz);
+
+          // Random 3-axis geological tilt
+          rock.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+          );
+
+          // Embed lower half naturally in Martian regolith
+          const rockY = getTerrainHeight(rockX, rockZ, false) + sy * 0.25;
           rock.position.set(rockX, rockY, rockZ);
           rock.castShadow = true;
+          rock.receiveShadow = true;
           scene.add(rock);
         }
 
@@ -3932,13 +3975,22 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           setModelLoading(false);
         } else {
           // ─── 5. PERSEVERANCE ROVER + INGENUITY HELICOPTER (MARS 2020) ───
-          attachGltfToGroup('/models/Mars_Perseverance_Rover.glb', playerVehicle, 6.2);
-          playerVehicle.position.set(0, 1.2, 0);
+          // Align bottom of wheels with Y=0 and rotate 180° so mastcam/robotic arm face forward (-Z)
+          attachGltfToGroup(
+            '/models/Mars_Perseverance_Rover.glb',
+            playerVehicle,
+            6.2,
+            undefined,
+            true,   // alignBottom: wheels rest cleanly on Martian surface
+            Math.PI // rotationY: 180° heading so front cameras point along forward driving axis (-Z)
+          );
+          playerVehicle.position.set(0, 0.05, 0);
           playerVehicleRef.current = playerVehicle;
 
           // ─── 3D INGENUITY MARS HELICOPTER (SCOUTING AHEAD) ───
           const ingGroup = new THREE.Group();
-          ingGroup.position.set(0, 2.2, -8.0);
+          const ingGroundY = getTerrainHeight(0, -8.0, false);
+          ingGroup.position.set(0, ingGroundY + 2.2, -8.0);
 
           const fusGeo = new THREE.BoxGeometry(0.6, 0.5, 0.6);
           const fusMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 });
@@ -3986,9 +4038,19 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         // ─── 1. SKY CRANE POWERED DESCENT STAGE (MARS 2020 / CURIOSITY) ───
         const skyCraneGroup = new THREE.Group();
         const scFrameGeo = new THREE.CylinderGeometry(2.4, 2.8, 1.2, 8);
-        const scFrameMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.88, roughness: 0.2 });
+        const scFrameMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.9, roughness: 0.25 });
         const scFrame = new THREE.Mesh(scFrameGeo, scFrameMat);
         skyCraneGroup.add(scFrame);
+
+        // 4 Spherical Titanium Hydrazine Tanks
+        const tankGeo = new THREE.SphereGeometry(0.72, 16, 16);
+        const tankMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.2 });
+        for (let t = 0; t < 4; t++) {
+          const tAngle = (t * Math.PI) / 2;
+          const tank = new THREE.Mesh(tankGeo, tankMat);
+          tank.position.set(Math.cos(tAngle) * 1.6, 0.35, Math.sin(tAngle) * 1.6);
+          skyCraneGroup.add(tank);
+        }
 
         const scCapGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.4, 16);
         const scCapMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.4 });
@@ -4159,13 +4221,13 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
         // Set initial vehicle elevation based on landing phase
         if (simStateRef.current.roverLandingPhase === 'sky_crane') {
-          playerVehicle.position.set(0, initGroundY + 18, 0);
+          playerVehicle.position.set(0, initGroundY + 16, 0);
         } else if (simStateRef.current.roverLandingPhase === 'airbag_bounce') {
           playerVehicle.position.set(0, initGroundY + 24, 0);
         } else if (simStateRef.current.roverLandingPhase === 'ramp_deploy') {
           playerVehicle.position.set(0, initGroundY + 1.4, 0);
         } else {
-          const rOffset = isSojourner ? 0.25 : (isSpiritOpp ? 0.4 : (isApolloLrv ? 0.6 : 0.48));
+          const rOffset = isSojourner ? 0.25 : (isSpiritOpp ? 0.4 : (isApolloLrv ? 0.6 : 0.05));
           playerVehicle.position.set(0, initGroundY + rOffset, 0);
         }
       }
@@ -4517,7 +4579,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     // Inspired by flight school rings in Star Citizen, Subdivision Infinity & Morphite
     const guidanceGroup = new THREE.Group();
     guidanceCorridorRef.current = guidanceGroup;
-    guidanceGroup.visible = ageTierRef.current === 'cadet';
+    // Guidance flight rings are reserved for spaceflight & aerial descent, not surface rovers
+    guidanceGroup.visible = ageTierRef.current === 'cadet' && mission.gameType !== 'rover';
 
     const gateCount = 7;
     for (let g = 0; g < gateCount; g++) {
@@ -5348,10 +5411,10 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
               // Lowering rover down on bridle cables
               const prog = Math.min(1.0, state.roverLandingProgress);
-              const roverY = THREE.MathUtils.lerp(groundY + 18, groundY + 1.2, prog);
+              const roverY = THREE.MathUtils.lerp(groundY + 16, groundY + 0.05, prog);
               playerVehicle.position.set(0, roverY, 0);
 
-              // Update cable connection points
+              // Update cable connection points to rover's top bridle attach points
               skyCraneCablesRef.current.forEach((cable, cIdx) => {
                 cable.visible = true;
                 const cAngle = (cIdx * Math.PI * 2) / 3;
@@ -5359,9 +5422,9 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
                 pos[0] = Math.cos(cAngle) * 1.6;
                 pos[1] = 0;
                 pos[2] = Math.sin(cAngle) * 1.6;
-                pos[3] = Math.cos(cAngle) * 1.0;
-                pos[4] = -(22 - (roverY - groundY));
-                pos[5] = Math.sin(cAngle) * 1.0;
+                pos[3] = Math.cos(cAngle) * 0.8;
+                pos[4] = -(22 - (roverY - groundY) + 1.2);
+                pos[5] = Math.sin(cAngle) * 0.8;
                 cable.geometry.attributes.position.needsUpdate = true;
               });
 
@@ -5491,6 +5554,11 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         // PHASE 2: ACTIVE ROVER SURFACE DRIVING & EXPLORATION
         // ═════════════════════════════════════════════════════════════════════
         else {
+          // Strictly ensure landing gear / sky crane remnants are hidden once driving
+          if (skyCraneGroupRef.current) skyCraneGroupRef.current.visible = false;
+          skyCraneCablesRef.current.forEach((c) => (c.visible = false));
+          if (marsDustRef.current) marsDustRef.current.visible = false;
+
           const speed = 15 * dt;
           let isMoving = false;
           if (state.keys['w'] || state.keys['arrowup']) {
@@ -5515,7 +5583,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           }
 
           state.velocityKms = isMoving ? 0.015 : 0;
-          const roverGroundOffset = isSojourner ? 0.25 : (isSpiritOpp ? 0.4 : (isApolloLrv ? 0.6 : 0.48));
+          const roverGroundOffset = isSojourner ? 0.25 : (isSpiritOpp ? 0.4 : (isApolloLrv ? 0.6 : 0.05));
           playerVehicle.position.y = THREE.MathUtils.lerp(playerVehicle.position.y, groundY + roverGroundOffset, dt * 10);
         }
 
@@ -5687,13 +5755,14 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           camera.lookAt(lookAtTarget);
         } else if (mission.gameType === 'rover') {
           controls.enabled = false;
-          let chaseCamOffset = new THREE.Vector3(0, 3.2, 8.5);
-          let targetYOffset = 0.8;
+          let chaseCamOffset = new THREE.Vector3(0, 3.8, 10.5);
+          let targetYOffset = 1.2;
           if (state.roverLandingPhase === 'sky_crane') {
-            chaseCamOffset = new THREE.Vector3(0, 7.5, 18.0);
-            targetYOffset = 3.5;
+            // Elevated 3/4 isometric perspective displaying hovering Sky Crane, retro plumes & descending rover
+            chaseCamOffset = new THREE.Vector3(12.0, 9.5, 16.0);
+            targetYOffset = Math.max(1.5, playerVehicle.position.y * 0.35);
           } else if (state.roverLandingPhase === 'airbag_bounce') {
-            chaseCamOffset = new THREE.Vector3(0, 5.0, 14.0);
+            chaseCamOffset = new THREE.Vector3(0, 6.0, 15.0);
             targetYOffset = 1.0;
           }
           chaseCamOffset.applyQuaternion(playerVehicle.quaternion);

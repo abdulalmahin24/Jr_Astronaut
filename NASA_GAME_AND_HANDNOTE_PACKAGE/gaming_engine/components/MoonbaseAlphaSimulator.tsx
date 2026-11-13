@@ -222,7 +222,8 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
       url: string,
       targetGroup: THREE.Group,
       targetSize: number,
-      onLoaded?: (mesh: THREE.Group) => void
+      onLoaded?: (mesh: THREE.Group) => void,
+      alignBottom: boolean = false
     ) => {
       gltfLoader.load(
         url,
@@ -234,10 +235,17 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
           const scale = targetSize / maxDim;
           model.scale.setScalar(scale);
 
-          const center = box.getCenter(new THREE.Vector3());
-          model.position.x = -center.x * scale;
-          model.position.y = -center.y * scale;
-          model.position.z = -center.z * scale;
+          model.updateMatrixWorld(true);
+          const scaledBox = new THREE.Box3().setFromObject(model);
+          const center = scaledBox.getCenter(new THREE.Vector3());
+
+          model.position.x -= center.x;
+          if (alignBottom) {
+            model.position.y -= scaledBox.min.y;
+          } else {
+            model.position.y -= center.y;
+          }
+          model.position.z -= center.z;
 
           model.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
@@ -366,8 +374,8 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
 
     // NASA Surface Rover parked near Moonbase Alpha
     const parkedRover = new THREE.Group();
-    attachGltf('/models/Mars_Perseverance_Rover.glb', parkedRover, 5.2);
-    parkedRover.position.set(-18, 0.4, 8);
+    attachGltf('/models/Mars_Perseverance_Rover.glb', parkedRover, 5.2, undefined, true);
+    parkedRover.position.set(-18, 0.05, 8);
     parkedRover.rotation.y = Math.PI / 4;
     scene.add(parkedRover);
 
