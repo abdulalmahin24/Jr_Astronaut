@@ -584,8 +584,71 @@ function createPhotorealisticPlanet(
   return { planetGroup, surfaceMesh, cloudsMesh, atmoHalo, outerHaze, atmoInterfaceRing };
 }
 
-function createDebrisMeshes(scene: THREE.Scene, count: number): THREE.Mesh[] {
-  const meshes: THREE.Mesh[] = [];
+function createHolographicLandingPad(): THREE.Group {
+  const padGroup = new THREE.Group();
+
+  // Outer glowing green ring
+  const ring1 = new THREE.Mesh(
+    new THREE.RingGeometry(3.2, 3.4, 64),
+    new THREE.MeshBasicMaterial({ color: 0x22c55e, side: THREE.DoubleSide, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending })
+  );
+  ring1.rotation.x = -Math.PI / 2;
+  padGroup.add(ring1);
+
+  // Inner ring
+  const ring2 = new THREE.Mesh(
+    new THREE.RingGeometry(1.6, 1.75, 48),
+    new THREE.MeshBasicMaterial({ color: 0x4ade80, side: THREE.DoubleSide, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending })
+  );
+  ring2.rotation.x = -Math.PI / 2;
+  padGroup.add(ring2);
+
+  // Crosshair lines
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.8 });
+  const lineX = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.04, 0.06), lineMat);
+  lineX.position.y = 0.02;
+  padGroup.add(lineX);
+  const lineZ = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 6.8), lineMat);
+  lineZ.position.y = 0.02;
+  padGroup.add(lineZ);
+
+  // Center beacon light
+  const beaconLight = new THREE.PointLight(0x22c55e, 2.5, 35);
+  beaconLight.position.y = 0.5;
+  padGroup.add(beaconLight);
+
+  // 4 Corner Hazard Pylons with pulsating markers
+  for (const x of [-2.4, 2.4]) {
+    for (const z of [-2.4, 2.4]) {
+      const pylon = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.12, 0.9, 8),
+        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 })
+      );
+      pylon.position.set(x, 0.45, z);
+      padGroup.add(pylon);
+
+      const lamp = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0x22c55e })
+      );
+      lamp.position.set(x, 0.95, z);
+      padGroup.add(lamp);
+    }
+  }
+
+  // Lunar / Ground Surface disc
+  const groundTex = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.95, metalness: 0.05 });
+  const surfaceDisc = new THREE.Mesh(new THREE.CircleGeometry(16, 48), groundTex);
+  surfaceDisc.rotation.x = -Math.PI / 2;
+  surfaceDisc.position.y = -0.05;
+  surfaceDisc.receiveShadow = true;
+  padGroup.add(surfaceDisc);
+
+  return padGroup;
+}
+
+function createMissionHazardMeshes(scene: THREE.Scene, hazards: MissionHazardObject[]): THREE.Object3D[] {
+  const meshes: THREE.Object3D[] = [];
 
   const panelMat = new THREE.MeshStandardMaterial({
     color: 0x1e3a8a,
@@ -608,29 +671,103 @@ function createDebrisMeshes(scene: THREE.Scene, count: number): THREE.Mesh[] {
     roughness: 0.7,
   });
 
-  for (let i = 0; i < count; i++) {
-    let mesh: THREE.Mesh;
-    const variant = i % 4;
+  const plasmaMat1 = new THREE.MeshBasicMaterial({
+    color: 0xf97316,
+    transparent: true,
+    opacity: 0.7,
+    blending: THREE.AdditiveBlending,
+  });
+  const plasmaMat2 = new THREE.MeshBasicMaterial({
+    color: 0xfbbf24,
+    transparent: true,
+    opacity: 0.65,
+    blending: THREE.AdditiveBlending,
+  });
+  const cryoIceMat = new THREE.MeshStandardMaterial({
+    color: 0xbae6fd,
+    transparent: true,
+    opacity: 0.6,
+    roughness: 0.2,
+    metalness: 0.3,
+    emissive: 0x38bdf8,
+    emissiveIntensity: 0.4,
+  });
+  const radiationMat = new THREE.MeshBasicMaterial({
+    color: 0xa855f7,
+    transparent: true,
+    opacity: 0.75,
+    blending: THREE.AdditiveBlending,
+  });
+  const boulderMat = new THREE.MeshStandardMaterial({
+    color: 0x475569,
+    roughness: 0.96,
+    metalness: 0.05,
+  });
+  const cloudMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    transparent: true,
+    opacity: 0.5,
+    roughness: 0.95,
+  });
 
-    if (variant === 0) {
-      // Shattered Solar Array Panel
-      mesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.65), panelMat);
-    } else if (variant === 1) {
-      // Rocket Tank / Interstage Cylinder
-      mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.4, 12), metalMat);
-    } else if (variant === 2) {
-      // Defunct Satellite Body
-      mesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.85), goldFoilMat);
+  for (let i = 0; i < hazards.length; i++) {
+    const h = hazards[i];
+    let obj: THREE.Object3D;
+
+    if (h.hazardClass === 'plasma_cme') {
+      // Swirling CME plasma cluster
+      const group = new THREE.Group();
+      const pSphere = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 16), i % 2 === 0 ? plasmaMat1 : plasmaMat2);
+      group.add(pSphere);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.6, 16), plasmaMat2);
+      ring.rotation.x = Math.PI / 3;
+      group.add(ring);
+      obj = group;
+    } else if (h.hazardClass === 'cryo_plume') {
+      if (h.type === 'cryo_ice_cloud') {
+        // Venting Liquid Oxygen Ice Crystal cloud
+        obj = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1, 1), cryoIceMat);
+      } else {
+        // Ruptured SM honeycomb hull panel
+        obj = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.9), charredMat);
+      }
+    } else if (h.hazardClass === 'radiation_arc') {
+      // Jovian synchrotron torus arc segment
+      obj = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.28, 12, 24, Math.PI), radiationMat);
+    } else if (h.hazardClass === 'boulder') {
+      if (h.type === 'crater_rim') {
+        obj = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.45, 12, 24), boulderMat);
+      } else {
+        obj = new THREE.Mesh(new THREE.DodecahedronGeometry(0.85, 1), boulderMat);
+        obj.scale.set(1.4, 0.9, 1.2);
+      }
+    } else if (h.hazardClass === 'dust_devil') {
+      const ddGroup = new THREE.Group();
+      const ddCone = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.3, 3.2, 12), plasmaMat1);
+      ddGroup.add(ddCone);
+      obj = ddGroup;
+    } else if (h.hazardClass === 'cloud') {
+      obj = new THREE.Mesh(new THREE.SphereGeometry(2.2, 16, 12), cloudMat);
+      obj.scale.set(2.0, 0.6, 1.5);
     } else {
-      // Jagged Titanium Fragment
-      mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48, 1), charredMat);
-      mesh.scale.set(1.5, 0.45, 1.2);
+      // Standard Debris
+      const variant = i % 4;
+      if (variant === 0) {
+        obj = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.65), panelMat);
+      } else if (variant === 1) {
+        obj = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.4, 12), metalMat);
+      } else if (variant === 2) {
+        obj = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.85), goldFoilMat);
+      } else {
+        obj = new THREE.Mesh(new THREE.DodecahedronGeometry(0.48, 1), charredMat);
+        obj.scale.set(1.5, 0.45, 1.2);
+      }
     }
 
-    mesh.castShadow = true;
-    mesh.visible = false;
-    scene.add(mesh);
-    meshes.push(mesh);
+    obj.castShadow = true;
+    obj.visible = false;
+    scene.add(obj);
+    meshes.push(obj);
   }
 
   return meshes;
@@ -648,7 +785,12 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
   onMissionCompleted,
 }) => {
   const [selectedMissionId, setSelectedMissionId] = useState<HardcoreMissionId>(initialMissionId);
-  const activeMission = HARDCORE_SURVIVAL_MISSIONS.find((m) => m.id === selectedMissionId) || HARDCORE_SURVIVAL_MISSIONS[0];
+  const [selectedCategory, setSelectedCategory] = useState<'HARDCORE' | 'EXPEDITION'>(() => {
+    return (['suborbital-pioneer', 'orbital-pioneer', 'lunar-voyager', 'mars-voyager'] as HardcoreMissionId[]).includes(initialMissionId)
+      ? 'EXPEDITION'
+      : 'HARDCORE';
+  });
+  const activeMission = ALL_SURVIVAL_MISSIONS.find((m) => m.id === selectedMissionId) || HARDCORE_SURVIVAL_MISSIONS[0];
 
   const [telemetry, setTelemetry] = useState<HardcoreTelemetryState>(() => createInitialTelemetry(activeMission));
   const [missionPhase, setMissionPhase] = useState<'BRIEFING' | 'ACTIVE' | 'VICTORY' | 'FAILED'>('ACTIVE');
@@ -666,8 +808,9 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
   timeWarpRef.current = timeWarp;
 
   const mountRef = useRef<HTMLDivElement>(null);
-  const debrisFieldRef = useRef<DebrisObject[]>([]);
-  const debrisMeshesRef = useRef<THREE.Mesh[]>([]);
+  const hazardFieldRef = useRef<MissionHazardObject[]>([]);
+  const hazardMeshesRef = useRef<THREE.Object3D[]>([]);
+  const landingPadRef = useRef<THREE.Group | null>(null);
 
   // Simulation physics state mutable refs for 60fps Three.js loop
   const physStateRef = useRef({
@@ -735,11 +878,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       successMessage: '',
     };
 
-    if (mission.hasDebrisField) {
-      debrisFieldRef.current = generateOrbitalDebrisField(110, body.radiusKm);
-    } else {
-      debrisFieldRef.current = [];
-    }
+    hazardFieldRef.current = generateMissionHazardField(mission, body.radiusKm);
 
     setAutopilotMode('OFF');
     setTimeWarp(1);
@@ -941,10 +1080,22 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     const trajLine = new THREE.Line(trajGeo, trajMat);
     scene.add(trajLine);
 
-    // 7. Debris Meshes for Kessler Syndrome
-    debrisMeshesRef.current = [];
-    if (activeMission.hasDebrisField) {
-      debrisMeshesRef.current = createDebrisMeshes(scene, 45);
+    // 7. Multi-Mission 3D Obstacle & Hazard Course Meshes (Active for ALL Missions)
+    hazardMeshesRef.current = [];
+    if (hazardFieldRef.current.length > 0) {
+      hazardMeshesRef.current = createMissionHazardMeshes(scene, hazardFieldRef.current);
+    }
+
+    // 7.2 Holographic Landing Pad (For Landing Missions: M5 Suicide Burn, M8 Lunar Voyager, M9 Mars Voyager)
+    let landingPad: THREE.Group | null = null;
+    const isLandingMission = activeMission.id === 'suicide-burn' || activeMission.id === 'lunar-voyager' || activeMission.id === 'mars-voyager';
+    if (isLandingMission) {
+      landingPad = createHolographicLandingPad();
+      landingPad.visible = false;
+      scene.add(landingPad);
+      landingPadRef.current = landingPad;
+    } else {
+      landingPadRef.current = null;
     }
 
     // 3D Threat Target Reticle (Snaps to nearest approaching debris hazard)
@@ -1161,14 +1312,14 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           p.shakeIntensity = Math.max(0, p.shakeIntensity - 1.2 * dt);
         }
 
-        // Debris collision & proximity tracking for Mission 1 (Kessler Syndrome)
+        // Multi-Mission 3D Obstacle Collision & Proximity Tracking
         if (p.invulnTimer > 0) p.invulnTimer -= dt;
-        if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
+        if (hazardFieldRef.current.length > 0) {
           const px = p.rKm * Math.cos(p.orbitalTheta);
           const pz = p.rKm * Math.sin(p.orbitalTheta);
           const py = 0;
 
-          nearestDebrisList = debrisFieldRef.current.map((d) => {
+          nearestDebrisList = hazardFieldRef.current.map((d) => {
             d.x += d.vx * dt;
             d.y += d.vy * dt;
             d.z += d.vz * dt;
@@ -1178,22 +1329,50 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             const dz = d.z - pz;
             const distKm = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-            if (distKm < 0.12 && p.invulnTimer <= 0) {
-              // Collision impact!
-              p.hull = Math.max(0, p.hull - 20);
-              p.fuelLeak = true;
-              p.invulnTimer = 2.0; // 2s invulnerability grace
+            const collisionThresholdKm = d.hazardClass === 'plasma_cme' ? 0.28 : (d.hazardClass === 'radiation_arc' ? 0.35 : 0.14);
+            if (distKm < collisionThresholdKm && p.invulnTimer <= 0) {
+              p.invulnTimer = 2.0;
               p.shakeIntensity = 1.0;
-              if (soundEnabled) soundFx.playImpact();
-              d.x += 200; // disperse collided fragment
+
+              if (d.hazardClass === 'debris') {
+                p.hull = Math.max(0, p.hull - 20);
+                p.fuelLeak = true;
+                if (soundEnabled) soundFx.playImpact();
+              } else if (d.hazardClass === 'plasma_cme') {
+                p.engineHeat = Math.min(100, p.engineHeat + 35);
+                if (p.engineHeat >= 100) {
+                  p.overheatCooldown = 8.0;
+                  p.throttle = 0;
+                }
+                if (soundEnabled) soundFx.playAlarm();
+              } else if (d.hazardClass === 'cryo_plume') {
+                p.hull = Math.max(0, p.hull - 10);
+                p.fuel = Math.max(0, p.fuel - 3.5);
+                p.rcsTimer = 1.5;
+                if (soundEnabled) soundFx.playImpact();
+              } else if (d.hazardClass === 'radiation_arc') {
+                p.heatShield = Math.max(0, p.heatShield - 18);
+                if (soundEnabled) soundFx.playAlarm();
+              } else if (d.hazardClass === 'boulder') {
+                p.hull = Math.max(0, p.hull - 25);
+                if (soundEnabled) soundFx.playImpact();
+              } else if (d.hazardClass === 'dust_devil') {
+                p.engineHeat = Math.min(100, p.engineHeat + 20);
+                p.fuel = Math.max(0, p.fuel - 2.0);
+                if (soundEnabled) soundFx.playThruster?.();
+              } else {
+                p.hull = Math.max(0, p.hull - 12);
+                if (soundEnabled) soundFx.playImpact();
+              }
+              d.x += 250; // disperse collided hazard
             }
 
-            return { x: dx, y: dy, z: dz, distanceKm: distKm };
+            return { x: dx, y: dy, z: dz, distanceKm: distKm, name: d.name, hazardClass: d.hazardClass };
           }).sort((a, b) => a.distanceKm - b.distanceKm);
 
           if (p.hull <= 0 && p.outcome === 'IN_PROGRESS') {
             p.outcome = 'FAILED';
-            p.failureReason = 'CATASTROPHIC HULL BREACH: SHIP DESTROYED BY HIGH-VELOCITY SPACE DEBRIS IMPACTS';
+            p.failureReason = 'CATASTROPHIC STRUCTURAL FAILURE: SHIP DESTROYED BY ENVIRONMENTAL HAZARD COLLISION';
             if (soundEnabled) soundFx.playExplosion();
             setMissionPhase('FAILED');
           }
@@ -1251,7 +1430,9 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         // HUD Warnings list
         const warnings: string[] = [...ruleCheck.warnings];
         if (nearestDebrisList[0] && nearestDebrisList[0].distanceKm < 60) {
-          warnings.unshift(`⚠️ PROXIMITY ALERT · DEBRIS CLOSING (${nearestDebrisList[0].distanceKm.toFixed(1)} km)`);
+          const nearest = nearestDebrisList[0] as any;
+          const hazardLabel = nearest.name ? nearest.name.toUpperCase() : 'HAZARD';
+          warnings.unshift(`⚠️ PROXIMITY ALERT · ${hazardLabel} CLOSING (${nearest.distanceKm.toFixed(1)} km)`);
         }
 
         // Update React HUD state (throttled to 10 FPS for optimal performance)
@@ -1337,53 +1518,63 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       speedParticleGeo.attributes.position.needsUpdate = true;
       speedParticleMat.size = 0.55 + (p.throttle / 100) * 0.45;
 
-      // 11. Update 3D Space Debris Meshes & Threat Reticle (Kessler Syndrome)
-      if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
+      // 11. Update 3D Space Obstacle & Hazard Meshes
+      if (hazardFieldRef.current.length > 0) {
         const px = p.rKm * Math.cos(p.orbitalTheta);
         const pz = p.rKm * Math.sin(p.orbitalTheta);
 
-        let closestVisibleMesh: THREE.Mesh | null = null;
+        let closestVisibleMesh: THREE.Object3D | null = null;
         let closestVisDist = 9999;
 
-        for (let i = 0; i < debrisMeshesRef.current.length; i++) {
-          const dMesh = debrisMeshesRef.current[i];
-          const dData = debrisFieldRef.current[i];
-          if (dMesh && dData) {
-            const dx = dData.x - px;
-            const dy = dData.y;
-            const dz = dData.z - pz;
+        for (let i = 0; i < hazardMeshesRef.current.length; i++) {
+          const hMesh = hazardMeshesRef.current[i];
+          const hData = hazardFieldRef.current[i];
+          if (hMesh && hData) {
+            const dx = hData.x - px;
+            const dy = hData.y;
+            const dz = hData.z - pz;
             const distKm = Math.hypot(dx, dy, dz);
 
-            // Display debris within 160 km in visible frustum range
-            if (distKm < 160) {
-              dMesh.visible = true;
-              const visDist = 3.8 + (distKm / 160) * 44;
+            // Display within visible frustum range (180 km)
+            if (distKm < 180) {
+              hMesh.visible = true;
+              const visDist = 3.8 + (distKm / 180) * 45;
               const normX = dx / Math.max(0.1, distKm);
               const normY = dy / Math.max(0.1, distKm);
               const normZ = dz / Math.max(0.1, distKm);
 
-              dMesh.position.set(normX * visDist, normY * visDist, normZ * visDist);
-              dMesh.rotation.x += 0.035;
-              dMesh.rotation.y += 0.045;
+              hMesh.position.set(normX * visDist, normY * visDist, normZ * visDist);
+              hMesh.rotation.x += 0.025;
+              hMesh.rotation.y += 0.035;
 
               if (visDist < closestVisDist) {
                 closestVisDist = visDist;
-                closestVisibleMesh = dMesh;
+                closestVisibleMesh = hMesh;
               }
             } else {
-              dMesh.visible = false;
+              hMesh.visible = false;
             }
           }
         }
 
-        // Snap 3D Threat Target Reticle to closest approaching debris object
-        if (nearestDebrisList[0] && nearestDebrisList[0].distanceKm < 35 && closestVisibleMesh) {
+        // Snap 3D Threat Target Reticle to closest approaching hazard
+        if (nearestDebrisList[0] && nearestDebrisList[0].distanceKm < 45 && closestVisibleMesh) {
           threatReticle.visible = true;
           threatReticle.position.copy(closestVisibleMesh.position);
           threatReticle.rotation.y += 0.08;
           threatReticle.rotation.z += 0.05;
         } else {
           threatReticle.visible = false;
+        }
+      }
+
+      // 11.5 Update Holographic Landing Pad for Landing Missions
+      if (landingPad && isLandingMission) {
+        if (p.altKm < 2.5) {
+          landingPad.visible = true;
+          landingPad.position.set(0, -1.8 - p.altKm * 18, 0);
+        } else {
+          landingPad.visible = false;
         }
       }
 
@@ -1633,11 +1824,54 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           backdropFilter: 'blur(16px)',
         }}
       >
-        <div style={{ fontSize: '10px', fontWeight: 900, color: '#ef4444', letterSpacing: '0.08em', marginRight: '6px', whiteSpace: 'nowrap' }}>
-          CHOOSE MISSION:
+        {/* Category Mode Switcher */}
+        <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.45)', padding: '3px', borderRadius: '8px', marginRight: '8px' }}>
+          <button
+            onClick={() => {
+              setSelectedCategory('HARDCORE');
+              setSelectedMissionId('kessler-syndrome');
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: selectedCategory === 'HARDCORE' ? '1.5px solid #ef4444' : '1px solid transparent',
+              background: selectedCategory === 'HARDCORE' ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(15, 23, 42, 0.95))' : 'transparent',
+              color: selectedCategory === 'HARDCORE' ? '#ffffff' : '#94a3b8',
+              fontSize: '11px',
+              fontWeight: 900,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: selectedCategory === 'HARDCORE' ? '0 0 12px rgba(239, 68, 68, 0.5)' : 'none',
+            }}
+          >
+            🔥 HARDCORE SURVIVAL (5 OPS)
+          </button>
+          <button
+            onClick={() => {
+              setSelectedCategory('EXPEDITION');
+              setSelectedMissionId('suborbital-pioneer');
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: selectedCategory === 'EXPEDITION' ? '1.5px solid #38bdf8' : '1px solid transparent',
+              background: selectedCategory === 'EXPEDITION' ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(15, 23, 42, 0.95))' : 'transparent',
+              color: selectedCategory === 'EXPEDITION' ? '#ffffff' : '#94a3b8',
+              fontSize: '11px',
+              fontWeight: 900,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: selectedCategory === 'EXPEDITION' ? '0 0 12px rgba(56, 189, 248, 0.5)' : 'none',
+            }}
+          >
+            🚀 SURVIVAL MISSIONS (4 OPS)
+          </button>
         </div>
-        {HARDCORE_SURVIVAL_MISSIONS.slice(0, 5).map((m) => {
+
+        {/* Missions in Active Category */}
+        {(selectedCategory === 'HARDCORE' ? HARDCORE_SURVIVAL_MISSIONS : LIFECYCLE_SURVIVAL_MISSIONS).map((m) => {
           const isSelected = m.id === selectedMissionId;
+          const themeColor = selectedCategory === 'HARDCORE' ? '#ef4444' : '#38bdf8';
           return (
             <button
               key={m.id}
@@ -1645,9 +1879,9 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
               style={{
                 padding: '8px 16px',
                 borderRadius: '8px',
-                border: isSelected ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
+                border: isSelected ? `1.5px solid ${themeColor}` : '1px solid rgba(255, 255, 255, 0.1)',
                 background: isSelected
-                  ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(15, 23, 42, 0.95))'
+                  ? `linear-gradient(135deg, ${themeColor}50, rgba(15, 23, 42, 0.95))`
                   : 'rgba(255, 255, 255, 0.03)',
                 color: isSelected ? '#ffffff' : '#94a3b8',
                 fontSize: '11px',
@@ -1657,11 +1891,11 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
                 alignItems: 'center',
                 gap: '8px',
                 whiteSpace: 'nowrap',
-                boxShadow: isSelected ? '0 0 16px rgba(239, 68, 68, 0.45)' : 'none',
+                boxShadow: isSelected ? `0 0 16px ${themeColor}60` : 'none',
                 transition: 'all 0.2s ease',
               }}
             >
-              <span style={{ color: '#ef4444', fontWeight: 900 }}>M{m.missionNumber}</span>
+              <span style={{ color: themeColor, fontWeight: 900 }}>M{m.missionNumber}</span>
               <span>{m.title.includes(':') ? m.title.split(':')[1].trim() : m.title}</span>
             </button>
           );

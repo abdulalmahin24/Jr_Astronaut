@@ -177,8 +177,16 @@ export const App: React.FC = () => {
   const [isClassroomOpen, setIsClassroomOpen] = useState(false);
   const [savedGameInfo, setSavedGameInfo] = useState<GameState | null>(loadGameStateFromStorage);
 
-  const [isLearningHubOpen, setIsLearningHubOpen] = useState(true);
-  const [learningHubInitialTab, setLearningHubInitialTab] = useState<'NOTEBOOK' | 'AUDIO' | 'VIDEO' | 'COMIC' | 'BRIEFINGS' | 'CATALOG'>('VIDEO');
+  const [isLearningHubOpen, setIsLearningHubOpen] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search);
+        return p.has('video') || p.has('learn') || p.has('curriculum');
+      }
+    } catch {}
+    return false;
+  });
+  const [learningHubInitialTab, setLearningHubInitialTab] = useState<'NOTEBOOK' | 'AUDIO' | 'VIDEO' | 'COMIC' | 'BRIEFINGS' | 'CATALOG'>('NOTEBOOK');
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isComicBookOpen, setIsComicBookOpen] = useState(false);
   const [selectedComicIssueId, setSelectedComicIssueId] = useState<string | undefined>(undefined);
