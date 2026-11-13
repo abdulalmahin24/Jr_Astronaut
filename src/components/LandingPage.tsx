@@ -184,6 +184,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // Cinematic Astronaut Inspection Mode & Camera Dolly
   const [isInspectionMode, setIsInspectionMode] = useState(false);
+  const [isMonitorPhotoView, setIsMonitorPhotoView] = useState(false);
   const [previewAstronautId, setPreviewAstronautId] = useState<string | null>(null);
   const [toastFeedback, setToastFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -405,7 +406,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     callback();
   };
 
-  return (
+  const lobbyViewport = (
     <div className="pubg-lobby-viewport" id="astro-camp-landing">
       {/* GPU Accelerated Cinematic Background Layer with Dolly Zoom */}
       <div className={`pubg-lobby-bg-layer ${isInspectionMode ? 'inspection-active' : ''}`} />
@@ -622,6 +623,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>⚙️</span>
             </button>
           )}
+
+          {/* PC Monitor Photo Frame View Toggle (Matches Reference Photo on PC Monitor) */}
+          <button
+            className="lobby-icon-square-btn"
+            onClick={() => {
+              setIsMonitorPhotoView(!isMonitorPhotoView);
+              soundFx.playClick(900);
+            }}
+            style={{
+              width: 'auto',
+              padding: '0 10px',
+              gap: '6px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '10px',
+              fontWeight: 800,
+              borderColor: isMonitorPhotoView ? '#00d2ff' : 'rgba(255, 255, 255, 0.18)',
+              color: isMonitorPhotoView ? '#00d2ff' : '#cbd5e1',
+              background: isMonitorPhotoView ? 'rgba(0, 210, 255, 0.15)' : 'rgba(10, 16, 28, 0.82)',
+            }}
+            title={
+              isMonitorPhotoView
+                ? 'Switch to Clean Fullscreen View'
+                : 'Switch to Authentic PC Monitor Photo View (matches user reference photo)'
+            }
+          >
+            <span>{isMonitorPhotoView ? '⛶' : '🖥️'}</span>
+            <span>{isMonitorPhotoView ? 'FULLSCREEN' : 'MONITOR VIEW'}</span>
+          </button>
         </div>
       </header>
 
@@ -835,18 +864,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
 
-        {/* ── CENTER: 3D ANIMATED ASTRONAUT IN SPACE HANGAR ── */}
+        {/* ── 3D ANIMATED ASTRONAUT IN SPACE HANGAR (EXACT 65% HORIZONTAL ALIGNMENT MATCHING PHOTO) ── */}
         <div
           style={{
-            flex: 1,
+            position: 'absolute',
+            left: isInspectionMode ? '50%' : '65%',
+            top: 0,
+            bottom: isInspectionMode ? 0 : '72px',
+            transform: 'translateX(-50%)',
+            width: isInspectionMode ? '100%' : '560px',
+            height: isInspectionMode ? '100%' : 'calc(100% - 72px)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            height: '100%',
-            position: 'relative',
             zIndex: 15,
-            paddingBottom: '0px',
+            pointerEvents: 'auto',
+            transition: 'left 0.45s cubic-bezier(0.16, 1, 0.3, 1), width 0.45s ease',
           }}
         >
           <LobbyAstronaut3D
@@ -1139,7 +1173,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               title="Click to Switch Mission Mode"
             >
               <img
-                src="/assets/artemis_hangar_render_full.png"
+                src="/assets/lobby_mode_survival_thumb.png"
                 alt="Mission Preview"
                 className="lobby-mode-thumb"
               />
@@ -1473,4 +1507,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         )}
     </div>
   );
+
+  if (isMonitorPhotoView) {
+    return (
+      <div className="pc-monitor-frame-outer">
+        <div className="pc-monitor-bezel">
+          <div className="pc-monitor-screen-inner">
+            <div className="pc-monitor-glare-overlay" />
+            {lobbyViewport}
+          </div>
+          <div className="pc-monitor-chin">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span
+                style={{
+                  fontSize: '9px',
+                  color: '#64748b',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 800,
+                  letterSpacing: '0.12em',
+                }}
+              >
+                NASA ARTEMIS MISSION CONTROL · GAMING DISPLAY
+              </span>
+              <button
+                onClick={() => setIsMonitorPhotoView(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '4px',
+                  color: '#94a3b8',
+                  fontSize: '9px',
+                  padding: '2px 8px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)',
+                }}
+                title="Exit Monitor View"
+              >
+                EXIT MONITOR VIEW
+              </button>
+            </div>
+            <div className="pc-monitor-power-led" title="Display Power: Active" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return lobbyViewport;
 };

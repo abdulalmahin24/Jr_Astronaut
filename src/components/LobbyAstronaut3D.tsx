@@ -197,7 +197,22 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
     disc.rotation.x = -Math.PI / 2;
     pedestalGroup.add(disc);
 
-    scene.add(pedestalGroup);
+    if (!hideOverlays) {
+      scene.add(pedestalGroup);
+    } else {
+      // Soft ambient contact shadow on the blue hangar deck floor
+      const shadowGeo = new THREE.CircleGeometry(0.55, 32);
+      const shadowMat = new THREE.MeshBasicMaterial({
+        color: 0x050c18,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.55,
+      });
+      const shadowDisc = new THREE.Mesh(shadowGeo, shadowMat);
+      shadowDisc.rotation.x = -Math.PI / 2;
+      shadowDisc.position.y = 0.01;
+      scene.add(shadowDisc);
+    }
 
     // 6. Gold Visor Specular Sparkle Sprite
     const glintCanvas = document.createElement('canvas');
@@ -394,9 +409,11 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
       }
       particleGeo.attributes.position.needsUpdate = true;
 
-      // Pedestal rotation animation
-      ring1.rotation.z = elapsedTime * 0.15;
-      ring2.rotation.z = -elapsedTime * 0.25;
+      // Pedestal rotation animation (when not in clean realistic hangar mode)
+      if (!hideOverlays) {
+        ring1.rotation.z = elapsedTime * 0.15;
+        ring2.rotation.z = -elapsedTime * 0.25;
+      }
 
       // Visor sparkle pulse
       const pulse = Math.sin(elapsedTime * 2.2) * 0.5 + 0.5;
