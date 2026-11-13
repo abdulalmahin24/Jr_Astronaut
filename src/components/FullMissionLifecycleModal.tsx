@@ -1157,14 +1157,18 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     apolloLmGroup.visible = false;
     scene.add(apolloLmGroup);
 
+    // Procedural Fallback Placeholder LM Parts (grouped together so they can be hidden cleanly when 3D GLTF loads)
+    const proceduralLmGroup = new THREE.Group();
+    apolloLmGroup.add(proceduralLmGroup);
+
     const dStage = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.7, 1.6, 8), new THREE.MeshStandardMaterial({ color: 0xca8a04, metalness: 0.95, roughness: 0.15 }));
     dStage.position.y = 0.8;
-    apolloLmGroup.add(dStage);
+    proceduralLmGroup.add(dStage);
 
     const dpsBell = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.5, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.95, roughness: 0.2, side: THREE.DoubleSide }));
     dpsBell.rotation.x = Math.PI;
     dpsBell.position.y = -0.55;
-    apolloLmGroup.add(dpsBell);
+    proceduralLmGroup.add(dpsBell);
 
     // 4 Landing Struts & Footpads
     for (let leg = 0; leg < 4; leg++) {
@@ -1176,18 +1180,18 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       strut.position.set(cosA * 3.3, 0.1, sinA * 3.3);
       strut.rotation.z = -cosA * 0.65;
       strut.rotation.x = sinA * 0.65;
-      apolloLmGroup.add(strut);
+      proceduralLmGroup.add(strut);
 
       const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0xca8a04, metalness: 0.9 }));
       pad.position.set(cosA * 4.6, -1.15, sinA * 4.6);
-      apolloLmGroup.add(pad);
+      proceduralLmGroup.add(pad);
     }
 
     const ascentGroup = new THREE.Group();
     ascentGroup.position.y = 2.1;
     const cabin = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, 1.7, 16), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.85, roughness: 0.3 }));
     ascentGroup.add(cabin);
-    apolloLmGroup.add(ascentGroup);
+    proceduralLmGroup.add(ascentGroup);
 
     // Load authentic Apollo Lunar Module GLTF overlay
     const gltfLoader = getSharedGLTFLoader();
@@ -1201,8 +1205,8 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         model.scale.setScalar(scale);
         box.setFromObject(model);
         model.position.y = -box.min.y - 1.15;
-        dStage.visible = false;
-        cabin.visible = false;
+        // Completely hide the procedural placeholders once the authentic NASA GLTF model loads!
+        proceduralLmGroup.visible = false;
         apolloLmGroup.add(model);
       },
       undefined,
@@ -1619,11 +1623,13 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
       // ─── 3D CAMERA CONTROLLER ───
       if (p.missionPhase === 'SURFACE_EVA') {
-        // Third-Person Follow Camera behind walking astronaut
-        const camDist = 6.2;
-        camera.position.x = THREE.MathUtils.lerp(camera.position.x, p.astroX - camDist * Math.sin(p.astroRot), dt * 6);
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, -1.2 + 2.0, dt * 6);
-        camera.position.z = THREE.MathUtils.lerp(camera.position.z, p.astroZ - camDist * Math.cos(p.astroRot), dt * 6);
+        // Third-Person Orbit / Follow Camera smoothly framing walking Neil Armstrong
+        const camDist = 6.5;
+        const phi = Math.max(0.18, Math.min(1.15, p.cameraAngleY + 0.35));
+        const theta = p.cameraAngleX + p.astroRot;
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, p.astroX - camDist * Math.cos(phi) * Math.sin(theta), dt * 8);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, -1.2 + 1.2 + camDist * Math.sin(phi), dt * 8);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, p.astroZ - camDist * Math.cos(phi) * Math.cos(theta), dt * 8);
         camera.lookAt(p.astroX, -1.2 + 1.2, p.astroZ);
       } else {
         const camDist = p.viewMode === 'PAD_CAM' ? 55 : p.viewMode === 'ORBIT_MAP' ? 700 : 34;
@@ -1790,20 +1796,8 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             })}
           </div>
 
-          {/* NASA 4-Platform Open Gateway Links */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '9px', fontFamily: 'monospace', background: 'rgba(0,0,0,0.4)', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <span style={{ color: '#94a3b8' }}>NASA OPEN DATA:</span>
-            <a href="https://data.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8', textDecoration: 'none' }} title="NASA Open Data">data.nasa.gov</a>
-            <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
-            <a href="https://api.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ color: '#fbbf24', textDecoration: 'none' }} title="NASA API Portal (Free Registration)">api.nasa.gov</a>
-            <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
-            <a href="https://earthdata.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ color: '#4ade80', textDecoration: 'none' }} title="NASA Earthdata (Climate & Weather)">earthdata.nasa.gov</a>
-            <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>
-            <a href="https://www.jpl.nasa.gov" target="_blank" rel="noopener noreferrer" style={{ color: '#c084fc', textDecoration: 'none' }} title="NASA JPL Science (Ephemerides & Mars 2020)">jpl.nasa.gov</a>
-          </div>
-
           {/* Right Header Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <button
               onClick={() => setIsNasaModalOpen(true)}
               style={{
@@ -1811,19 +1805,20 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 border: '1px solid #38bdf8',
                 color: '#38bdf8',
                 borderRadius: '8px',
-                padding: '6px 12px',
+                padding: '6px 10px',
                 fontWeight: 800,
-                fontSize: '11px',
+                fontSize: '10.5px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
                 boxShadow: '0 0 10px rgba(56, 189, 248, 0.25)',
+                whiteSpace: 'nowrap',
               }}
               title="Open NASA Open Data Plan (2 Moon + 2 Mars Survival Missions)"
             >
-              <ShieldCheck size={14} />
-              <span>NASA SURVIVAL PLAN (2 MOON + 2 MARS)</span>
+              <ShieldCheck size={13} />
+              <span>NASA PLAN</span>
             </button>
 
             <button
@@ -1833,27 +1828,30 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 border: '1px solid rgba(255,255,255,0.2)',
                 color: soundEnabled ? '#38bdf8' : '#64748b',
                 borderRadius: '8px',
-                padding: '6px 10px',
+                padding: '6px 9px',
                 cursor: 'pointer',
+                flexShrink: 0,
               }}
               title="Toggle Audio"
             >
-              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
             <button
               onClick={onClose}
               style={{
-                background: 'rgba(239, 68, 68, 0.2)',
-                border: '1px solid #ef4444',
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(185, 28, 28, 0.8))',
+                border: '1.5px solid #ef4444',
                 color: '#ffffff',
                 borderRadius: '8px',
-                padding: '6px 12px',
-                fontWeight: 800,
+                padding: '6px 14px',
+                fontWeight: 900,
                 fontSize: '11px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
+                flexShrink: 0,
+                boxShadow: '0 0 14px rgba(239, 68, 68, 0.5)',
               }}
             >
               <X size={14} /> EXIT
@@ -1911,10 +1909,10 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       <div
         style={{
           position: 'absolute',
-          top: '90px',
+          top: '124px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(15, 23, 42, 0.88)',
+          background: 'rgba(15, 23, 42, 0.92)',
           border: '1.5px solid #38bdf8',
           borderRadius: '10px',
           padding: '8px 20px',
@@ -2103,7 +2101,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         <div
           style={{
             position: 'absolute',
-            top: '140px',
+            top: '170px',
             right: '20px',
             width: '390px',
             background: 'rgba(15, 23, 42, 0.94)',
@@ -2115,7 +2113,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             flexDirection: 'column',
             gap: '12px',
             boxShadow: '0 12px 48px rgba(0,0,0,0.85), 0 0 24px rgba(56, 189, 248, 0.3)',
-            maxHeight: 'calc(100vh - 240px)',
+            maxHeight: 'calc(100vh - 270px)',
             overflowY: 'auto',
           }}
         >
@@ -2280,13 +2278,13 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* LEFT: FLIGHT TELEMETRY HUD & ATTITUDE NAVBALL                       */}
+      {/* LEFT: FLIGHT TELEMETRY HUD & ATTITUDE NAVBALL (DURING FLIGHT)       */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {missionPhase !== 'VAB_BUILD' && (
+      {missionPhase !== 'VAB_BUILD' && missionPhase !== 'SURFACE_EVA' && (
         <div
           style={{
             position: 'absolute',
-            top: '140px',
+            top: '170px',
             left: '20px',
             background: 'rgba(15, 23, 42, 0.88)',
             border: '1px solid rgba(56, 189, 248, 0.3)',
@@ -2343,6 +2341,59 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#94a3b8' }}>ATTITUDE NAVBALL</span>
             <canvas ref={navballCanvasRef} width={96} height={96} style={{ width: '84px', height: '84px' }} />
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* LEFT: APOLLO 11 SPACESUIT VITALS (DURING MOON SURFACE EVA)          */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {missionPhase === 'SURFACE_EVA' && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '170px',
+            left: '20px',
+            background: 'rgba(15, 23, 42, 0.92)',
+            border: '1.5px solid #38bdf8',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            width: '220px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            zIndex: 80,
+            pointerEvents: 'auto',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px' }}>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', fontFamily: 'monospace' }}>A7L SPACESUIT VITALS</span>
+            <span style={{ fontSize: '9px', color: '#22c55e', fontWeight: 800 }}>NOMINAL</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>ASTRONAUT:</span>
+            <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>NEIL ARMSTRONG</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>PLSS OXYGEN:</span>
+            <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>100% (4.2 PSI)</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>SUIT BATTERY:</span>
+            <strong style={{ color: '#22c55e', fontFamily: 'monospace' }}>98% (4.5 HRS)</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>SURFACE TEMP:</span>
+            <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>-130°C / +120°C</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>LUNAR GRAVITY:</span>
+            <strong style={{ color: '#a855f7', fontFamily: 'monospace' }}>0.166 g (1.62 m/s²)</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: '#94a3b8' }}>LOCATION:</span>
+            <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>TRANQUILITY BASE</strong>
           </div>
         </div>
       )}

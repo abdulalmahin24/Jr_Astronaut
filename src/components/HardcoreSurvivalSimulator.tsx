@@ -647,9 +647,9 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
   const activeMission = HARDCORE_SURVIVAL_MISSIONS.find((m) => m.id === selectedMissionId) || HARDCORE_SURVIVAL_MISSIONS[0];
 
   const [telemetry, setTelemetry] = useState<HardcoreTelemetryState>(() => createInitialTelemetry(activeMission));
-  const [missionPhase, setMissionPhase] = useState<'BRIEFING' | 'ACTIVE' | 'VICTORY' | 'FAILED'>('BRIEFING');
+  const [missionPhase, setMissionPhase] = useState<'BRIEFING' | 'ACTIVE' | 'VICTORY' | 'FAILED'>('ACTIVE');
   const [orbitProgressPct, setOrbitProgressPct] = useState<number>(0);
-  const [isPaused, setIsPaused] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [cameraMode, setCameraMode] = useState<'orbit' | 'chase' | 'cockpit'>('chase');
   const [isNasaModalOpen, setIsNasaModalOpen] = useState(false);
@@ -694,7 +694,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
   });
 
   // Reset physics state whenever active mission changes
-  const resetMission = useCallback((mission: HardcoreMissionConfig, showBriefing = true) => {
+  const resetMission = useCallback((mission: HardcoreMissionConfig, showBriefing = false) => {
     const init = createInitialTelemetry(mission);
     setTelemetry(init);
     setIsPaused(showBriefing);
@@ -2435,6 +2435,8 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
               style={{
                 maxWidth: '680px',
                 width: '100%',
+                maxHeight: '88vh',
+                overflowY: 'auto',
                 background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98))',
                 border: '1.5px solid rgba(56, 189, 248, 0.5)',
                 borderRadius: '20px',
