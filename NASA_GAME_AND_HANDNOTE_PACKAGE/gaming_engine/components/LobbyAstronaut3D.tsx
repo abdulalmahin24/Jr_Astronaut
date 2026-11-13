@@ -46,42 +46,26 @@ const SUIT_OPTIONS: SuitConfig[] = [
 interface LobbyAstronaut3DProps {
   characterId?: string;
   astronautName?: string;
-  currentSuit?: SuitOption;
   isInspectionMode?: boolean;
-  hideOverlays?: boolean;
   envMapUrl?: string;
   onInteract?: () => void;
-  onSuitChange?: (suit: SuitOption) => void;
+  onSuitChange?: (suit: string) => void;
 }
 
 export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
   characterId,
-  astronautName = 'Neil Armstrong',
-  currentSuit,
+  astronautName = 'Kalpana Chawla',
   isInspectionMode = false,
-  hideOverlays = false,
   onInteract,
   onSuitChange,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [activeSuit, setActiveSuit] = useState<SuitOption>(() => {
-    if (currentSuit) return currentSuit;
     if (characterId === 'kalpana_chawla') return 'ACES';
     return 'EMU';
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // Sync external currentSuit or characterId if changed
-  useEffect(() => {
-    if (currentSuit) {
-      setActiveSuit(currentSuit);
-    } else if (characterId === 'kalpana_chawla') {
-      setActiveSuit('ACES');
-    } else {
-      setActiveSuit('EMU');
-    }
-  }, [currentSuit, characterId]);
 
   const isInspectionModeRef = useRef(isInspectionMode);
   const activeSuitRef = useRef<SuitOption>(activeSuit);
@@ -197,22 +181,7 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
     disc.rotation.x = -Math.PI / 2;
     pedestalGroup.add(disc);
 
-    if (!hideOverlays) {
-      scene.add(pedestalGroup);
-    } else {
-      // Soft ambient contact shadow on the blue hangar deck floor
-      const shadowGeo = new THREE.CircleGeometry(0.55, 32);
-      const shadowMat = new THREE.MeshBasicMaterial({
-        color: 0x050c18,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.55,
-      });
-      const shadowDisc = new THREE.Mesh(shadowGeo, shadowMat);
-      shadowDisc.rotation.x = -Math.PI / 2;
-      shadowDisc.position.y = 0.01;
-      scene.add(shadowDisc);
-    }
+    scene.add(pedestalGroup);
 
     // 6. Gold Visor Specular Sparkle Sprite
     const glintCanvas = document.createElement('canvas');
@@ -240,41 +209,22 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
     glintSprite.scale.set(0.24, 0.24, 0.24);
     scene.add(glintSprite);
 
-    // 7. Floating Welding Sparks & Golden Motes (Grounded in Hangar Scaffolding)
-    const particleCount = 160;
+    // 7. Floating Dust Motes
+    const particleCount = 100;
     const particleGeo = new THREE.BufferGeometry();
     const particlePos = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount * 3; i += 3) {
-      particlePos[i] = (Math.random() - 0.5) * 4.2;
-      particlePos[i + 1] = Math.random() * 3.2;
-      particlePos[i + 2] = -0.4 + (Math.random() - 0.5) * 2.2;
+      particlePos[i] = (Math.random() - 0.5) * 4;
+      particlePos[i + 1] = Math.random() * 2.8;
+      particlePos[i + 2] = (Math.random() - 0.5) * 3;
     }
     particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-
-    // Custom circular soft glow texture for welding sparks
-    const sparkCanvas = document.createElement('canvas');
-    sparkCanvas.width = 32;
-    sparkCanvas.height = 32;
-    const sCtx = sparkCanvas.getContext('2d');
-    if (sCtx) {
-      const grad = sCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
-      grad.addColorStop(0, 'rgba(255, 245, 180, 1)');
-      grad.addColorStop(0.25, 'rgba(255, 185, 45, 0.9)');
-      grad.addColorStop(0.65, 'rgba(255, 110, 20, 0.35)');
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      sCtx.fillStyle = grad;
-      sCtx.fillRect(0, 0, 32, 32);
-    }
-    const sparkTex = new THREE.CanvasTexture(sparkCanvas);
-
     const particleMat = new THREE.PointsMaterial({
-      map: sparkTex,
       color: 0xffd27d,
-      size: 0.052,
+      size: 0.024,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.5,
       blending: THREE.AdditiveBlending,
-      depthWrite: false,
     });
     const particles = new THREE.Points(particleGeo, particleMat);
     scene.add(particles);
@@ -394,26 +344,16 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
         modelContainer.position.y = Math.sin(elapsedTime * 1.8) * 0.005;
       }
 
-      // Floating welding sparks drifting downward from scaffolding
+      // Floating dust particles
       const positions = particleGeo.attributes.position.array as Float32Array;
-      for (let i = 0; i < particleCount; i++) {
-        const idx = i * 3;
-        positions[idx + 1] -= 0.0035 + (i % 6) * 0.0007; // Downward gravity drift
-        positions[idx] += Math.sin(elapsedTime * 2.5 + i) * 0.001; // Air turbulence jitter
-        if (positions[idx + 1] < 0.01) {
-          // Reset to top near scaffolding
-          positions[idx + 1] = 2.8 + Math.random() * 0.5;
-          positions[idx] = (Math.random() - 0.5) * 4.0;
-          positions[idx + 2] = -0.4 + (Math.random() - 0.5) * 2.2;
-        }
+      for (let i = 1; i < particleCount * 3; i += 3) {
+        positions[i] += Math.sin(elapsedTime * 0.5 + positions[i]) * 0.0012;
       }
       particleGeo.attributes.position.needsUpdate = true;
 
-      // Pedestal rotation animation (when not in clean realistic hangar mode)
-      if (!hideOverlays) {
-        ring1.rotation.z = elapsedTime * 0.15;
-        ring2.rotation.z = -elapsedTime * 0.25;
-      }
+      // Pedestal rotation animation
+      ring1.rotation.z = elapsedTime * 0.15;
+      ring2.rotation.z = -elapsedTime * 0.25;
 
       // Visor sparkle pulse
       const pulse = Math.sin(elapsedTime * 2.2) * 0.5 + 0.5;
@@ -527,42 +467,40 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
         </div>
       )}
 
-      {/* Top Authentic NASA Suit Badge (Only if hideOverlays is false) */}
-      {!hideOverlays && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '6px',
-            background: 'rgba(7, 9, 14, 0.88)',
-            border: '1px solid rgba(0, 210, 255, 0.45)',
-            borderRadius: '20px',
-            padding: '5px 16px',
-            fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
-            color: '#38bdf8',
-            letterSpacing: '0.08em',
-            pointerEvents: 'none',
-            backdropFilter: 'blur(8px)',
-            opacity: isHovered || isInspectionMode ? 1 : 0.85,
-            transition: 'opacity 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 4px 15px rgba(0, 210, 255, 0.25)',
-            zIndex: 20,
-          }}
-        >
-          <span style={{ color: '#10b981', animation: 'pulse 1.8s infinite' }}>●</span>
-          <span>
-            {isInspectionMode
-              ? `INSPECTION MODE · ${astronautName.toUpperCase()}`
-              : 'AUTHENTIC NASA EMU SPACESUIT · ARTEMIS FLIGHT GEAR'}
-          </span>
-        </div>
-      )}
+      {/* Top Authentic NASA Suit Badge */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '6px',
+          background: 'rgba(7, 9, 14, 0.88)',
+          border: '1px solid rgba(0, 210, 255, 0.45)',
+          borderRadius: '20px',
+          padding: '5px 16px',
+          fontSize: '10px',
+          fontFamily: 'var(--font-mono)',
+          color: '#38bdf8',
+          letterSpacing: '0.08em',
+          pointerEvents: 'none',
+          backdropFilter: 'blur(8px)',
+          opacity: isHovered || isInspectionMode ? 1 : 0.85,
+          transition: 'opacity 0.2s ease',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 15px rgba(0, 210, 255, 0.25)',
+          zIndex: 20,
+        }}
+      >
+        <span style={{ color: '#10b981', animation: 'pulse 1.8s infinite' }}>●</span>
+        <span>
+          {isInspectionMode
+            ? `INSPECTION MODE · ${astronautName.toUpperCase()}`
+            : 'AUTHENTIC NASA EMU SPACESUIT · ARTEMIS FLIGHT GEAR'}
+        </span>
+      </div>
 
-      {/* Bottom Tactical HUD Controls: Drag Hint & Suit Switcher Tabs (Only if hideOverlays is false) */}
-      {!hideOverlays && !isInspectionMode && (
+      {/* Bottom Tactical HUD Controls: Drag Hint & Suit Switcher Tabs */}
+      {!isInspectionMode && (
         <div
           style={{
             position: 'absolute',
