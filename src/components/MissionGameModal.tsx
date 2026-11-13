@@ -28,6 +28,10 @@ import { type AstronautAgeTier, ASTRONAUT_TIERS } from '../data/astronautTiers';
 const ThreeMissionSimulator = lazy(() =>
   import('./ThreeMissionSimulator').then((m) => ({ default: m.ThreeMissionSimulator }))
 );
+const FullMissionLifecycleModal = lazy(() =>
+  import('./FullMissionLifecycleModal').then((m) => ({ default: m.FullMissionLifecycleModal }))
+);
+import type { ExpeditionDestination } from '../missions/fullMissionLifecycle';
 import { MissionCinematicIntro } from './MissionCinematicIntro';
 import {
   NASA_MAPS,
@@ -67,13 +71,14 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserGameRef = useRef<any>(null);
 
-  const [missionState, setMissionState] = useState<'trailer' | 'briefing' | 'playing' | 'success' | 'failure'>('trailer');
+  const [missionState, setMissionState] = useState<'trailer' | 'briefing' | 'playing' | 'success' | 'failure'>('playing');
   const [engineMode, setEngineMode] = useState<'3d' | '2d'>('3d');
   const [score, setScore] = useState<number>(0);
   const [failureReason, setFailureReason] = useState<string>('');
   const [attemptKey, setAttemptKey] = useState<number>(0);
   const [showAstronautModel, setShowAstronautModel] = useState<boolean>(false);
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
+  const [showVabLifecycle, setShowVabLifecycle] = useState<boolean>(false);
   const [selectedAgeTier, setSelectedAgeTier] = useState<AstronautAgeTier>(() => {
     try {
       const saved = localStorage.getItem('astrocamp_age_tier') as AstronautAgeTier;
@@ -81,7 +86,7 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
     } catch {}
     return 'cadet';
   });
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(true);
 
   // Map cadet-XX, officer-XX, commander-XX or numeric suffix to authentic NASA-MXXX
   const resolvedMissionId = React.useMemo(() => {
@@ -102,12 +107,13 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
 
   const isAlreadyCompleted = completedMissions.includes(mission.id);
 
-  // When a new mission is selected, start with the 3D cinematic trailer
+  // When a new mission is selected, launch directly into the 3D @Astrelix (Ellipse: Rocket Simulator) flight deck
   useEffect(() => {
     setAttemptKey((prev) => prev + 1);
     setScore(0);
     setFailureReason('');
-    setMissionState('trailer');
+    setShowVabLifecycle(false);
+    setMissionState('playing');
   }, [missionId]);
 
   // Clean up Phaser on unmount
@@ -350,8 +356,8 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
             : undefined
         }
       >
-        {/* Top Header Bar (Hidden during full-bleed 21:9 trailer) */}
-        {missionState !== 'trailer' && (
+        {/* Top Header Bar (Hidden during full-bleed 21:9 trailer or full-screen 3D @Astrelix simulation) */}
+        {missionState !== 'trailer' && !(missionState === 'playing' && engineMode === '3d') && (
           <div className="flight-modal-header">
             <div className="flight-header-left">
               <div className="flight-type-badge-icon">
@@ -756,6 +762,7 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
                   initialAgeTier={selectedAgeTier}
                   onOpenMoonquakeMap={onOpenMoonquakeMap}
                   onOpenMarsSurvival={onOpenMarsSurvival}
+                  onOpenVabLifecycle={() => setShowVabLifecycle(true)}
                   onSuccess={(finalScore) => {
                     setScore(finalScore);
                     setMissionState('success');
@@ -769,7 +776,7 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
                     if (isCoopMode && onExitToLobby) {
                       onExitToLobby();
                     } else {
-                      setMissionState('briefing');
+                      onClose();
                     }
                   }}
                 />
@@ -912,10 +919,46 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
         </div>
 
         {/* Footer info bar */}
-        <div className="flight-footer-bar">
-          <span>TEAM MYSTERIO • ASTRO CAMP NASA GAME ENGINE (PHASER 3 + THREE.JS)</span>
-          <span>76 OPERATIONAL FLIGHTS • MERCURY TO ARTEMIS</span>
-        </div>
+        {!(missionState === 'playing' && engineMode === '3d') && (
+          <div className="flight-footer-bar">
+            <span>TEAM MYSTERIO • ASTRO CAMP NASA GAME ENGINE (PHASER 3 + THREE.JS)</span>
+            <span>76 OPERATIONAL FLIGHTS • MERCURY TO ARTEMIS</span>
+          </div>
+        )}
+
+        {/* Full 17-Phase @Astrelix (Ellipse: Rocket Simulator) VAB Rocket Builder & Walkable EVA Modal */}
+        {showVabLifecycle && (
+          <Suspense fallback={null}>
+            <FullMissionLifecycleModal
+              isOpen={showVabLifecycle}
+              onClose={() => setShowVabLifecycle(false)}
+              initialDestination={
+                (mission.missionName.toLowerCase().includes('mars') ||
+                mission.missionName.toLowerCase().includes('viking') ||
+                mission.missionName.toLowerCase().includes('perseverance') ||
+                mission.missionName.toLowerCase().includes('curiosity')
+                  ? 'MARS_JEZERO'
+                  : mission.missionName.toLowerCase().includes('artemis') ||
+                    mission.missionName.toLowerCase().includes('shackleton')
+                  ? 'MOON_ARTEMIS'
+                  : mission.gameType === 'lunar_landing' ||
+                    mission.missionName.toLowerCase().includes('apollo') ||
+                    mission.missionName.toLowerCase().includes('moon')
+                  ? 'MOON_APOLLO'
+                  : mission.missionName.toLowerCase().includes('mercury')
+                  ? 'SUBORBITAL'
+                  : 'ORBITAL') as ExpeditionDestination
+              }
+              initialPhase="VAB_BUILD"
+              onMissionCompleted={(_dest, credits) => {
+                setShowVabLifecycle(false);
+                setScore(credits);
+                setMissionState('success');
+                onCompleteMission(mission.id, credits);
+              }}
+            />
+          </Suspense>
+        )}
       </div>
     </div>
   );

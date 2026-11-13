@@ -41,6 +41,7 @@ import {
   type MultiplayerRoomState,
 } from '../utils/multiplayerMissionService';
 import { AuthenticCockpitOverlay } from './AuthenticCockpitOverlay';
+import { AstrelixFlightHUD, type AstrelixSASMode } from './AstrelixFlightHUD';
 
 export type VisualToneMode = 'REALISTIC_NASA' | 'CINEMATIC_GRADE' | 'TACTICAL_HUD';
 
@@ -58,6 +59,7 @@ interface ThreeMissionSimulatorProps {
   assignedRole?: CrewRole;
   onOpenMoonquakeMap?: () => void;
   onOpenMarsSurvival?: () => void;
+  onOpenVabLifecycle?: () => void;
   initialAgeTier?: AstronautAgeTier;
 }
 
@@ -371,6 +373,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   assignedRole = 'CDR',
   onOpenMoonquakeMap,
   onOpenMarsSurvival,
+  onOpenVabLifecycle,
   initialAgeTier,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -451,6 +454,17 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const guidanceCorridorRef = useRef<THREE.Group | null>(null);
   const [roverAutoNav, setRoverAutoNav] = useState<boolean>(false);
   const roverAutoNavRef = useRef<boolean>(false);
+
+  // Astrelix (Ellipse: Rocket Simulator) Time Warp, SAS Flight Computer & Conic Orbit Map States
+  const [timeWarp, setTimeWarp] = useState<number>(1);
+  const timeWarpRef = useRef<number>(1);
+  timeWarpRef.current = timeWarp;
+
+  const [sasMode, setSasMode] = useState<AstrelixSASMode>('HOLD');
+  const sasModeRef = useRef<AstrelixSASMode>('HOLD');
+  sasModeRef.current = sasMode;
+
+  const [orbitMapOpen, setOrbitMapOpen] = useState<boolean>(false);
 
   const isLunar =
     mission.gameType === 'lunar_landing' ||
@@ -856,7 +870,28 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         handleTriggerScanner();
       }
       if (k === 'z') {
-        handleToggleFlightAssist();
+        simStateRef.current.throttle = 1.0;
+        soundFx.playReactorStart();
+      }
+      if (k === 'x') {
+        simStateRef.current.throttle = 0.0;
+        soundFx.playClick(600);
+      }
+      if (k === 'm') {
+        setOrbitMapOpen((prev) => !prev);
+        soundFx.playClick(920);
+      }
+      if (k === ',') {
+        const steps = [1, 2, 5, 10];
+        const idx = Math.max(0, steps.indexOf(timeWarpRef.current) - 1);
+        setTimeWarp(steps[idx]);
+        soundFx.playClick(700);
+      }
+      if (k === '.') {
+        const steps = [1, 2, 5, 10];
+        const idx = Math.min(steps.length - 1, steps.indexOf(timeWarpRef.current) + 1);
+        setTimeWarp(steps[idx]);
+        soundFx.playClick(950);
       }
       if (k === '1') {
         handleSelectAgeTier('cadet');
@@ -1699,14 +1734,14 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     const spaceVoidColor = visualTone === 'TACTICAL_HUD' ? 0x010804 : 0x020409;
     const marsSkyColor = 0x8f5d43; // Authentic Jezero Crater dusty ochre-butterscotch daylight sky
 
-    const daySkyColor = new THREE.Color(0.22, 0.74, 0.97); // Daytime Florida Coast Azure
+    const daySkyColor = new THREE.Color(0.08, 0.32, 0.68); // @Astrelix / Ellipse Deep Atmospheric Horizon Cobalt
     if (isMarsRover) {
       scene.background = new THREE.Color(marsSkyColor);
       scene.fog = new THREE.FogExp2(0x825239, 0.0014); // Soft ferric atmospheric dust haze
     } else if (mission.gameType === 'launch') {
-      // Photorealistic Florida Daytime Sky on Pad
+      // High-Contrast @Astrelix Aerospace Horizon Sky on Pad
       scene.background = daySkyColor;
-      scene.fog = new THREE.FogExp2(0x38bdf8, 0.00015); // Crisp daytime coastal atmosphere
+      scene.fog = new THREE.FogExp2(0x1e40af, 0.00012);
     } else {
       scene.background = new THREE.Color(spaceVoidColor);
       scene.fog = new THREE.FogExp2(spaceVoidColor, 0.0002);
@@ -2833,7 +2868,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       loxVentMeshRef.current = loxVent;
       playerVehicle.add(loxVent);
 
-      // Rocket Exhaust Plume with Mach Shock Diamonds
+      // Astrelix (Ellipse: Rocket Simulator) Multi-Layered Supersonic Plume with Mach Shock Diamonds & Vacuum Bell
       machDiamondGroup = new THREE.Group();
       machDiamondGroupRef.current = machDiamondGroup;
       machDiamondGroup.position.y = -8;
@@ -2852,11 +2887,40 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       const coreMat = new THREE.MeshBasicMaterial({
         color: 0x38bdf8,
         transparent: true,
-        opacity: 0.75,
+        opacity: 0.85,
         blending: THREE.AdditiveBlending,
       });
       const coreMesh = new THREE.Mesh(coreGeo, coreMat);
       machDiamondGroup.add(coreMesh);
+
+      // Outer Vacuum Underexpansion Bell Plume (Astrelix signature expanding violet-blue vacuum bell)
+      const vacBellGeo = new THREE.ConeGeometry(5.6, 28, 32, 1, true);
+      const vacBellMat = new THREE.MeshBasicMaterial({
+        color: 0x60a5fa,
+        transparent: true,
+        opacity: 0.36,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      });
+      const vacBellMesh = new THREE.Mesh(vacBellGeo, vacBellMat);
+      vacBellMesh.position.y = -2;
+      machDiamondGroup.add(vacBellMesh);
+
+      // 7 Periodic Incandescent Supersonic Mach Shock Diamonds inside exhaust jet
+      for (let md = 0; md < 7; md++) {
+        const mdRadius = Math.max(0.28, 1.15 - md * 0.12);
+        const mdGeo = new THREE.OctahedronGeometry(mdRadius, 1);
+        const mdMat = new THREE.MeshBasicMaterial({
+          color: md % 2 === 0 ? 0xffffff : 0x7dd3fc,
+          transparent: true,
+          opacity: 0.92 - md * 0.09,
+          blending: THREE.AdditiveBlending,
+        });
+        const mdMesh = new THREE.Mesh(mdGeo, mdMat);
+        mdMesh.scale.set(1.0, 0.55, 1.0);
+        mdMesh.position.y = 6.5 - md * 2.5;
+        machDiamondGroup.add(mdMesh);
+      }
 
       machDiamondGroup.visible = false;
       playerVehicle.add(machDiamondGroup);
@@ -4734,6 +4798,61 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     scanWaveMeshRef.current = scanWaveMesh;
     scene.add(scanWaveMesh);
 
+    // Ensure non-launch spaceflight vehicles (lunar_landing, docking, deep_space) also have an Astrelix Vacuum Plume & Shock Diamonds
+    if (!machDiamondGroup && (mission.gameType === 'lunar_landing' || mission.gameType === 'docking' || mission.gameType === 'deep_space')) {
+      machDiamondGroup = new THREE.Group();
+      machDiamondGroupRef.current = machDiamondGroup;
+      if (mission.gameType === 'lunar_landing') {
+        machDiamondGroup.position.set(0, -1.6, 0);
+      } else if (mission.gameType === 'docking') {
+        machDiamondGroup.position.set(0, 0, 5.2);
+        machDiamondGroup.rotation.x = -Math.PI / 2;
+      } else {
+        machDiamondGroup.position.set(0, 0, 3.8);
+        machDiamondGroup.rotation.x = -Math.PI / 2;
+      }
+
+      const vacCone = new THREE.Mesh(
+        new THREE.ConeGeometry(1.9, 9.5, 24, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0.42,
+          side: THREE.DoubleSide,
+          blending: THREE.AdditiveBlending,
+        })
+      );
+      machDiamondGroup.add(vacCone);
+
+      const innerCore = new THREE.Mesh(
+        new THREE.ConeGeometry(0.75, 5.5, 20),
+        new THREE.MeshBasicMaterial({
+          color: 0xffedd5,
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending,
+        })
+      );
+      machDiamondGroup.add(innerCore);
+
+      for (let md = 0; md < 4; md++) {
+        const mdMesh = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.45 - md * 0.08, 1),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9 - md * 0.15,
+            blending: THREE.AdditiveBlending,
+          })
+        );
+        mdMesh.scale.set(1, 0.5, 1);
+        mdMesh.position.y = 1.6 - md * 1.1;
+        machDiamondGroup.add(mdMesh);
+      }
+      machDiamondGroup.visible = false;
+      playerVehicle.add(machDiamondGroup);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // 6. ANIMATION & PHYSICS FLIGHT LOOP
     // ─────────────────────────────────────────────────────────────
@@ -4744,10 +4863,73 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
     const animate = (time: number) => {
       animationFrameId = requestAnimationFrame(animate);
-      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      const rawDt = Math.min((time - lastTime) / 1000, 0.1);
+      const dt = rawDt * timeWarpRef.current;
       lastTime = time;
 
       const state = simStateRef.current;
+      const activeSas = sasModeRef.current;
+
+      // Astrelix SAS & Autopilot Computer Guidance across all 76 Missions
+      if (!state.isFinished) {
+        if (activeSas === 'GRAV_TURN' || activeSas === 'PROGRADE') {
+          if (mission.gameType === 'launch' && state.altitudeKm > 1.2) {
+            const targetPitch = Math.max(15, 90 - Math.min(75, (state.altitudeKm / 115) * 75));
+            state.pitchDeg = THREE.MathUtils.lerp(state.pitchDeg, targetPitch, dt * 1.8);
+          }
+        } else if (activeSas === 'RETROGRADE') {
+          if (mission.gameType === 'launch') {
+            state.pitchDeg = THREE.MathUtils.lerp(state.pitchDeg, 90, dt * 2.0);
+          }
+        } else if (activeSas === 'AUTOPILOT') {
+          if (mission.gameType === 'launch') {
+            state.throttle = 1.0;
+            const targetPitch = state.altitudeKm < 1.5 ? 90 : Math.max(18, 90 - Math.min(72, (state.altitudeKm / 110) * 72));
+            state.pitchDeg = THREE.MathUtils.lerp(state.pitchDeg, targetPitch, dt * 2.2);
+            if (hasSideBoosters && !state.boosterSeparated && state.altitudeKm >= 36) {
+              handleBoosterSeparation();
+            }
+            if (!state.fairingSeparated && state.altitudeKm >= 75) {
+              handleFairingSeparation();
+            }
+            if (state.stage === 1 && state.altitudeKm >= 122) {
+              handleStage1Separation();
+            }
+            if (isLunarMission && !state.tliActive && state.altitudeKm >= 142) {
+              handleInitiateTli();
+            }
+          } else if (mission.gameType === 'lunar_landing') {
+            state.agcAuto = true;
+            playerVehicle.position.x = THREE.MathUtils.lerp(playerVehicle.position.x, 0, dt * 1.5);
+            playerVehicle.position.z = THREE.MathUtils.lerp(playerVehicle.position.z, 0, dt * 1.5);
+          } else if (mission.gameType === 'rover') {
+            if (state.roverLandingPhase !== 'landed') {
+              handleSkipToDrive();
+            }
+            roverAutoNavRef.current = true;
+          } else if (mission.gameType === 'docking') {
+            playerVehicle.position.x = THREE.MathUtils.lerp(playerVehicle.position.x, 0, dt * 2.5);
+            state.keys['w'] = state.distanceM > 9.5;
+            if (state.distanceM <= 10.5) {
+              handleSimAction('dock_latch');
+            }
+          } else if (mission.gameType === 'deep_space') {
+            if (state.distanceM > 18) {
+              if (playerVehicleRef.current && targetObjectRef.current) {
+                playerVehicleRef.current.position.z -= 22 * dt;
+                state.distanceM = Math.max(0, playerVehicleRef.current.position.z - (targetObjectRef.current.position.z + 10));
+              }
+            } else {
+              handleSimAction('dsn_transmit');
+            }
+          } else if (mission.gameType === 'telescope') {
+            state.telescopeFocus = Math.min(98, state.telescopeFocus + dt * 28);
+            if (state.telescopeFocus >= 92) {
+              handleSimAction('telescope_capture');
+            }
+          }
+        }
+      }
 
       // Pulse guidance corridor gates
       if (guidanceCorridorRef.current && guidanceCorridorRef.current.visible) {
@@ -5043,50 +5225,38 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           vaporConeMat.opacity = 0.35 + Math.random() * 0.25;
         }
 
-        // Dynamic Atmospheric Sky & Fog Transition (Florida Coast Azure -> Deep Space Void)
+        // Dynamic Atmospheric Sky & Fog Transition (@Astrelix / Ellipse High-Contrast Horizon -> Deep Space Void)
         if (scene) {
           const alt = state.altitudeKm;
-          if (alt < 15) {
-            // Troposphere (0 - 15 km): Florida Azure Daylight to Deep Blue
-            const t = Math.max(0, alt / 15);
+          if (alt < 8) {
+            // Troposphere (0 - 8 km): High-contrast Coastal Twilight Azure to Deep Stratospheric Cobalt
+            const t = Math.max(0, alt / 8);
             daySkyColor.setRGB(
-              THREE.MathUtils.lerp(0.22, 0.06, t),
-              THREE.MathUtils.lerp(0.74, 0.20, t),
-              THREE.MathUtils.lerp(0.97, 0.50, t)
+              THREE.MathUtils.lerp(0.08, 0.025, t),
+              THREE.MathUtils.lerp(0.32, 0.09, t),
+              THREE.MathUtils.lerp(0.68, 0.28, t)
             );
             if (scene.fog) {
               scene.fog.color.copy(daySkyColor);
-              (scene.fog as THREE.FogExp2).density = THREE.MathUtils.lerp(0.00015, 0.00005, t);
+              (scene.fog as THREE.FogExp2).density = THREE.MathUtils.lerp(0.00012, 0.00003, t);
             }
-            if (starMat) starMat.opacity = 0;
-          } else if (alt < 55) {
-            // Stratosphere (15 - 55 km): Deep Royal Blue to Twilight Inky Indigo
-            const t = (alt - 15) / 40;
+            if (starMat) starMat.opacity = t * 0.35;
+          } else if (alt < 32) {
+            // Stratosphere (8 - 32 km): Deep Cobalt to Cosmic Space Indigo
+            const t = (alt - 8) / 24;
             daySkyColor.setRGB(
-              THREE.MathUtils.lerp(0.06, 0.02, t),
-              THREE.MathUtils.lerp(0.20, 0.04, t),
-              THREE.MathUtils.lerp(0.50, 0.12, t)
+              THREE.MathUtils.lerp(0.025, 0.006, t),
+              THREE.MathUtils.lerp(0.09, 0.01, t),
+              THREE.MathUtils.lerp(0.28, 0.025, t)
             );
             if (scene.fog) {
               scene.fog.color.copy(daySkyColor);
-              (scene.fog as THREE.FogExp2).density = THREE.MathUtils.lerp(0.00005, 0.00001, t);
+              (scene.fog as THREE.FogExp2).density = THREE.MathUtils.lerp(0.00003, 0.0, t);
             }
-            if (starMat) starMat.opacity = t * 0.55;
-          } else if (alt < 90) {
-            // Mesosphere: Twilight Indigo to Pitch Black Space
-            const t = (alt - 55) / 35;
-            daySkyColor.setRGB(
-              THREE.MathUtils.lerp(0.02, 0.008, t),
-              THREE.MathUtils.lerp(0.04, 0.012, t),
-              THREE.MathUtils.lerp(0.12, 0.024, t)
-            );
-            if (scene.fog) {
-              (scene.fog as THREE.FogExp2).density = 0;
-            }
-            if (starMat) starMat.opacity = 0.55 + t * 0.45;
+            if (starMat) starMat.opacity = 0.35 + t * 0.65;
           } else {
-            // Space Vacuum: Deep cosmic void with high-contrast stars & Earth curvature
-            daySkyColor.setRGB(0.008, 0.012, 0.024);
+            // Space Vacuum: Deep cosmic void with high-contrast stars & glowing Rayleigh Earth curvature
+            daySkyColor.setRGB(0.005, 0.008, 0.02);
             if (scene.fog) {
               (scene.fog as THREE.FogExp2).density = 0;
             }
@@ -5100,16 +5270,16 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           }
         }
 
-        // Photorealistic Curved Earth Globe rising smoothly beneath the spacecraft
+        // Photorealistic Curved Earth Globe & Glowing Blue Rayleigh Atmosphere rising smoothly beneath the spacecraft
         if (earthMeshRef.current && atmoMeshRef.current) {
-          if (state.altitudeKm > 8) {
+          if (state.altitudeKm > 0.35) {
             earthMeshRef.current.visible = true;
             atmoMeshRef.current.visible = true;
-            const targetY = -earthRadius - 120 + Math.min(state.altitudeKm * 1.8, 160);
+            const targetY = -earthRadius - 115 + Math.min(state.altitudeKm * 2.2, 165);
             earthMeshRef.current.position.y = targetY;
             atmoMeshRef.current.position.y = targetY;
-            earthMeshRef.current.rotation.y = time * 0.00003;
-            atmoMeshRef.current.rotation.y = time * 0.00003;
+            earthMeshRef.current.rotation.y = time * 0.00004;
+            atmoMeshRef.current.rotation.y = time * 0.00004;
           } else {
             earthMeshRef.current.visible = false;
             atmoMeshRef.current.visible = false;
@@ -6298,1017 +6468,139 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         />
       )}
 
-      {/* ─── TOP COCKPIT AVIONICS STATUS BAR ────────────────────── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '12px',
-          left: '14px',
-          right: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          zIndex: 30,
-          pointerEvents: 'none',
+      {/* ─── ASTRELIX (ELLIPSE: ROCKET SIMULATOR) VISUAL & CONTROL HUD SUITE ─── */}
+      <AstrelixFlightHUD
+        mission={mission}
+        telemetry={{
+          altitudeKm: telemetry.altitudeKm,
+          velocityKms: telemetry.velocityKms,
+          throttle: telemetry.throttle,
+          propellantPct: telemetry.propellantPct,
+          pitchDeg: telemetry.pitchDeg,
+          rollDeg: telemetry.rollDeg,
+          stage: telemetry.stage,
+          gForce: telemetry.gForce,
+          apoapsisKm: telemetry.apoapsisKm,
+          periapsisKm: telemetry.periapsisKm,
+          deltaVKms: telemetry.deltaVKms,
+          dynamicPressureQ: telemetry.dynamicPressureQ,
+          vertSpeedMs: telemetry.vertSpeedMs,
+          horizSpeedKms: telemetry.horizSpeedKms,
+          distanceM: telemetry.distanceM,
+          sampleCount: telemetry.sampleCount,
+          telescopeFocus: telemetry.telescopeFocus,
+          statusText: telemetry.statusText,
+          statusColor: telemetry.statusColor,
+          roverLandingPhase: telemetry.roverLandingPhase,
         }}
-      >
-        {/* Left: Mission Badge + Tone Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto' }}>
-          <div
-            style={{
-              background: hudTheme.cardBg,
-              border: `1px solid ${hudTheme.border}`,
-              borderRadius: '8px',
-              padding: '5px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backdropFilter: 'blur(12px)',
-            }}
-          >
-            <Rocket size={14} style={{ color: hudTheme.primary }} />
-            <span style={{ fontSize: '11px', fontWeight: 800, color: hudTheme.textColor }}>
-              {mission.missionName.toUpperCase()}
-            </span>
-            <span style={{ fontSize: '9px', color: '#94a3b8' }}>[{mission.year}]</span>
-          </div>
-
-          {mission.gameType !== 'launch' && (
-            <div
-              style={{
-                background: hudTheme.cardBg,
-                border: `1px solid ${hudTheme.border}`,
-                borderRadius: '8px',
-                padding: '3px 6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                backdropFilter: 'blur(12px)',
-              }}
-            >
-              <Palette size={12} style={{ color: hudTheme.amber }} />
-              {(['REALISTIC_NASA', 'CINEMATIC_GRADE', 'TACTICAL_HUD'] as VisualToneMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => {
-                    setVisualTone(mode);
-                    soundFx.playClick(900);
-                  }}
-                  style={{
-                    background: visualTone === mode ? hudTheme.primary : 'transparent',
-                    color: visualTone === mode ? '#020617' : '#94a3b8',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '3px 6px',
-                    fontSize: '9px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {mode === 'REALISTIC_NASA' ? 'NASA REAL' : mode === 'CINEMATIC_GRADE' ? 'CINEMATIC' : 'TAC-HUD'}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Center: Astronaut Academy Age Tier Selector Pill (Hidden during launch to remove clutter) */}
-        {mission.gameType !== 'launch' && (
-          <div
-            style={{
-              background: hudTheme.cardBg,
-              border: `1.5px solid ${ageTier === 'cadet' ? '#38bdf8' : ageTier === 'officer' ? '#fbbf24' : '#c084fc'}`,
-              borderRadius: '10px',
-              padding: '3px 6px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              backdropFilter: 'blur(12px)',
-              boxShadow: `0 0 16px ${ageTier === 'cadet' ? 'rgba(56, 189, 248, 0.3)' : ageTier === 'officer' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(192, 132, 252, 0.3)'}`,
-              pointerEvents: 'auto',
-            }}
-          >
-            {(['cadet', 'officer', 'commander'] as AstronautAgeTier[]).map((t) => {
-              const cfg = ASTRONAUT_TIERS[t];
-              const isSelected = ageTier === t;
-              return (
-                <button
-                  key={t}
-                  onClick={() => handleSelectAgeTier(t)}
-                  title={`${cfg.label} (${cfg.ageRange}): ${cfg.description}\nNASA Mission: ${cfg.nasaMissionContext}`}
-                  style={{
-                    background: isSelected
-                      ? (t === 'cadet' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : t === 'officer' ? 'linear-gradient(135deg, #d97706, #b45309)' : 'linear-gradient(135deg, #7c3aed, #6d28d9)')
-                      : 'transparent',
-                    color: isSelected ? '#ffffff' : '#94a3b8',
-                    border: isSelected ? '1px solid rgba(255,255,255,0.4)' : '1px solid transparent',
-                    borderRadius: '6px',
-                    padding: '4px 10px',
-                    fontSize: '9.5px',
-                    fontWeight: 900,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    transition: 'all 0.15s ease',
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  <span>{cfg.badge}</span>
-                  <span>{cfg.label}</span>
-                  <span style={{ fontSize: '8px', opacity: 0.8, fontWeight: 700 }}>
-                    ({cfg.ageRange.replace('Ages ', '')})
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Center / Right: Camera, Sound & Briefing */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'auto' }}>
-          <div
-            style={{
-              background: hudTheme.cardBg,
-              border: `1px solid ${hudTheme.border}`,
-              borderRadius: '8px',
-              padding: '3px',
-              display: 'flex',
-              gap: '3px',
-            }}
-          >
-            {(mission.gameType === 'launch'
-              ? (['chase', 'orbit', 'cockpit'] as CameraMode[])
-              : (['orbit', 'chase', 'cockpit', 'distant', 'pad'] as CameraMode[])
-            ).map((mode) => {
-              const label =
-                mode === 'orbit'
-                  ? '🌐 ORBIT'
-                  : mode === 'chase'
-                  ? '🚀 CHASE'
-                  : mode === 'distant'
-                  ? '🌌 DISTANT'
-                  : mode === 'cockpit'
-                  ? (mission.gameType === 'rover' ? '🪑 DRIVER' : mission.gameType === 'lunar_landing' ? '👨‍🚀 LANDER' : mission.gameType === 'telescope' ? '🔭 EYEPIECE' : mission.gameType === 'docking' ? '🎯 DOCK CAM' : mission.gameType === 'deep_space' ? '📡 PROBE CAM' : '👨‍🚀 COCKPIT')
-                  : (mission.gameType === 'launch' ? '🗼 TOWER' : mission.gameType === 'docking' ? '🛰️ STATION' : mission.gameType === 'deep_space' ? '☄️ TARGET' : '📷 GROUND');
-
-              const tooltip =
-                mode === 'orbit'
-                  ? '360° Orbit: Drag mouse to rotate around vehicle from all angles, scroll to zoom'
-                  : mode === 'chase'
-                  ? 'Chase: Trailing behind the spacecraft'
-                  : mode === 'distant'
-                  ? 'Distant: Wide external cinematic view'
-                  : mode === 'cockpit'
-                  ? 'Cockpit: First-person astronaut perspective'
-                  : 'Observation: Fixed observation post';
-
-              return (
-                <button
-                  key={mode}
-                  onClick={() => handleSelectCameraMode(mode)}
-                  title={tooltip}
-                  style={{
-                    background: cameraMode === mode ? hudTheme.primary : 'transparent',
-                    color: cameraMode === mode ? '#020617' : '#94a3b8',
-                    border: 'none',
-                    borderRadius: '5px',
-                    padding: '4px 7px',
-                    fontSize: '9px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    textTransform: 'uppercase',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            onClick={() => {
-              const next = !soundEnabled;
-              setSoundEnabled(next);
-              audioSynthRef.current.setEnabled(next);
-            }}
-            style={{
-              background: hudTheme.cardBg,
-              border: `1px solid ${hudTheme.border}`,
-              borderRadius: '8px',
-              padding: '6px 10px',
-              color: soundEnabled ? hudTheme.primary : '#ef4444',
-              cursor: 'pointer',
-            }}
-          >
-            {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-          </button>
-
-          <button
-            onClick={() => setShowBriefing(!showBriefing)}
-            style={{
-              background: hudTheme.cardBg,
-              border: `1px solid ${hudTheme.border}`,
-              borderRadius: '8px',
-              padding: '6px 10px',
-              color: hudTheme.primary,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '10px',
-              fontWeight: 800,
-            }}
-          >
-            <BookOpen size={13} />
-            <span>DIRECTIVE</span>
-          </button>
-
-          {isLunar && onOpenMoonquakeMap && (
-            <button
-              onClick={() => {
-                onOpenMoonquakeMap();
-                soundFx.playClick(850);
-              }}
-              style={{
-                background: 'rgba(245, 158, 11, 0.2)',
-                border: '1px solid #f59e0b',
-                borderRadius: '8px',
-                padding: '6px 10px',
-                color: '#fbbf24',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontSize: '10px',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-              }}
-              title="Open Authentic NASA Apollo 3D Moonquake Globe"
-            >
-              <span>🌕</span>
-              <span>MOONQUAKE 3D GLOBE</span>
-            </button>
-          )}
-
-          {onOpenMarsSurvival && (
-            <button
-              onClick={() => {
-                onOpenMarsSurvival();
-                soundFx.playReactorStart();
-              }}
-              style={{
-                background: 'rgba(239, 68, 68, 0.22)',
-                border: '1px solid #ef4444',
-                borderRadius: '8px',
-                padding: '6px 10px',
-                color: '#fca5a5',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontSize: '10px',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-              }}
-              title="Launch 4 NASA Mars Planetary Survival Operations"
-            >
-              <span>🔴</span>
-              <span>MARS SURVIVAL (4 OPS)</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ─── FLIGHT SEQUENCE TIMELINE BAR (SPACEFLIGHT SIMULATOR MOON ARCHITECTURE) ─── */}
-      {mission.gameType === 'launch' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '48px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'rgba(2, 6, 23, 0.88)',
-            border: `1px solid ${hudTheme.border}`,
-            borderRadius: '24px',
-            padding: '4px 14px',
-            zIndex: 25,
-            backdropFilter: 'blur(10px)',
-            boxShadow: `0 0 20px ${hudTheme.glow}`,
-            maxWidth: '92%',
-            overflowX: 'auto',
-          }}
-        >
-          {(isMercury
-            ? [
-                { id: 'liftoff', label: '1. LIFTOFF', done: telemetry.altitudeKm > 0.05, current: telemetry.altitudeKm <= 20 && telemetry.altitudeKm > 0 },
-                { id: 'ascent', label: '2. REDSTONE ASCENT', done: telemetry.altitudeKm > 20, current: telemetry.altitudeKm > 0.05 && telemetry.altitudeKm <= 40 },
-                { id: 'les', label: '3. LES TOWER JETTISON', done: fairingSeparated, current: telemetry.altitudeKm > 35 && !fairingSeparated },
-                { id: 'meco', label: '4. MECO & SEPARATION', done: telemetry.stage === 2, current: fairingSeparated && telemetry.stage === 1 },
-                { id: 'apogee', label: '5. SUBORBITAL SPACE (187 KM)', done: telemetry.altitudeKm >= 140, current: telemetry.stage === 2 && telemetry.altitudeKm < 140 },
-              ]
-            : isLunarMission
-            ? [
-                { id: 'liftoff', label: '1. LIFTOFF', done: telemetry.altitudeKm > 0.05, current: telemetry.altitudeKm <= 35 && telemetry.altitudeKm > 0 },
-                { id: 'boosters', label: '2. BOOSTERS SEP', done: boosterSeparated, current: hasSideBoosters && !boosterSeparated && telemetry.altitudeKm > 30 },
-                { id: 'fairing', label: '3. FAIRINGS', done: fairingSeparated, current: boosterSeparated && !fairingSeparated },
-                { id: 'meco', label: '4. S-II MECO', done: telemetry.stage === 2, current: fairingSeparated && telemetry.stage === 1 },
-                { id: 'orbit', label: '5. LEO PARKING ORBIT', done: telemetry.altitudeKm >= 140, current: telemetry.stage === 2 && telemetry.altitudeKm < 140 },
-                { id: 'tli', label: '6. TLI MOON BURN', done: tliComplete, current: tliActive && !tliComplete },
-                { id: 'lunar', label: '7. LUNAR INSERTION', done: tliComplete, current: tliComplete },
-              ]
-            : [
-                { id: 'liftoff', label: '1. LIFTOFF', done: telemetry.altitudeKm > 0.05, current: telemetry.altitudeKm <= 35 && telemetry.altitudeKm > 0 },
-                { id: 'boosters', label: '2. BOOSTERS SEP', done: boosterSeparated, current: hasSideBoosters && !boosterSeparated && telemetry.altitudeKm > 30 },
-                { id: 'fairing', label: '3. FAIRINGS', done: fairingSeparated, current: boosterSeparated && !fairingSeparated },
-                { id: 'meco', label: '4. CORE MECO', done: telemetry.stage === 2, current: fairingSeparated && telemetry.stage === 1 },
-                { id: 'orbit', label: '5. LEO ORBIT INSERTION', done: telemetry.altitudeKm >= 140, current: telemetry.stage === 2 && telemetry.altitudeKm < 140 },
-              ]
-          ).map((step, idx, arr) => (
-            <React.Fragment key={step.id}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  color: step.done ? '#22c55e' : step.current ? '#38bdf8' : '#64748b',
-                  padding: '2px 6px',
-                  borderRadius: '12px',
-                  background: step.current ? 'rgba(56, 189, 248, 0.2)' : step.done ? 'rgba(34, 197, 94, 0.12)' : 'transparent',
-                  border: step.current ? '1px solid #38bdf8' : '1px solid transparent',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <span>{step.done ? '✓' : step.current ? '●' : '○'}</span>
-                <span>{step.label}</span>
-              </div>
-              {idx < arr.length - 1 && (
-                <span style={{ color: '#334155', fontSize: '9px' }}>➔</span>
-              )}
-            </React.Fragment>
-          ))}
-          {isLunarMission && tliActive && (
-            <div style={{ marginLeft: '6px', paddingLeft: '8px', borderLeft: '1px solid #334155', fontSize: '9px', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-              <span>🌕 MOON:</span>
-              <strong style={{ color: '#f8fafc' }}>{moonDistDisplay.toLocaleString()} KM</strong>
-            </div>
-          )}
-        </div>
-      )}
-
-
-
-      {/* ─── KÁRMÁN LINE SPACE CROSSING BANNER ─── */}
-      {mission.gameType === 'launch' && telemetry.altitudeKm >= 100 && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '124px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 24,
-            background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(168, 85, 247, 0.3))',
-            border: '1px solid rgba(56, 189, 248, 0.75)',
-            borderRadius: '20px',
-            padding: '4px 18px',
-            backdropFilter: 'blur(10px)',
-            boxShadow: '0 0 24px rgba(56, 189, 248, 0.55)',
-            color: '#ffffff',
-            fontWeight: 900,
-            fontSize: '11px',
-            letterSpacing: '0.08em',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            pointerEvents: 'none',
-          }}
-        >
-          <span>🌌</span>
-          <span>KÁRMÁN LINE CROSSED (100 KM) · IN SPACE!</span>
-        </div>
-      )}
-
-      {/* ─── ELLIPSE VERTICAL THROTTLE SLIDER (LEFT SCREEN) ─── */}
-      {mission.gameType === 'launch' && (
-        <div
-          style={{
-            position: 'absolute',
-            left: '18px',
-            bottom: '24px',
-            zIndex: 28,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'rgba(11, 19, 43, 0.88)',
-            padding: '10px 8px',
-            borderRadius: '12px',
-            border: '1px solid rgba(56, 189, 248, 0.35)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(10px)',
-            width: '56px',
-          }}
-        >
-          {/* MAX Button */}
-          <button
-            onClick={() => {
-              const state = simStateRef.current;
-              state.throttle = 1.0;
-              if (state.altitudeKm < 0.05) {
-                (state as any).realVy = 14.0;
-              }
-              setPreflightChecklist({
-                internalPower: true,
-                cryoPressurization: true,
-                gncAlignment: true,
-                waterDeluge: true,
-              });
-              setCountdownTime(null);
-              soundFx.playClick(950);
-              soundFx.playReactorStart();
-            }}
-            style={{
-              width: '100%',
-              padding: '4px 0',
-              borderRadius: '6px',
-              background: telemetry.throttle >= 0.98 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'rgba(30, 41, 59, 0.9)',
-              border: '1px solid rgba(239, 68, 68, 0.6)',
-              color: '#ffffff',
-              fontSize: '9.5px',
-              fontWeight: 900,
-              cursor: 'pointer',
-              fontFamily: 'monospace',
-            }}
-            title="Set Throttle to 100% & Launch (or press W)"
-          >
-            MAX
-          </button>
-
-          {/* Vertical Slider Track */}
-          <div
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const clickY = e.clientY - rect.top;
-              const newThr = Math.max(0, Math.min(1, 1 - clickY / rect.height));
-              const state = simStateRef.current;
-              state.throttle = newThr;
-              if (state.altitudeKm < 0.05 && newThr > 0.05 && (state as any).realVy <= 0.5) {
-                (state as any).realVy = 12.0 * newThr;
-                soundFx.playReactorStart();
-              }
-              soundFx.playClick(800 + newThr * 300);
-            }}
-            style={{
-              position: 'relative',
-              width: '22px',
-              height: '130px',
-              background: 'rgba(11, 19, 43, 0.95)',
-              borderRadius: '10px',
-              border: '1px solid rgba(56, 189, 248, 0.4)',
-              cursor: 'ns-resize',
-              overflow: 'hidden',
-            }}
-            title="Drag or click to adjust Throttle (W / S)"
-          >
-            {/* Filled Liquid Level */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: `${telemetry.throttle * 100}%`,
-                background: telemetry.throttle > 0.8
-                  ? 'linear-gradient(to top, #10b981, #f59e0b, #ef4444)'
-                  : telemetry.throttle > 0.4
-                  ? 'linear-gradient(to top, #10b981, #f59e0b)'
-                  : '#10b981',
-                transition: 'height 0.05s ease-out',
-                boxShadow: telemetry.throttle > 0 ? '0 0 12px rgba(239, 68, 68, 0.8)' : 'none',
-              }}
-            />
-
-            {/* Horizontal Tick Lines */}
-            {[0.25, 0.5, 0.75].map((tick) => (
-              <div
-                key={tick}
-                style={{
-                  position: 'absolute',
-                  bottom: `${tick * 100}%`,
-                  left: 0,
-                  right: 0,
-                  height: '1px',
-                  background: 'rgba(255, 255, 255, 0.25)',
-                  pointerEvents: 'none',
-                }}
-              />
-            ))}
-
-            {/* Draggable Indicator Handle */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: `calc(${telemetry.throttle * 100}% - 4px)`,
-                left: '-2px',
-                right: '-2px',
-                height: '8px',
-                background: '#ffffff',
-                borderRadius: '4px',
-                boxShadow: '0 0 8px #ffffff',
-                pointerEvents: 'none',
-              }}
-            />
-          </div>
-
-          {/* CUT Button */}
-          <button
-            onClick={() => {
-              simStateRef.current.throttle = 0.0;
-              soundFx.playClick(600);
-            }}
-            style={{
-              width: '100%',
-              padding: '4px 0',
-              borderRadius: '6px',
-              background: telemetry.throttle === 0 ? 'rgba(56, 189, 248, 0.3)' : 'rgba(30, 41, 59, 0.9)',
-              border: '1px solid rgba(148, 163, 184, 0.4)',
-              color: '#cbd5e1',
-              fontSize: '9.5px',
-              fontWeight: 900,
-              cursor: 'pointer',
-              fontFamily: 'monospace',
-            }}
-            title="Cut Engine Thrust (or press S)"
-          >
-            CUT
-          </button>
-
-          {/* Throttle % Label & Hotkey hint */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', fontWeight: 900, color: '#fb923c', fontFamily: 'monospace' }}>
-              {(telemetry.throttle * 100).toFixed(0)}%
-            </div>
-            <div style={{ fontSize: '8px', color: '#64748b', fontFamily: 'monospace' }}>[W / S]</div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── RIGHT: ELLIPSE / KSP STAGE BUTTON ─── */}
-      {mission.gameType === 'launch' && (
-        <div
-          style={{
-            position: 'absolute',
-            right: '18px',
-            bottom: '24px',
-            zIndex: 28,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          {/* Gravity Turn Pitch Steering Controls */}
-          <div style={{ display: 'flex', gap: '6px', width: '142px' }}>
-            <button
-              onClick={() => handlePitchChange(10)}
-              style={{
-                flex: 1,
-                padding: '5px 0',
-                background: 'rgba(15, 23, 42, 0.92)',
-                border: '1px solid rgba(56, 189, 248, 0.45)',
-                borderRadius: '8px',
-                color: '#38bdf8',
-                fontSize: '9.5px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                fontFamily: 'monospace',
-              }}
-              title="Pitch Up / Vertical (Key: A or Left Arrow)"
-            >
-              ▲ UP [A]
-            </button>
-            <button
-              onClick={() => handlePitchChange(-10)}
-              style={{
-                flex: 1,
-                padding: '5px 0',
-                background: 'rgba(15, 23, 42, 0.92)',
-                border: '1px solid rgba(245, 158, 11, 0.45)',
-                borderRadius: '8px',
-                color: '#fbbf24',
-                fontSize: '9.5px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                fontFamily: 'monospace',
-              }}
-              title="Pitch Down / Gravity Turn East (Key: D or Right Arrow)"
-            >
-              GRAV [D] ▶
-            </button>
-          </div>
-
-          <button
-            onClick={() => {
-              handleTouchStaging();
-              soundFx.playClick(900);
-            }}
-            style={{
-              width: '142px',
-              height: '76px',
-              borderRadius: '16px',
-              background: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05)
-                ? 'linear-gradient(135deg, #16a34a 0%, #15803d 50%, #14532d 100%)'
-                : 'linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #991b1b 100%)',
-              border: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05)
-                ? '2px solid rgba(134, 239, 172, 0.95)'
-                : '2px solid rgba(254, 215, 170, 0.85)',
-              color: '#ffffff',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05)
-                ? '0 0 28px rgba(34, 197, 94, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35)'
-                : '0 0 24px rgba(234, 88, 12, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35)',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
-            onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-            title="Press [SPACE] or Click to Execute Next Flight Stage"
-          >
-            <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.12em', color: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? '#86efac' : '#fed7aa', fontFamily: 'monospace' }}>
-              {(telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? 'READY FOR LAUNCH' : `STAGE ${telemetry.stage}`}
-            </div>
-            <div
-              style={{
-                fontSize: '11px',
-                fontWeight: 900,
-                letterSpacing: '0.04em',
-                textAlign: 'center',
-                lineHeight: 1.2,
-                padding: '2px 4px',
-              }}
-            >
-              {getStageActionLabel()}
-            </div>
-            <div style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace' }}>
-              [SPACE]
-            </div>
-          </button>
-          <div style={{ fontSize: '8.5px', color: (telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? '#4ade80' : '#94a3b8', fontFamily: 'monospace', fontWeight: 700 }}>
-            {(telemetry.throttle === 0 || telemetry.altitudeKm < 0.05) ? 'HIT SPACE TO LAUNCH' : 'KSP MANUAL STAGING'}
-          </div>
-        </div>
-      )}
-
-      {/* ─── TELESCOPE CONTROLS (RIGHT ACTION BUTTON) ─── */}
-      {mission.gameType === 'telescope' && (
-        <div
-          style={{
-            position: 'absolute',
-            right: '18px',
-            bottom: '24px',
-            zIndex: 28,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          <div style={{ display: 'flex', gap: '6px', width: '150px' }}>
-            <button
-              onClick={() => handleSimAction('focus_in')}
-              style={{
-                flex: 1,
-                padding: '6px 0',
-                background: 'rgba(15, 23, 42, 0.92)',
-                border: '1px solid rgba(192, 132, 252, 0.45)',
-                borderRadius: '8px',
-                color: '#c084fc',
-                fontSize: '9.5px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                fontFamily: 'monospace',
-              }}
-              title="Focus Optics In (Key: W or Up Arrow)"
-            >
-              🔍 FOCUS+ [W]
-            </button>
-            <button
-              onClick={() => handleSimAction('focus_out')}
-              style={{
-                flex: 1,
-                padding: '6px 0',
-                background: 'rgba(15, 23, 42, 0.92)',
-                border: '1px solid rgba(148, 163, 184, 0.45)',
-                borderRadius: '8px',
-                color: '#cbd5e1',
-                fontSize: '9.5px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                fontFamily: 'monospace',
-              }}
-              title="Focus Optics Out (Key: S or Down Arrow)"
-            >
-              🔎 FOCUS- [S]
-            </button>
-          </div>
-
-          <button
-            onClick={() => {
-              handleSimAction('telescope_capture');
-            }}
-            style={{
-              width: '150px',
-              height: '76px',
-              borderRadius: '16px',
-              background: telemetry.telescopeFocus >= 80
-                ? 'linear-gradient(135deg, #16a34a 0%, #15803d 50%, #14532d 100%)'
-                : 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #4c1d95 100%)',
-              border: telemetry.telescopeFocus >= 80
-                ? '2px solid rgba(134, 239, 172, 0.95)'
-                : '2px solid rgba(192, 132, 252, 0.85)',
-              color: '#ffffff',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: telemetry.telescopeFocus >= 80
-                ? '0 0 28px rgba(34, 197, 94, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35)'
-                : '0 0 24px rgba(124, 58, 237, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35)',
-              transition: 'all 0.15s ease',
-            }}
-            title="Press [SPACE] or Click to Focus & Capture Deep Field Image"
-          >
-            <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.12em', color: telemetry.telescopeFocus >= 80 ? '#86efac' : '#fed7aa', fontFamily: 'monospace' }}>
-              {telemetry.telescopeFocus >= 80 ? 'OPTICS LOCKED' : `FOCUS: ${Math.round(telemetry.telescopeFocus)}%`}
-            </div>
-            <div
-              style={{
-                fontSize: '11px',
-                fontWeight: 900,
-                letterSpacing: '0.04em',
-                textAlign: 'center',
-                lineHeight: 1.2,
-                padding: '2px 4px',
-              }}
-            >
-              {telemetry.telescopeFocus >= 80 ? '📸 CAPTURE IMAGE' : '🎯 AUTO-FOCUS'}
-            </div>
-            <div style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace' }}>
-              [SPACE]
-            </div>
-          </button>
-          <div style={{ fontSize: '8.5px', color: telemetry.telescopeFocus >= 80 ? '#4ade80' : '#c084fc', fontFamily: 'monospace', fontWeight: 700 }}>
-            {telemetry.telescopeFocus >= 80 ? 'HIT SPACE TO CAPTURE' : 'TARGET: ≥80% FOCUS'}
-          </div>
-        </div>
-      )}
-
-      {/* ─── DEEP SPACE CONTROLS (RIGHT ACTION BUTTON) ─── */}
-      {mission.gameType === 'deep_space' && (
-        <div
-          style={{
-            position: 'absolute',
-            right: '18px',
-            bottom: '24px',
-            zIndex: 28,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          <div style={{ display: 'flex', gap: '6px', width: '150px' }}>
-            <button
-              onClick={() => handleSimAction('deep_rcs_left')}
-              style={{
-                flex: 1,
-                padding: '6px 0',
-                background: 'rgba(15, 23, 42, 0.92)',
-                border: '1px solid rgba(56, 189, 248, 0.45)',
-                borderRadius: '8px',
-                color: '#38bdf8',
-                fontSize: '9.5px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                fontFamily: 'monospace',
-              }}
-              title="RCS Port (Key: A)"
-            >
-              ◀ RCS [A]
-            </button>
-            <button
-              onClick={() => handleSimAction('deep_rcs_right')}
-              style={{
-                flex: 1,
-                padding: '6px 0',
-                background: 'rgba(15, 23, 42, 0.92)',
-                border: '1px solid rgba(56, 189, 248, 0.45)',
-                borderRadius: '8px',
-                color: '#38bdf8',
-                fontSize: '9.5px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                fontFamily: 'monospace',
-              }}
-              title="RCS Starboard (Key: D)"
-            >
-              RCS [D] ▶
-            </button>
-          </div>
-
-          <button
-            onClick={() => {
-              if (telemetry.distanceM <= 25) {
-                handleSimAction('dsn_transmit');
-              } else {
-                handleSimAction('deep_thrust_fwd');
-              }
-            }}
-            style={{
-              width: '150px',
-              height: '76px',
-              borderRadius: '16px',
-              background: telemetry.distanceM <= 25
-                ? 'linear-gradient(135deg, #16a34a 0%, #15803d 50%, #14532d 100%)'
-                : 'linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #075985 100%)',
-              border: telemetry.distanceM <= 25
-                ? '2px solid rgba(134, 239, 172, 0.95)'
-                : '2px solid rgba(56, 189, 248, 0.85)',
-              color: '#ffffff',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: telemetry.distanceM <= 25
-                ? '0 0 28px rgba(34, 197, 94, 0.75), inset 0 2px 4px rgba(255, 255, 255, 0.35)'
-                : '0 0 24px rgba(2, 132, 199, 0.65), inset 0 2px 4px rgba(255, 255, 255, 0.35)',
-              transition: 'all 0.15s ease',
-            }}
-            title="Press [SPACE] or Click to Thrust / Transmit"
-          >
-            <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.12em', color: telemetry.distanceM <= 25 ? '#86efac' : '#7dd3fc', fontFamily: 'monospace' }}>
-              {telemetry.distanceM <= 25 ? 'FLYBY CORRIDOR' : `DIST: ${telemetry.distanceM.toFixed(1)} km`}
-            </div>
-            <div
-              style={{
-                fontSize: '11px',
-                fontWeight: 900,
-                letterSpacing: '0.04em',
-                textAlign: 'center',
-                lineHeight: 1.2,
-                padding: '2px 4px',
-              }}
-            >
-              {telemetry.distanceM <= 25 ? '📡 DSN TRANSMIT' : '▲ IMPULSE THRUST'}
-            </div>
-            <div style={{ fontSize: '9px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace' }}>
-              {telemetry.distanceM <= 25 ? '[SPACE]' : '[W / SPACE]'}
-            </div>
-          </button>
-          <div style={{ fontSize: '8.5px', color: telemetry.distanceM <= 25 ? '#4ade80' : '#38bdf8', fontFamily: 'monospace', fontWeight: 700 }}>
-            {telemetry.distanceM <= 25 ? 'HIT SPACE TO TRANSMIT' : 'APPROACH ASTEROID (<22 km)'}
-          </div>
-        </div>
-      )}
-
-      {/* ─── ON-SCREEN INSTRUCTION PILL (FOR TELESCOPE & DEEP SPACE) ─── */}
-      {mission.gameType === 'telescope' && !simStateRef.current.isFinished && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 25,
-            background: 'rgba(15, 23, 42, 0.92)',
-            border: `1.5px solid ${telemetry.telescopeFocus >= 80 ? 'rgba(34, 197, 94, 0.65)' : 'rgba(192, 132, 252, 0.65)'}`,
-            boxShadow: `0 0 28px ${telemetry.telescopeFocus >= 80 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(192, 132, 252, 0.35)'}`,
-            borderRadius: '24px',
-            padding: '8px 20px',
-            backdropFilter: 'blur(12px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            color: '#ffffff',
-            pointerEvents: 'none',
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>🔭</span>
-          <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.03em' }}>
-            {telemetry.telescopeFocus >= 80
-              ? <>🎯 Optics Locked! Press <kbd style={{ background: '#22c55e', color: '#052e16', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>SPACE</kbd> or Click <strong style={{ color: '#4ade80' }}>CAPTURE IMAGE</strong>!</>
-              : <>Hold <kbd style={{ background: '#c084fc', color: '#3b0764', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>W</kbd> or Click <strong style={{ color: '#d8b4fe' }}>AUTO-FOCUS</strong> to align mirrors!</>}
-          </span>
-        </div>
-      )}
-
-      {mission.gameType === 'deep_space' && !simStateRef.current.isFinished && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 25,
-            background: 'rgba(15, 23, 42, 0.92)',
-            border: `1.5px solid ${telemetry.distanceM <= 25 ? 'rgba(34, 197, 94, 0.65)' : 'rgba(56, 189, 248, 0.65)'}`,
-            boxShadow: `0 0 28px ${telemetry.distanceM <= 25 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(56, 189, 248, 0.35)'}`,
-            borderRadius: '24px',
-            padding: '8px 20px',
-            backdropFilter: 'blur(12px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            color: '#ffffff',
-            pointerEvents: 'none',
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>☄️</span>
-          <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.03em' }}>
-            {telemetry.distanceM <= 25
-              ? <>🟢 Corridor Reached! Press <kbd style={{ background: '#22c55e', color: '#052e16', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>SPACE</kbd> or Click <strong style={{ color: '#4ade80' }}>TRANSMIT</strong>!</>
-              : <>Hold <kbd style={{ background: '#38bdf8', color: '#082f49', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>W</kbd> or Click <strong style={{ color: '#7dd3fc' }}>IMPULSE THRUST</strong> to reach target (&lt;22 km)!</>}
-          </span>
-        </div>
-      )}
-
-      {/* ─── ON-PAD FLIGHT INSTRUCTION PILL (Only visible on pad before liftoff) ─── */}
-      {mission.gameType === 'launch' && telemetry.altitudeKm < 0.05 && telemetry.throttle === 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 25,
-            background: 'rgba(15, 23, 42, 0.92)',
-            border: '1.5px solid rgba(34, 197, 94, 0.65)',
-            boxShadow: '0 0 28px rgba(34, 197, 94, 0.4)',
-            borderRadius: '24px',
-            padding: '8px 20px',
-            backdropFilter: 'blur(12px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            color: '#ffffff',
-            pointerEvents: 'none',
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>🚀</span>
-          <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.03em' }}>
-            Press <kbd style={{ background: '#22c55e', color: '#052e16', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>SPACE</kbd> or Click <strong style={{ color: '#4ade80' }}>LAUNCH ROCKET</strong> (or Hold <kbd style={{ background: '#38bdf8', color: '#082f49', padding: '2px 7px', borderRadius: '4px', fontWeight: 900, fontFamily: 'monospace' }}>W</kbd>) to Liftoff!
-          </span>
-        </div>
-      )}
-
-      {/* ─── TACTICAL AEROSPACE NAVBALL HUD (BOTTOM-LEFT) ────────── */}
-      <div
-        style={{
-          position: 'absolute',
-          left: mission.gameType === 'launch' ? '84px' : '14px',
-          bottom: mission.gameType === 'launch' ? '24px' : '84px',
-          background: hudTheme.cardBg,
-          border: `1px solid ${hudTheme.border}`,
-          borderRadius: '12px',
-          padding: '8px',
-          zIndex: 25,
-          backdropFilter: 'blur(12px)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px',
+        navballCanvasRef={navballCanvasRef}
+        timeWarp={timeWarp}
+        onChangeTimeWarp={(w) => setTimeWarp(w)}
+        sasMode={sasMode}
+        onChangeSASMode={(m) => {
+          setSasMode(m);
+          if (m === 'AUTOPILOT') {
+            simStateRef.current.statusText = '🤖 ASTRELIX AI AUTOPILOT ENGAGED · EXECUTING OPTIMAL FLIGHT PROFILE';
+            simStateRef.current.statusColor = '#22c55e';
+          }
         }}
-      >
-        <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800, letterSpacing: '0.05em' }}>
-          ATTITUDE NAVBALL
-        </span>
-        <canvas ref={navballCanvasRef} width={100} height={100} style={{ display: 'block' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '9px', color: hudTheme.primary }}>
-          <span>PITCH: {telemetry.pitchDeg.toFixed(0)}°</span>
-          <span>ROLL: {telemetry.rollDeg.toFixed(0)}°</span>
-        </div>
-      </div>
+        cameraMode={cameraMode}
+        onSelectCameraMode={handleSelectCameraMode}
+        orbitMapOpen={orbitMapOpen}
+        onToggleOrbitMap={() => setOrbitMapOpen((prev) => !prev)}
+        boosterSeparated={boosterSeparated}
+        fairingSeparated={fairingSeparated}
+        hasSideBoosters={hasSideBoosters}
+        isMercury={isMercury}
+        isLunarMission={isLunarMission}
+        tliActive={tliActive}
+        tliComplete={tliComplete}
+        stageActionLabel={getStageActionLabel()}
+        onSetThrottle={(val) => {
+          audioSynthRef.current.init();
+          simStateRef.current.throttle = val;
+          if (mission.gameType === 'launch' && simStateRef.current.altitudeKm < 0.05 && val > 0.05) {
+            (simStateRef.current as any).realVy = 12.0 * val;
+          } else if (mission.gameType === 'docking' || mission.gameType === 'deep_space') {
+            simStateRef.current.keys['w'] = val > 0.2;
+          } else if (mission.gameType === 'rover') {
+            if (simStateRef.current.roverLandingPhase !== 'landed') handleSkipToDrive();
+            simStateRef.current.keys['w'] = val > 0.2;
+          } else if (mission.gameType === 'telescope') {
+            simStateRef.current.telescopeFocus = Math.round(val * 100);
+          }
+        }}
+        onStageAction={() => {
+          if (mission.gameType === 'launch') {
+            handleTouchStaging();
+          } else if (mission.gameType === 'lunar_landing') {
+            handleSimAction('lunar_burn');
+          } else if (mission.gameType === 'rover') {
+            if (simStateRef.current.roverLandingPhase !== 'landed') handleSkipToDrive();
+            else handleSimAction('rover_sample');
+          } else if (mission.gameType === 'docking') {
+            if (telemetry.distanceM <= 14) handleSimAction('dock_latch');
+            else handleSimAction('dock_fwd');
+          } else if (mission.gameType === 'deep_space') {
+            if (telemetry.distanceM <= 25) handleSimAction('dsn_transmit');
+            else handleSimAction('deep_thrust_fwd');
+          } else if (mission.gameType === 'telescope') {
+            handleSimAction('telescope_capture');
+          }
+        }}
+        onSteerInput={(pitchDelta, rollDelta) => {
+          const state = simStateRef.current;
+          state.pitchDeg = Math.max(10, Math.min(90, state.pitchDeg + pitchDelta * 0.25));
+          state.rollDeg = Math.max(-25, Math.min(25, state.rollDeg + rollDelta * 0.25));
+          if (playerVehicleRef.current && (mission.gameType === 'lunar_landing' || mission.gameType === 'docking' || mission.gameType === 'deep_space')) {
+            playerVehicleRef.current.position.x += rollDelta * 0.15;
+          }
+        }}
+        onKeyHold={(key, pressed) => {
+          simStateRef.current.keys[key] = pressed;
+        }}
+        onSimAction={handleSimAction}
+        onWarpToApoapsis={() => {
+          const state = simStateRef.current;
+          state.altitudeKm = Math.max(state.altitudeKm, Math.min(185, state.apoapsisKm));
+          state.statusText = `⏩ WARPED TO APOAPSIS (${state.altitudeKm.toFixed(1)} KM) · READY FOR CIRCULARIZATION BURN`;
+          state.statusColor = '#38bdf8';
+          setOrbitMapOpen(false);
+        }}
+        onCircularizeOrbit={() => {
+          const state = simStateRef.current;
+          state.altitudeKm = Math.max(185, state.altitudeKm);
+          state.velocityKms = 7.82;
+          state.apoapsisKm = 185;
+          state.periapsisKm = 185;
+          state.statusText = '🔥 ORBIT CIRCULARIZED (185 x 185 KM LEO) · ECCENTRICITY 0.000';
+          state.statusColor = '#22c55e';
+          setOrbitMapOpen(false);
+        }}
+        onTriggerScanner={handleTriggerScanner}
+        scannerActive={scannerActive}
+        roverAutoNav={roverAutoNav}
+        onTriggerRoverLanding={handleTriggerRoverLanding}
+        onSkipToDrive={handleSkipToDrive}
+        soundEnabled={soundEnabled}
+        onToggleSound={() => {
+          const next = !soundEnabled;
+          setSoundEnabled(next);
+          audioSynthRef.current.setEnabled(next);
+        }}
+        showBriefing={showBriefing}
+        onToggleBriefing={() => setShowBriefing((prev) => !prev)}
+        onOpenVabLifecycle={onOpenVabLifecycle}
+        onExit={onExit}
+      />
 
       {/* ─── APOLLO LUNAR SEISMIC MONITOR HUD (NAKAMURA 1979 DATASET) ─── */}
-      {isLunar && (
+      {isLunar && mission.gameType === 'lunar_landing' && (
         <div
           style={{
             position: 'absolute',
-            left: '132px',
-            bottom: '76px',
+            right: '14px',
+            top: '56px',
             background: hudTheme.cardBg,
             border: `1px solid ${hudTheme.border}`,
             borderRadius: '12px',
@@ -7359,174 +6651,6 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           </div>
         </div>
       )}
-
-      {/* ─── LEFT TELEMETRY TAPES (SPEED, ALTITUDE, G-FORCE) ─────── */}
-      <div
-        style={{
-          position: 'absolute',
-          left: '14px',
-          top: '76px',
-          background: hudTheme.cardBg,
-          border: `1px solid ${hudTheme.border}`,
-          borderRadius: '10px',
-          padding: '10px 14px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
-          zIndex: 20,
-          backdropFilter: 'blur(10px)',
-          minWidth: '155px',
-        }}
-      >
-        <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800, letterSpacing: '0.08em' }}>
-          PRIMARY TELEMETRY
-        </span>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-          <span style={{ color: '#94a3b8', fontSize: '11px' }}>ALTITUDE:</span>
-          <strong style={{ color: hudTheme.primary, fontSize: '12px' }}>
-            {mission.gameType === 'lunar_landing'
-              ? `${telemetry.altitudeKm.toFixed(1)} m`
-              : (telemetry.altitudeKm >= 1 ? `${telemetry.altitudeKm.toFixed(1)} km` : `${(telemetry.altitudeKm * 1000).toFixed(0)} m`)}
-          </strong>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-          <span style={{ color: '#94a3b8', fontSize: '11px' }}>VELOCITY:</span>
-          <strong style={{ color: hudTheme.amber, fontSize: '12px' }}>
-            {mission.gameType === 'lunar_landing'
-              ? `${Math.abs(telemetry.velocityKms).toFixed(1)} m/s`
-              : (telemetry.velocityKms >= 1
-                ? `${telemetry.velocityKms.toFixed(2)} km/s`
-                : `${Math.round(telemetry.velocityKms * 1000)} m/s`)}
-          </strong>
-        </div>
-        {mission.gameType === 'launch' && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-            <span style={{ color: '#94a3b8', fontSize: '11px' }}>MACH:</span>
-            <strong style={{ color: '#38bdf8', fontSize: '12px' }}>
-              {(telemetry.velocityKms * 1000 / 340).toFixed(1)}
-            </strong>
-          </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-          <span style={{ color: '#94a3b8', fontSize: '11px' }}>G-FORCE:</span>
-          <strong style={{ color: telemetry.gForce > 3.0 ? '#ef4444' : hudTheme.textColor, fontSize: '12px' }}>
-            {telemetry.gForce.toFixed(1)} G
-          </strong>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-          <span style={{ color: '#94a3b8', fontSize: '11px' }}>PROPELLANT:</span>
-          <strong style={{ color: telemetry.propellantPct < 20 ? '#ef4444' : hudTheme.primary, fontSize: '12px' }}>
-            {Math.round(telemetry.propellantPct)}%
-          </strong>
-        </div>
-        {mission.gameType === 'rover' && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '4px' }}>
-            <span style={{ color: '#94a3b8', fontSize: '11px' }}>SAMPLES:</span>
-            <strong style={{ color: '#38bdf8', fontSize: '12px' }}>{telemetry.sampleCount} / 3 COLLECTED</strong>
-          </div>
-        )}
-        {mission.gameType === 'docking' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '4px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-              <span style={{ color: '#94a3b8', fontSize: '11px' }}>STATION RANGE:</span>
-              <strong style={{ color: telemetry.distanceM <= 25 ? '#22c55e' : '#38bdf8', fontSize: '12px' }}>
-                {telemetry.distanceM.toFixed(1)} m
-              </strong>
-            </div>
-          </div>
-        )}
-        {mission.gameType === 'telescope' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '4px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-              <span style={{ color: '#94a3b8', fontSize: '11px' }}>OPTICAL FOCUS:</span>
-              <strong style={{ color: telemetry.telescopeFocus >= 88 ? '#22c55e' : '#c084fc', fontSize: '12px' }}>
-                {Math.round(telemetry.telescopeFocus)}% {telemetry.telescopeFocus >= 88 ? '✓ LOCKED' : ''}
-              </strong>
-            </div>
-            <div style={{ fontSize: '8.5px', color: telemetry.telescopeFocus >= 88 ? '#86efac' : '#cbd5e1' }}>
-              {telemetry.telescopeFocus >= 88 ? '🎯 READY: PRESS [SPACE] OR CAPTURE' : 'Adjust [W]/[S] to ≥90%'}
-            </div>
-          </div>
-        )}
-        {mission.gameType === 'deep_space' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '4px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-              <span style={{ color: '#94a3b8', fontSize: '11px' }}>TARGET DIST:</span>
-              <strong style={{ color: telemetry.distanceM <= 22 ? '#22c55e' : '#38bdf8', fontSize: '12px' }}>
-                {telemetry.distanceM.toFixed(1)} km
-              </strong>
-            </div>
-            <div style={{ fontSize: '8.5px', color: telemetry.distanceM <= 22 ? '#86efac' : '#cbd5e1' }}>
-              {telemetry.distanceM <= 22 ? '📡 FLYBY RANGE: PRESS [SPACE] OR TRANSMIT' : 'Thrust [W] to approach (<20 km)'}
-            </div>
-          </div>
-        )}
-        {mission.gameType === 'lunar_landing' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '5px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#94a3b8' }}>
-              <span>APOLLO PSE S11:</span>
-              <strong style={{ color: '#22c55e' }}>ONLINE (0.02 µm/s²)</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', color: '#38bdf8' }}>
-              <span>NAKAMURA 1979:</span>
-              <span>SEISMIC MONITOR ACTIVE</span>
-            </div>
-          </div>
-        )}
-
-        {/* ─── KSP DELTA-V, SPACE ENGINEERS & STAR CITIZEN GAUGES ─── */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '5px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-            <span style={{ color: '#94a3b8', fontSize: '10px' }} title="NASA Orbital Mechanics: Tsiolkovsky Delta-V Remaining">Δv BUDGET:</span>
-            <strong style={{ color: '#38bdf8', fontSize: '11px', fontFamily: 'monospace' }}>
-              {(telemetry.deltaVKms * 1000).toFixed(0)} m/s
-            </strong>
-          </div>
-          {ageTier !== 'cadet' && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-              <span style={{ color: '#94a3b8', fontSize: '9.5px' }} title="NASA Orbital Mechanics: Apoapsis (Ap) & Periapsis (Pe)">AP / PE:</span>
-              <strong style={{ color: '#fbbf24', fontSize: '10px', fontFamily: 'monospace' }}>
-                {telemetry.apoapsisKm}k / {telemetry.periapsisKm}k
-              </strong>
-            </div>
-          )}
-          {ageTier !== 'cadet' && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-              <span style={{ color: '#94a3b8', fontSize: '9.5px' }} title="NASA Orion ECLSS: Power Bus MW & Oxygen Life Support">PWR / O₂:</span>
-              <strong style={{ color: telemetry.powerGridPct < 30 ? '#ef4444' : '#34d399', fontSize: '10px', fontFamily: 'monospace' }}>
-                {Math.round(telemetry.powerGridPct)}% / {Math.round(telemetry.oxygenPct)}%
-              </strong>
-            </div>
-          )}
-          {ageTier === 'commander' && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-              <span style={{ color: '#94a3b8', fontSize: '9.5px' }} title="NASA Re-Entry Thermal Protection System Ablation Shield">HEAT SHIELD:</span>
-              <strong style={{ color: telemetry.thermalHullPct < 50 ? '#ef4444' : '#c084fc', fontSize: '10px', fontFamily: 'monospace' }}>
-                {Math.round(telemetry.thermalHullPct)}%
-              </strong>
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center', marginTop: '2px' }}>
-            <span style={{ color: '#94a3b8', fontSize: '9.5px' }} title="NASA Reaction Control System: Coupled vs Decoupled 6-DOF Flight">ASSIST:</span>
-            <button
-              onClick={handleToggleFlightAssist}
-              style={{
-                fontSize: '8px',
-                fontWeight: 900,
-                padding: '2px 5px',
-                borderRadius: '4px',
-                background: telemetry.flightAssistActive ? 'rgba(34, 197, 94, 0.2)' : 'rgba(249, 115, 22, 0.25)',
-                color: telemetry.flightAssistActive ? '#4ade80' : '#fb923c',
-                border: `1px solid ${telemetry.flightAssistActive ? '#22c55e' : '#f97316'}`,
-                cursor: 'pointer',
-              }}
-              title="Toggle Flight Assist (Hotkey: [Z])"
-            >
-              {telemetry.flightAssistActive ? 'FA-ON [Z]' : 'FA-OFF [Z]'}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* ─── RIGHT HUD: CO-OP CREW STATIONS & REAL-TIME LOGS (ONLY IN MULTIPLAYER) ────── */}
       {multiplayerActive && roomState && (
@@ -7742,8 +6866,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         </div>
       )}
 
-      {/* ─── BOTTOM CO-OP ROLE-SPECIFIC CONTROL BAR (Only for non-launch missions or active multiplayer) ─── */}
-      {(mission.gameType !== 'launch' || (multiplayerActive && roomState)) && (
+      {/* ─── BOTTOM CO-OP ROLE-SPECIFIC CONTROL BAR (Only for active multiplayer) ─── */}
+      {multiplayerActive && roomState && (
         <div
           style={{
             position: 'absolute',
