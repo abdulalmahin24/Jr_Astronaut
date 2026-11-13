@@ -56,3 +56,16 @@ export {
   type HandDrawnIdea,
 } from './handwritten_notebook/curriculumNotesAudioVideo';
 
+// ══════════════════════════════════════════════════════════════════════════════
+// 5. 3D CURRICULUM VIDEO ENGINE & NASA YOUTUBE STREAMING PLAYER
+// ══════════════════════════════════════════════════════════════════════════════
+export { VideoLessonPlayerView, type VideoDisplayMode } from './video_curriculum/VideoLessonPlayerView';
+export { ThreeCurriculumVideoStage, type CameraViewMode } from './video_curriculum/ThreeCurriculumVideoStage';
+export { CadetAnimationVideoStage } from './video_curriculum/CadetAnimationVideoStage';
+export {
+  CURRICULUM_NASA_VIDEO_SOURCES,
+  type NasaVideoChapter,
+  type NasaMissionVideoCurriculum,
+} from './video_curriculum/curriculumNasaVideoSources';
+export { speechEngine } from './video_curriculum/speechEngine';
+
