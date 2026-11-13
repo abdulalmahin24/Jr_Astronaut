@@ -334,8 +334,8 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   initialDestination = 'MOON',
 }) => {
   const [destination, setDestination] = useState<ExpeditionDestination>(initialDestination);
-  // Starts directly in VAB Assembly Builder as requested by user!
-  const [missionPhase, setMissionPhase] = useState<MissionPhase>('VAB_BUILD');
+  // Starts directly on Earth Pad 39A in full 3D simulation!
+  const [missionPhase, setMissionPhase] = useState<MissionPhase>('PAD_READY');
   const [viewMode, setViewMode] = useState<FlightViewMode>('CHASE');
   const [timeWarp, setTimeWarp] = useState<number>(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -388,10 +388,13 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     sampleDrilled: false,
     seismicDeployed: false,
   });
+  const evaTasksRef = useRef(evaTasks);
+  useEffect(() => { evaTasksRef.current = evaTasks; }, [evaTasks]);
+
   const [activeEvaPrompt, setActiveEvaPrompt] = useState<string | null>(null);
 
   const [directorCallout, setDirectorCallout] = useState<string>(
-    'VAB WORKSHOP: CHOOSE YOUR ROCKET STAGES & SCIENCE EQUIPMENT THEN CLICK [ROLL OUT TO PAD 39A]'
+    '🌍 LAUNCH COMPLEX 39A (EARTH): APOLLO 11 ON LAUNCHPAD · PRESS [SPACE] OR CLICK [🔥 T-0 IGNITE & LIFTOFF] TO LAUNCH FOR THE MOON!'
   );
 
   const mountRef = useRef<HTMLDivElement>(null);
@@ -419,7 +422,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     cislunarProgress: 0, // 0 (Earth Orbit) -> 1 (Moon Encounter)
     lunarDistanceM: 384400000,
     touchdown: 'FLYING' as 'FLYING' | 'SAFE' | 'CRASHED',
-    missionPhase: 'VAB_BUILD' as MissionPhase,
+    missionPhase: 'PAD_READY' as MissionPhase,
     cameraAngleX: 0,
     cameraAngleY: 0.25,
     isMouseDown: false,
@@ -461,10 +464,173 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
   const destProfile = DESTINATION_PROFILES[destination];
 
+  // Direct Phase Jumping for Interactive Cadet Mission Navigation
+  const jumpToPhase = useCallback((targetPhase: MissionPhase) => {
+    if (soundEnabled) soundFx.playTelemetryChirp();
+    setMissionPhase(targetPhase);
+    simRef.current.missionPhase = targetPhase;
+
+    if (targetPhase === 'PAD_READY') {
+      simRef.current.altM = 0;
+      simRef.current.velMs = 0;
+      simRef.current.vyMs = 0;
+      simRef.current.vxMs = 0;
+      simRef.current.fuelPct = 100;
+      simRef.current.stage = 1;
+      simRef.current.throttle = 0;
+      simRef.current.pitchDeg = 90;
+      simRef.current.legsDeployed = false;
+      simRef.current.chutesDeployed = false;
+      simRef.current.boostersSeparated = false;
+      simRef.current.boosterOffset = 0;
+      setFlightAltM(0);
+      setFlightSpeedMs(0);
+      setFlightVyMs(0);
+      setFlightVxMs(0);
+      setFlightFuelPct(100);
+      setRocketStage(1);
+      setThrottle(0);
+      setPitchDeg(90);
+      setDirectorCallout('🌍 LAUNCH COMPLEX 39A (EARTH): APOLLO 11 ON LAUNCHPAD · PRESS [SPACE] OR CLICK [🔥 T-0 IGNITE & LIFTOFF] TO LAUNCH FOR THE MOON!');
+    } else if (targetPhase === 'ASCENT') {
+      simRef.current.altM = 18500;
+      simRef.current.velMs = 820;
+      simRef.current.vyMs = 640;
+      simRef.current.vxMs = 510;
+      simRef.current.fuelPct = 80;
+      simRef.current.stage = 1;
+      simRef.current.throttle = 100;
+      simRef.current.pitchDeg = 68;
+      setFlightAltM(18500);
+      setFlightSpeedMs(820);
+      setFlightVyMs(640);
+      setFlightVxMs(510);
+      setFlightFuelPct(80);
+      setRocketStage(1);
+      setThrottle(100);
+      setPitchDeg(68);
+      setDirectorCallout('🔥 STAGED LIFTOFF: MAX-Q CLEARED · PRESS [SPACE] TO JETTISON SOLID ROCKET BOOSTERS');
+    } else if (targetPhase === 'ORBIT_COAST') {
+      simRef.current.altM = 210000;
+      simRef.current.velMs = 7750;
+      simRef.current.vyMs = 0;
+      simRef.current.vxMs = 7750;
+      simRef.current.fuelPct = 70;
+      simRef.current.stage = 2;
+      simRef.current.throttle = 0;
+      simRef.current.pitchDeg = 0;
+      setFlightAltM(210000);
+      setFlightSpeedMs(7750);
+      setFlightVyMs(0);
+      setFlightVxMs(7750);
+      setFlightFuelPct(70);
+      setRocketStage(2);
+      setThrottle(0);
+      setPitchDeg(0);
+      setDirectorCallout('🛰️ STABLE LOW EARTH ORBIT (LEO): 210 km CIRCULAR · CLICK [EXECUTE TRANS-LUNAR INJECTION (TLI)]');
+    } else if (targetPhase === 'TLI_BURN') {
+      simRef.current.altM = 320000;
+      simRef.current.velMs = 10400;
+      simRef.current.vyMs = 1800;
+      simRef.current.vxMs = 10200;
+      simRef.current.fuelPct = 58;
+      simRef.current.stage = 3;
+      simRef.current.throttle = 100;
+      simRef.current.pitchDeg = 0;
+      simRef.current.cislunarProgress = 0.2;
+      setFlightAltM(320000);
+      setFlightSpeedMs(10400);
+      setFlightVyMs(1800);
+      setFlightVxMs(10200);
+      setFlightFuelPct(58);
+      setRocketStage(3);
+      setThrottle(100);
+      setPitchDeg(0);
+      setDirectorCallout('🌕 TRANS-LUNAR INJECTION (TLI): S-IVB UPPER STAGE BURN (+3,050 m/s Δv) TOWARDS THE MOON');
+    } else if (targetPhase === 'DEEP_CRUISE') {
+      simRef.current.cislunarProgress = 0.65;
+      simRef.current.lunarDistanceM = 135000000;
+      simRef.current.altM = 249000000;
+      simRef.current.velMs = 2100;
+      simRef.current.fuelPct = 50;
+      setFlightAltM(249000000);
+      setFlightSpeedMs(2100);
+      setFlightFuelPct(50);
+      setTimeWarp(25);
+      setDirectorCallout('⏩ 3D TRANSLUNAR CRUISE: COASTING THROUGH CISLUNAR SPACE TOWARD MOON GRAVITATIONAL SPHERE (SOI)');
+    } else if (targetPhase === 'RETRO_DESCENT') {
+      simRef.current.altM = 8500;
+      simRef.current.velMs = 95;
+      simRef.current.vyMs = -24;
+      simRef.current.vxMs = 45;
+      simRef.current.fuelPct = 40;
+      simRef.current.throttle = 40;
+      simRef.current.legsDeployed = true;
+      setFlightAltM(8500);
+      setFlightSpeedMs(95);
+      setFlightVyMs(-24);
+      setFlightFuelPct(40);
+      setThrottle(40);
+      setLandingLegsDeployed(true);
+      setDirectorCallout('🌕 POWERED DESCENT INITIATION (PDI): LM DESCENT ENGINE ACTIVE · TOUCHDOWN < 3.5 m/s WITH [W][S]');
+    } else if (targetPhase === 'SURFACE_LANDED') {
+      simRef.current.altM = 0;
+      simRef.current.velMs = 0;
+      simRef.current.vyMs = 0;
+      simRef.current.vxMs = 0;
+      simRef.current.legsDeployed = true;
+      simRef.current.touchdown = 'SAFE';
+      setFlightAltM(0);
+      setFlightSpeedMs(0);
+      setFlightVyMs(0);
+      setTouchdownStatus('SAFE');
+      setLandingLegsDeployed(true);
+      setDirectorCallout('🎉 NOMINAL TOUCHDOWN! "HOUSTON, TRANQUILITY BASE HERE. THE EAGLE HAS LANDED." CLICK [STEP OUT ON MOON EVA]!');
+    } else if (targetPhase === 'SURFACE_EVA') {
+      simRef.current.altM = 0;
+      simRef.current.velMs = 0;
+      simRef.current.vyMs = 0;
+      simRef.current.vxMs = 0;
+      simRef.current.legsDeployed = true;
+      simRef.current.touchdown = 'SAFE';
+      simRef.current.astroX = 2.2;
+      simRef.current.astroZ = 2.2;
+      simRef.current.astroRot = 0;
+      simRef.current.astroBounceY = 0;
+      setFlightAltM(0);
+      setFlightSpeedMs(0);
+      setFlightVyMs(0);
+      setTouchdownStatus('SAFE');
+      setLandingLegsDeployed(true);
+      setAstroWalkPos({ x: 2.2, z: 2.2, rot: 0 });
+      setDirectorCallout('🧑‍🚀 NEIL ARMSTRONG 3D MOONWALK: WALK WITH [W][A][S][D] / ARROWS · [E] TO PLANT FLAG, DRILL SAMPLES, DEPLOY ALSEP!');
+    } else if (targetPhase === 'SURFACE_ASCENT') {
+      simRef.current.altM = 15000;
+      simRef.current.velMs = 1450;
+      simRef.current.vyMs = 180;
+      setFlightAltM(15000);
+      setFlightSpeedMs(1450);
+      setFlightVyMs(180);
+      setDirectorCallout('🚀 LUNAR ASCENT: EAGLE UPPER STAGE LIFTOFF · RENDEZVOUS WITH COMMAND SERVICE MODULE IN LUNAR ORBIT');
+    } else if (targetPhase === 'SPLASHDOWN') {
+      simRef.current.altM = 0;
+      simRef.current.velMs = 6.8;
+      simRef.current.vyMs = 0;
+      simRef.current.chutesDeployed = true;
+      setFlightAltM(0);
+      setFlightSpeedMs(6.8);
+      setFlightVyMs(0);
+      setParachutesDeployed(true);
+      setDirectorCallout('🪂 PACIFIC OCEAN SPLASHDOWN: NOMINAL RECOVERY · MISSION ACCOMPLISHED! LUNAR SAMPLES SECURED');
+    } else if (targetPhase === 'VAB_BUILD') {
+      setDirectorCallout('🔧 VAB WORKSHOP: CONFIGURE ROCKET BOOSTERS, ENGINES & LUNAR SURFACE EXPERIMENTAL EQUIPMENT');
+    }
+  }, [soundEnabled]);
+
   // Reset simulation when destination changes or modal opens
   const resetSimulation = useCallback((dest: ExpeditionDestination) => {
     setDestination(dest);
-    setMissionPhase('VAB_BUILD');
+    setMissionPhase('PAD_READY');
     setViewMode('CHASE');
     setTimeWarp(1);
     setThrottle(0);
@@ -480,8 +646,9 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     setTouchdownStatus('FLYING');
     setAstroWalkPos({ x: 2.2, z: 2.2, rot: 0 });
     setEvaTasks({ flagPlanted: false, sampleDrilled: false, seismicDeployed: false });
+    evaTasksRef.current = { flagPlanted: false, sampleDrilled: false, seismicDeployed: false };
     setActiveEvaPrompt(null);
-    setDirectorCallout('VAB WORKSHOP: CHOOSE YOUR ROCKET STAGES & SCIENCE EQUIPMENT THEN CLICK [ROLL OUT TO PAD 39A]');
+    setDirectorCallout('🌍 LAUNCH COMPLEX 39A (EARTH): APOLLO 11 ON LAUNCHPAD · PRESS [SPACE] OR CLICK [🔥 T-0 IGNITE & LIFTOFF] TO LAUNCH FOR THE MOON!');
 
     simRef.current = {
       throttle: 0,
@@ -502,7 +669,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       cislunarProgress: 0,
       lunarDistanceM: 384400000,
       touchdown: 'FLYING',
-      missionPhase: 'VAB_BUILD',
+      missionPhase: 'PAD_READY',
       cameraAngleX: 0,
       cameraAngleY: 0.25,
       isMouseDown: false,
@@ -640,24 +807,33 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     const distSeismic = Math.hypot(p.astroX - 10.0, p.astroZ - 6.0);
     const distLm = Math.hypot(p.astroX - 2.2, p.astroZ - 2.2);
 
-    if (distFlag < 3.2 && !evaTasks.flagPlanted) {
-      setEvaTasks((t) => ({ ...t, flagPlanted: true }));
+    const currentTasks = evaTasksRef.current;
+
+    if (distFlag < 3.2 && !currentTasks.flagPlanted) {
+      const next = { ...currentTasks, flagPlanted: true };
+      setEvaTasks(next);
+      evaTasksRef.current = next;
       setDirectorCallout('🚩 AMERICAN FLAG PROUDLY PLANTED AT TRANQUILITY BASE!');
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playVictory();
-    } else if (distDrill < 3.2 && !evaTasks.sampleDrilled) {
-      setEvaTasks((t) => ({ ...t, sampleDrilled: true }));
+    } else if (distDrill < 3.2 && !currentTasks.sampleDrilled) {
+      const next = { ...currentTasks, sampleDrilled: true };
+      setEvaTasks(next);
+      evaTasksRef.current = next;
       setDirectorCallout('⛏️ LUNAR REGOLITH CORE DRILL SAMPLE EXTRACTED & SECURED IN CONTAINER!');
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playReactorStart();
-    } else if (distSeismic < 3.2 && !evaTasks.seismicDeployed) {
-      setEvaTasks((t) => ({ ...t, seismicDeployed: true }));
+    } else if (distSeismic < 3.2 && !currentTasks.seismicDeployed) {
+      const next = { ...currentTasks, seismicDeployed: true };
+      setEvaTasks(next);
+      evaTasksRef.current = next;
       setDirectorCallout('📡 APOLLO PSE PASSIVE SEISMIC STATION ONLINE (MONITORING MOONQUAKES)!');
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playTelemetryChirp();
-    } else if (distLm < 3.5 && evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) {
+    } else if (distLm < 3.5 && currentTasks.flagPlanted && currentTasks.sampleDrilled && currentTasks.seismicDeployed) {
       // Board LM and launch ascent stage
       setMissionPhase('SURFACE_ASCENT');
+      simRef.current.missionPhase = 'SURFACE_ASCENT';
       setFlightAltM(100);
       setFlightVyMs(85);
       setThrottle(100);
@@ -1223,13 +1399,14 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         const dSeismic = Math.hypot(p.astroX - 10.0, p.astroZ - 6.0);
         const dLm = Math.hypot(p.astroX - 2.2, p.astroZ - 2.2);
 
-        if (dFlag < 3.0 && !evaTasks.flagPlanted) {
+        const currentTasks = evaTasksRef.current;
+        if (dFlag < 3.0 && !currentTasks.flagPlanted) {
           setActiveEvaPrompt('🚩 NEAR FLAG SITE · PRESS [E] OR CLICK [PLANT AMERICAN FLAG]');
-        } else if (dDrill < 3.0 && !evaTasks.sampleDrilled) {
+        } else if (dDrill < 3.0 && !currentTasks.sampleDrilled) {
           setActiveEvaPrompt('⛏️ NEAR BASALT ROCKS · PRESS [E] OR CLICK [DRILL REGOLITH CORE]');
-        } else if (dSeismic < 3.0 && !evaTasks.seismicDeployed) {
+        } else if (dSeismic < 3.0 && !currentTasks.seismicDeployed) {
           setActiveEvaPrompt('📡 NEAR SEISMIC SITE · PRESS [E] OR CLICK [DEPLOY SEISMIC STATION]');
-        } else if (dLm < 3.2 && evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) {
+        } else if (dLm < 3.2 && currentTasks.flagPlanted && currentTasks.sampleDrilled && currentTasks.seismicDeployed) {
           setActiveEvaPrompt('🚀 NEAR LM LADDER · PRESS [E] OR CLICK [BOARD LM & LAUNCH ASCENT]');
         } else {
           setActiveEvaPrompt(null);
@@ -1413,6 +1590,10 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       rocketMasterGroup.visible = !isLunarSurfaceMode && p.missionPhase !== 'VAB_BUILD';
       apolloLmGroup.visible = isLunarSurfaceMode;
       lunarSurfaceScene.visible = isLunarSurfaceMode;
+      astronautGroup.visible = p.missionPhase === 'SURFACE_EVA';
+      (flagRing.material as THREE.MeshBasicMaterial).color.setHex(evaTasksRef.current.flagPlanted ? 0x22c55e : 0x38bdf8);
+      (drillRing.material as THREE.MeshBasicMaterial).color.setHex(evaTasksRef.current.sampleDrilled ? 0x22c55e : 0xfbbf24);
+      (pseRing.material as THREE.MeshBasicMaterial).color.setHex(evaTasksRef.current.seismicDeployed ? 0x22c55e : 0xa855f7);
 
       if (p.missionPhase === 'VAB_BUILD') {
         rocketMasterGroup.visible = true;
@@ -1680,37 +1861,45 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           </div>
         </div>
 
-        {/* Phase Breadcrumbs */}
+        {/* Phase Breadcrumbs / Interactive Quick Phase Jumper */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
           {[
-            { phase: 'VAB_BUILD', label: '1. VAB Builder' },
-            { phase: 'PAD_READY', label: '2. Pad 39A Weather' },
-            { phase: 'ASCENT', label: '3. Staged Liftoff' },
-            { phase: 'ORBIT_COAST', label: '4. Earth Orbit' },
-            { phase: 'TLI_BURN', label: '5. TLI 3D Trajectory' },
-            { phase: 'RETRO_DESCENT', label: '6. Lunar Descent' },
-            { phase: 'SURFACE_EVA', label: '7. Walk on Moon' },
-            { phase: 'SURFACE_ASCENT', label: '8. Ascent & Return' },
-            { phase: 'SPLASHDOWN', label: '9. Splashdown' },
+            { phase: 'PAD_READY', label: '1. 🚀 Pad 39A Launch (Earth)' },
+            { phase: 'ASCENT', label: '2. 🔥 Staged Liftoff' },
+            { phase: 'ORBIT_COAST', label: '3. 🌍 Earth Orbit' },
+            { phase: 'TLI_BURN', label: '4. 🌕 TLI to Moon' },
+            { phase: 'RETRO_DESCENT', label: '5. 🦿 Lunar Landing' },
+            { phase: 'SURFACE_EVA', label: '6. 🧑‍🚀 Walk on Moon (EVA)' },
+            { phase: 'SURFACE_ASCENT', label: '7. 🚀 Lunar Ascent' },
+            { phase: 'SPLASHDOWN', label: '8. 🪂 Earth Return' },
+            { phase: 'VAB_BUILD', label: '🔧 Custom VAB Stages' },
           ].map((item) => {
             const isActive = missionPhase === item.phase;
             return (
-              <div
+              <button
                 key={item.phase}
+                onClick={() => jumpToPhase(item.phase as MissionPhase)}
+                title={`Jump directly to ${item.label}`}
                 style={{
-                  padding: '3px 8px',
-                  borderRadius: '6px',
-                  fontSize: '9.5px',
-                  fontWeight: 800,
+                  padding: '5px 11px',
+                  borderRadius: '7px',
+                  fontSize: '10px',
+                  fontWeight: 900,
                   fontFamily: 'monospace',
-                  background: isActive ? '#0284c7' : 'rgba(15, 23, 42, 0.6)',
-                  border: `1px solid ${isActive ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`,
-                  color: isActive ? '#ffffff' : '#64748b',
+                  background: isActive ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'rgba(15, 23, 42, 0.75)',
+                  border: `1.5px solid ${isActive ? '#38bdf8' : 'rgba(255,255,255,0.12)'}`,
+                  color: isActive ? '#ffffff' : '#94a3b8',
                   whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  boxShadow: isActive ? '0 0 16px rgba(56, 189, 248, 0.6)' : 'none',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
                 }}
               >
                 {item.label}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -1904,6 +2093,189 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           >
             🚀 ROLL OUT TO LAUNCH PAD 39A
           </button>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* MOON SURFACE EVA OBJECTIVES & ASTRONAUT HUD (PHASE: SURFACE_EVA)    */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {missionPhase === 'SURFACE_EVA' && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '140px',
+            right: '20px',
+            width: '390px',
+            background: 'rgba(15, 23, 42, 0.94)',
+            border: '2px solid #38bdf8',
+            borderRadius: '16px',
+            padding: '18px',
+            zIndex: 120,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.85), 0 0 24px rgba(56, 189, 248, 0.3)',
+            maxHeight: 'calc(100vh - 240px)',
+            overflowY: 'auto',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontWeight: 900, fontSize: '13px' }}>
+              <span>🧑‍🚀</span>
+              <span>APOLLO 11 TRANQUILITY BASE EVA</span>
+            </div>
+            <span style={{ fontSize: '10px', background: 'rgba(34, 197, 94, 0.2)', border: '1px solid #22c55e', color: '#4ade80', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+              NEIL ARMSTRONG
+            </span>
+          </div>
+
+          <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+            Walk across the lunar crater surface, visit the mission waypoints, and press <strong style={{ color: '#38bdf8' }}>[E]</strong> to complete surface operations:
+          </div>
+
+          {/* Checklist */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Task 1 */}
+            <div
+              onClick={() => {
+                if (!evaTasks.flagPlanted) {
+                  simRef.current.astroX = 6.0;
+                  simRef.current.astroZ = -2.5;
+                  setAstroWalkPos({ x: 6.0, z: -2.5, rot: simRef.current.astroRot });
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: evaTasks.flagPlanted ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                border: `1.5px solid ${evaTasks.flagPlanted ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
+                cursor: 'pointer',
+              }}
+              title="Click to warp astronaut near Flag site"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>🚩</span>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>Plant American Flag</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>Walk to glowing cyan ring (6.5m, -3.0m)</div>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.flagPlanted ? '#4ade80' : '#fbbf24' }}>
+                {evaTasks.flagPlanted ? 'PLANTED ✓' : 'PENDING'}
+              </span>
+            </div>
+
+            {/* Task 2 */}
+            <div
+              onClick={() => {
+                if (!evaTasks.sampleDrilled) {
+                  simRef.current.astroX = -6.5;
+                  simRef.current.astroZ = 7.5;
+                  setAstroWalkPos({ x: -6.5, z: 7.5, rot: simRef.current.astroRot });
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: evaTasks.sampleDrilled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                border: `1.5px solid ${evaTasks.sampleDrilled ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
+                cursor: 'pointer',
+              }}
+              title="Click to warp astronaut near Basalt Rocks"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>⛏️</span>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>Drill Lunar Regolith Core</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>Walk to basalt boulders (-7.0m, 8.0m)</div>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.sampleDrilled ? '#4ade80' : '#fbbf24' }}>
+                {evaTasks.sampleDrilled ? 'SECURED ✓' : 'PENDING'}
+              </span>
+            </div>
+
+            {/* Task 3 */}
+            <div
+              onClick={() => {
+                if (!evaTasks.seismicDeployed) {
+                  simRef.current.astroX = 9.5;
+                  simRef.current.astroZ = 5.5;
+                  setAstroWalkPos({ x: 9.5, z: 5.5, rot: simRef.current.astroRot });
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: evaTasks.seismicDeployed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                border: `1.5px solid ${evaTasks.seismicDeployed ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
+                cursor: 'pointer',
+              }}
+              title="Click to warp astronaut near Seismic Station"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>📡</span>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>Deploy ALSEP Seismic Station</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>Walk to passive seismic site (10.0m, 6.0m)</div>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.seismicDeployed ? '#4ade80' : '#fbbf24' }}>
+                {evaTasks.seismicDeployed ? 'ONLINE ✓' : 'PENDING'}
+              </span>
+            </div>
+
+            {/* Task 4 */}
+            <div
+              onClick={() => {
+                if (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) {
+                  simRef.current.astroX = 2.2;
+                  simRef.current.astroZ = 2.2;
+                  setAstroWalkPos({ x: 2.2, z: 2.2, rot: simRef.current.astroRot });
+                  handleEvaInteract();
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                border: `1.5px solid ${(evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)'}`,
+                cursor: (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? 'pointer' : 'default',
+              }}
+              title="Board Lunar Module Eagle & Launch Ascent"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>🚀</span>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>Board LM & Launch Ascent</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>Return to Lunar Module ladder (2.2m, 2.2m)</div>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 900, color: (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? '#38bdf8' : '#64748b' }}>
+                {(evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? 'READY [E]' : 'LOCKED'}
+              </span>
+            </div>
+          </div>
+
+          {/* Controls Footer */}
+          <div style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '8px', fontSize: '10px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ fontWeight: 800, color: '#38bdf8' }}>🎮 EVA CONTROLS:</div>
+            <div>• <strong>[W][A][S][D] / Arrows</strong>: 3D Lunar Walk & 1/6g Hop</div>
+            <div>• <strong>[E] / Interact Button</strong>: Deploy / Sample / Board</div>
+            <div>• <strong>Mouse Drag</strong>: 360° Panoramic Lunar Orbit Camera</div>
+          </div>
         </div>
       )}
 

@@ -947,7 +947,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               onOpenStep={(step) => {
                 if (step === 1) (onOpenClassroom || onOpenAcademy)?.();
                 else if (step === 2) (onOpenDepot || onOpenTrainingCenter)?.();
-                else if (step === 3) onOpenExpedition?.();
+                else if (step === 3) (onOpenFullExpedition || onOpenExpedition)?.();
                 else if (step === 4) onOpenRover?.();
                 else if (step === 5) onOpenCertificate?.();
               }}
@@ -1296,15 +1296,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       </div>
                     </button>
                   )}
-                  {onOpenExpedition && (
+                  {(onOpenFullExpedition || onOpenExpedition) && (
                     <button
                       className="pubg-hub-subitem"
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenExpedition, 'reactor'); }}
+                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenFullExpedition || onOpenExpedition, 'reactor'); }}
                     >
                       <span style={{ fontSize: '20px' }}>🚀</span>
                       <div style={{ textAlign: 'left' }}>
                         <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Earth to Moon Expedition</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Artemis Multi-Stage Lunar Mission</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>3D Earth Launch, Moon Landing & Neil Armstrong EVA Walk</div>
                       </div>
                     </button>
                   )}
