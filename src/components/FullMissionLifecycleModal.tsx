@@ -79,6 +79,8 @@ interface FullMissionLifecycleModalProps {
   onClose: () => void;
   onMissionCompleted?: (destination: ExpeditionDestination, credits: number) => void;
   initialDestination?: ExpeditionDestination;
+  initialPhase?: MissionPhase;
+  onOpenSelector?: () => void;
 }
 
 export type FlightViewMode = 'CHASE' | 'ORBIT_MAP' | 'PAD_CAM' | 'ASTRONAUT_EVA';
@@ -481,10 +483,12 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   onClose,
   onMissionCompleted,
   initialDestination = 'MOON',
+  initialPhase = 'PAD_READY',
+  onOpenSelector,
 }) => {
   const [destination, setDestination] = useState<ExpeditionDestination>(initialDestination);
   // Starts directly on Earth Pad 39A in full 3D simulation!
-  const [missionPhase, setMissionPhase] = useState<MissionPhase>('PAD_READY');
+  const [missionPhase, setMissionPhase] = useState<MissionPhase>(initialPhase);
   const [viewMode, setViewMode] = useState<FlightViewMode>('CHASE');
   const [timeWarp, setTimeWarp] = useState<number>(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -869,48 +873,100 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   }, [soundEnabled]);
 
   // Reset simulation when destination changes or modal opens
-  const resetSimulation = useCallback((dest: ExpeditionDestination) => {
+  const resetSimulation = useCallback((dest: ExpeditionDestination, startingPhase: MissionPhase = 'PAD_READY') => {
     setDestination(dest);
-    setMissionPhase('PAD_READY');
-    setViewMode('CHASE');
+    setMissionPhase(startingPhase);
     setTimeWarp(1);
     setThrottle(0);
-    setPitchDeg(90);
-    setFlightAltM(0);
-    setFlightSpeedMs(0);
-    setFlightVyMs(0);
-    setFlightVxMs(0);
-    setFlightFuelPct(100);
-    setRocketStage(1);
-    setLandingLegsDeployed(false);
-    setParachutesDeployed(false);
-    setTouchdownStatus('FLYING');
+    setPitchDeg(startingPhase === 'SURFACE_EVA' || startingPhase === 'SURFACE_LANDED' ? 90 : startingPhase === 'ORBIT_COAST' ? 0 : 90);
+    setRocketStage(dest === 'SUBORBITAL' ? 1 : startingPhase === 'ORBIT_COAST' ? 2 : startingPhase === 'RETRO_DESCENT' ? 3 : 1);
+    setLandingLegsDeployed(startingPhase === 'SURFACE_EVA' || startingPhase === 'SURFACE_LANDED');
+    setParachutesDeployed(startingPhase === 'PARACHUTE_DESCENT' || startingPhase === 'SPLASHDOWN');
+    setTouchdownStatus(startingPhase === 'SURFACE_EVA' || startingPhase === 'SURFACE_LANDED' || startingPhase === 'SPLASHDOWN' ? 'SAFE' : 'FLYING');
     setAstroWalkPos({ x: 2.2, z: 2.2, rot: 0 });
     setEvaTasks({ flagPlanted: false, sampleDrilled: false, seismicDeployed: false });
     evaTasksRef.current = { flagPlanted: false, sampleDrilled: false, seismicDeployed: false };
     setActiveEvaPrompt(null);
-    setDirectorCallout('🌍 LAUNCH COMPLEX 39A (EARTH): APOLLO 11 ON LAUNCHPAD · PRESS [SPACE] OR CLICK [🔥 T-0 IGNITE & LIFTOFF] TO LAUNCH FOR THE MOON!');
+
+    let initialAlt = 0;
+    let initialSpeed = 0;
+    let initialVy = 0;
+    let initialView: FlightViewMode = 'CHASE';
+
+    if (startingPhase === 'SURFACE_EVA') {
+      initialAlt = 0;
+      initialSpeed = 0;
+      initialView = 'ASTRONAUT_EVA';
+      setDirectorCallout(
+        dest === 'MARS'
+          ? '🔴 ACTIVE MARS JEZERO CRATER EVA! USE [W][A][S][D] TO WALK, POWER ON MOXIE & DRILL CORE SAMPLES'
+          : dest === 'SUBORBITAL'
+          ? '🪂 DESERT RECOVERY ZONE! USE [W][A][S][D] TO SECURE CAPSULE & DATA RECORDER'
+          : dest === 'ORBITAL'
+          ? '🌊 PACIFIC OCEAN RECOVERY TASKFORCE! SECURE CREW MODULE'
+          : '🧑‍🚀 APOLLO 11 TRANQUILITY BASE! WALK WITH [W][A][S][D] / ARROWS, PLANT FLAG & DRILL SAMPLES'
+      );
+    } else if (startingPhase === 'RETRO_DESCENT') {
+      initialAlt = dest === 'MOON' ? 2600 : dest === 'MARS' ? 4200 : 1800;
+      initialSpeed = dest === 'MOON' ? 95 : 140;
+      initialVy = dest === 'MOON' ? -24 : -38;
+      initialView = 'CHASE';
+      setDirectorCallout(
+        dest === 'MOON'
+          ? '🌕 LUNAR MODULE POWERED DESCENT! THROTTLE [W]/[S], LEVEL ATTITUDE [A]/[D], TOUCH DOWN UNDER 2.5 M/S'
+          : dest === 'MARS'
+          ? '🔴 SUPERSONIC MARS ENTRY & SKY-CRANE RETRO-BURN! LEVEL ATTITUDE, TOUCH DOWN UNDER 3.0 M/S'
+          : '🪂 HIGH-ALTITUDE DESCENT! PREPARE CHUTES'
+      );
+    } else if (startingPhase === 'ORBIT_COAST') {
+      initialAlt = 200000;
+      initialSpeed = 7800;
+      initialVy = 0;
+      initialView = 'CHASE';
+      setDirectorCallout('🛰️ 200 KM LEO ORBIT CIRCULARIZED! ORBITAL SPEED 7.8 KM/S · READY FOR RETROGRADE DE-ORBIT BURN');
+    } else {
+      initialAlt = 0;
+      initialSpeed = 0;
+      initialVy = 0;
+      initialView = 'CHASE';
+      setDirectorCallout(
+        dest === 'MARS'
+          ? '🔴 PAD 39A (EARTH): MARS INTERPLANETARY VOYAGER READY · PRESS [SPACE] TO IGNITE HEAVY STACK!'
+          : dest === 'SUBORBITAL'
+          ? '🚀 PAD 39A (EARTH): SUB-ORBITAL PIONEER READY · PRESS [SPACE] FOR 100 KM KÁRMÁN FLIGHT!'
+          : dest === 'ORBITAL'
+          ? '🛰️ PAD 39A (EARTH): ORBITAL PIONEER READY · PRESS [SPACE] FOR 200 KM LEO INSERTION!'
+          : '🌍 PAD 39A (EARTH): SATURN V / APOLLO 11 READY · PRESS [SPACE] TO LAUNCH FOR THE MOON!'
+      );
+    }
+
+    setFlightAltM(initialAlt);
+    setFlightSpeedMs(initialSpeed);
+    setFlightVyMs(initialVy);
+    setFlightVxMs(startingPhase === 'ORBIT_COAST' ? 7800 : 0);
+    setFlightFuelPct(100);
+    setViewMode(initialView);
 
     simRef.current = {
       throttle: 0,
-      pitchDeg: 90,
-      altM: 0,
-      velMs: 0,
-      vyMs: 0,
-      vxMs: 0,
+      pitchDeg: startingPhase === 'ORBIT_COAST' ? 0 : 90,
+      altM: initialAlt,
+      velMs: initialSpeed,
+      vyMs: initialVy,
+      vxMs: startingPhase === 'ORBIT_COAST' ? 7800 : 0,
       fuelPct: 100,
-      stage: 1,
-      legsDeployed: false,
-      chutesDeployed: false,
-      boostersSeparated: false,
+      stage: dest === 'SUBORBITAL' ? 1 : startingPhase === 'ORBIT_COAST' ? 2 : startingPhase === 'RETRO_DESCENT' ? 3 : 1,
+      legsDeployed: startingPhase === 'SURFACE_EVA' || startingPhase === 'SURFACE_LANDED',
+      chutesDeployed: startingPhase === 'PARACHUTE_DESCENT' || startingPhase === 'SPLASHDOWN',
+      boostersSeparated: startingPhase !== 'PAD_READY' && startingPhase !== 'ASCENT',
       boosterOffset: 0,
       timeWarp: 1,
-      viewMode: 'CHASE',
+      viewMode: initialView,
       orbitTheta: 0,
-      cislunarProgress: 0,
-      lunarDistanceM: 384400000,
-      touchdown: 'FLYING',
-      missionPhase: 'PAD_READY',
+      cislunarProgress: startingPhase === 'DEEP_CRUISE' ? 0.5 : 0,
+      lunarDistanceM: dest === 'MOON' ? (startingPhase === 'SURFACE_EVA' || startingPhase === 'SURFACE_LANDED' ? 0 : 384400000) : 0,
+      touchdown: startingPhase === 'SURFACE_EVA' || startingPhase === 'SURFACE_LANDED' || startingPhase === 'SPLASHDOWN' ? 'SAFE' : 'FLYING',
+      missionPhase: startingPhase,
       cameraAngleX: 0,
       cameraAngleY: 0.25,
       isMouseDown: false,
@@ -926,9 +982,9 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
   useEffect(() => {
     if (isOpen) {
-      resetSimulation(initialDestination);
+      resetSimulation(initialDestination, initialPhase);
     }
-  }, [isOpen, initialDestination, resetSimulation]);
+  }, [isOpen, initialDestination, initialPhase, resetSimulation]);
 
   // Keyboard Shortcuts & Active Walking Controls
   useEffect(() => {
@@ -2306,6 +2362,33 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           {/* Mission Selectors */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onOpenSelector && (
+              <button
+                onClick={() => {
+                  soundFx.playClick();
+                  onOpenSelector();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))',
+                  border: '1.5px solid rgba(56, 189, 248, 0.55)',
+                  color: '#38bdf8',
+                  fontWeight: 900,
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.25)',
+                  whiteSpace: 'nowrap',
+                }}
+                title="Return to Tactical 4-Ops Matrix"
+              >
+                <span>🛡️</span>
+                <span>4-OPS MATRIX</span>
+              </button>
+            )}
             {(['SUBORBITAL', 'ORBITAL', 'MOON', 'MARS'] as ExpeditionDestination[]).map((dest, idx) => {
               const prof = DESTINATION_PROFILES[dest];
               const isSelected = destination === dest;

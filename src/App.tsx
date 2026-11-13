@@ -44,7 +44,9 @@ import { MarsEDLSimulatorModal } from './components/MarsEDLSimulatorModal';
 import { MarsSurvivalModal } from './components/MarsSurvivalModal';
 import { HardcoreSurvivalModal } from './components/HardcoreSurvivalModal';
 import type { HardcoreMissionId } from './missions/survivalMissions';
-import { FullMissionLifecycleModal } from './components/FullMissionLifecycleModal';
+import { FullMissionLifecycleModal, type MissionPhase } from './components/FullMissionLifecycleModal';
+import { SurvivalMissionsSelectorModal } from './components/SurvivalMissionsSelectorModal';
+import type { ExpeditionDestination } from './missions/fullMissionLifecycle';
 import { AstronautCharacterModal } from './components/AstronautCharacterModal';
 import { LiveMissionActivityModal } from './components/LiveMissionActivityModal';
 import { MultiplayerLobbyModal } from './components/MultiplayerLobbyModal';
@@ -96,6 +98,7 @@ import {
   Scale,
   Building2,
   Flame,
+  Shield,
   ShieldAlert,
 } from 'lucide-react';
 
@@ -231,10 +234,32 @@ export const App: React.FC = () => {
   const [hardcoreInitialMission, setHardcoreInitialMission] = useState<HardcoreMissionId | undefined>();
   const [isFullExpeditionOpen, setIsFullExpeditionOpen] = useState(() => {
     try {
-      if (typeof window !== 'undefined') return new URLSearchParams(window.location.search).has('expedition');
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search);
+        return p.has('expedition') && p.get('expedition') !== 'select';
+      }
     } catch {}
     return false;
   });
+  const [isSurvivalSelectorOpen, setIsSurvivalSelectorOpen] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search);
+        return p.has('ops') || p.has('survival_ops') || p.get('expedition') === 'select';
+      }
+    } catch {}
+    return false;
+  });
+  const [expeditionDestination, setExpeditionDestination] = useState<ExpeditionDestination>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const val = new URLSearchParams(window.location.search).get('expedition')?.toUpperCase();
+        if (val === 'SUBORBITAL' || val === 'ORBITAL' || val === 'MOON' || val === 'MARS') return val;
+      }
+    } catch {}
+    return 'MOON';
+  });
+  const [expeditionStartingPhase, setExpeditionStartingPhase] = useState<MissionPhase>('PAD_READY');
   const [isMoonbaseAlphaOpen, setIsMoonbaseAlphaOpen] = useState(false);
   const [isBlackHoleOpen, setIsBlackHoleOpen] = useState(false);
   const [isMoonquakeMapOpen, setIsMoonquakeMapOpen] = useState(false);
@@ -588,6 +613,7 @@ export const App: React.FC = () => {
     setIsMarsEDLOpen(false);
     setIsMarsSurvivalOpen(false);
     setIsHardcoreSurvivalOpen(false);
+    setIsSurvivalSelectorOpen(false);
     setIsFullExpeditionOpen(false);
     setIsMoonbaseAlphaOpen(false);
     setIsBlackHoleOpen(false);
@@ -796,7 +822,7 @@ export const App: React.FC = () => {
           }}
           onOpenFullExpedition={() => {
             closeAllModals();
-            setIsFullExpeditionOpen(true);
+            setIsSurvivalSelectorOpen(true);
             soundFx.playReactorStart();
           }}
           onOpenMoonbaseAlpha={() => {
@@ -1114,9 +1140,25 @@ export const App: React.FC = () => {
             soundFx.playVictory();
           }}
         />
+        <SurvivalMissionsSelectorModal
+          isOpen={isSurvivalSelectorOpen}
+          onClose={() => setIsSurvivalSelectorOpen(false)}
+          onLaunchMission={(dest, phase) => {
+            setExpeditionDestination(dest);
+            setExpeditionStartingPhase(phase);
+            setIsSurvivalSelectorOpen(false);
+            setIsFullExpeditionOpen(true);
+          }}
+        />
         <FullMissionLifecycleModal
           isOpen={isFullExpeditionOpen}
           onClose={() => setIsFullExpeditionOpen(false)}
+          initialDestination={expeditionDestination}
+          initialPhase={expeditionStartingPhase}
+          onOpenSelector={() => {
+            setIsFullExpeditionOpen(false);
+            setIsSurvivalSelectorOpen(true);
+          }}
           onMissionCompleted={(_dest, credits) => {
             awardCadetCredits(credits);
             soundFx.playVictory();
@@ -1512,10 +1554,10 @@ export const App: React.FC = () => {
                   <span>🔥</span><span>Hardcore Survival (5 Ops)</span>
                 </button>
                 <button
-                  onClick={() => { setIsFullExpeditionOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
+                  onClick={() => { setIsSurvivalSelectorOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 10px', borderRadius: '6px', border: 'none', background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.25), transparent)', color: '#38bdf8', cursor: 'pointer', textAlign: 'left', fontSize: '11.5px', fontWeight: 800 }}
                 >
-                  <span>🌍</span><span>Full Round-Trip Expedition</span>
+                  <span>🛡️</span><span>Survival Missions (4 Ops)</span>
                 </button>
                 <button
                   onClick={() => { setIsExpeditionOpen(true); setIsToolsDropdownOpen(false); soundFx.playReactorStart(); }}
@@ -1717,7 +1759,7 @@ export const App: React.FC = () => {
               { icon: <Flame size={16} />, label: '🔴 Mars 2020 EDL (7 Min)', color: '#f87171', action: () => setIsMarsEDLOpen(true) },
               { icon: <ShieldAlert size={16} />, label: '🔴 Mars Planetary Survival (4 Ops)', color: '#f43f5e', action: () => setIsMarsSurvivalOpen(true) },
               { icon: <Flame size={16} />, label: '🔥 Hardcore Survival (5 Missions)', color: '#ef4444', action: () => setIsHardcoreSurvivalOpen(true) },
-              { icon: <Rocket size={16} />, label: '🌍 Full Round-Trip Expedition (8 Stages)', color: '#38bdf8', action: () => setIsFullExpeditionOpen(true) },
+              { icon: <Shield size={16} />, label: '🛡️ Survival Missions (4 Ops Matrix)', color: '#38bdf8', action: () => setIsSurvivalSelectorOpen(true) },
               { icon: <RotateCcw size={16} />, label: 'Reset Simulation', color: '#94a3b8', action: handleRestart },
             ].map((item) => (
               <button
@@ -2449,9 +2491,25 @@ export const App: React.FC = () => {
           soundFx.playVictory();
         }}
       />
+      <SurvivalMissionsSelectorModal
+        isOpen={isSurvivalSelectorOpen}
+        onClose={() => setIsSurvivalSelectorOpen(false)}
+        onLaunchMission={(dest, phase) => {
+          setExpeditionDestination(dest);
+          setExpeditionStartingPhase(phase);
+          setIsSurvivalSelectorOpen(false);
+          setIsFullExpeditionOpen(true);
+        }}
+      />
       <FullMissionLifecycleModal
         isOpen={isFullExpeditionOpen}
         onClose={() => setIsFullExpeditionOpen(false)}
+        initialDestination={expeditionDestination}
+        initialPhase={expeditionStartingPhase}
+        onOpenSelector={() => {
+          setIsFullExpeditionOpen(false);
+          setIsSurvivalSelectorOpen(true);
+        }}
         onMissionCompleted={(_dest, credits) => {
           awardCadetCredits(credits);
           soundFx.playVictory();
