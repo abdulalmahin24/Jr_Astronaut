@@ -297,6 +297,64 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [audioMuted, setAudioMuted] = useState(false);
   const [musicMuted, setMusicMuted] = useState(() => spaceMusicEngine.getIsMuted());
 
+  // Modern UI specific state matching monitor screenshot
+  const [selectedCharIndex, setSelectedCharIndex] = useState(0);
+  const [selectedSuitOption, setSelectedSuitOption] = useState<'EMU' | 'ARTEMIS' | 'ACES'>('EMU');
+  const [isCadetJourneyOpen, setIsCadetJourneyOpen] = useState(true);
+  const [activeNavTab, setActiveNavTab] = useState<'LOBBY' | 'ACADEMY' | 'SUIT_DEPOT' | 'LEADERBOARD' | 'STORY'>('LOBBY');
+
+  const AVAILABLE_MODES: {
+    id: typeof selectedMatchMode;
+    title: string;
+    sub: string;
+    badge: string;
+  }[] = [
+    { id: 'FULL_EXPEDITION', title: 'SURVIVAL MISSIONS', sub: '(4 OPS)', badge: '4 OPS MANUAL' },
+    { id: 'HARDCORE_SURVIVAL', title: 'HARDCORE SURVIVAL', sub: '(5 OPS)', badge: '5 OPS ORBITAL' },
+    { id: 'MARS_SURVIVAL', title: 'MARS SURVIVAL', sub: '(4 OPS)', badge: '4 OPS MARS' },
+    { id: 'SPACE_GAMES', title: 'SPACE GAMES ARCADE', sub: '(3 TIERS)', badge: 'ARCADE SUITE' },
+    { id: 'EARTH_TO_MOON', title: 'EARTH TO MOON', sub: '(LEVEL 5)', badge: 'LUNAR FLIGHT' },
+    { id: 'NEW_CAMPAIGN', title: 'NASA MISSIONS', sub: '(76 OPS)', badge: 'HISTORIC OPS' },
+    { id: 'MOONBASE_ALPHA', title: 'MOONBASE ALPHA', sub: '(3D EVA)', badge: 'LUNAR OUTPOST' },
+    { id: 'BLACK_HOLE', title: 'RELATIVITY LAB', sub: '(KERR BH)', badge: 'PHYSICS LAB' },
+  ];
+
+  const currentModeConfig = AVAILABLE_MODES.find((m) => m.id === selectedMatchMode) || AVAILABLE_MODES[0];
+
+  const handleCycleMode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    soundFx.playClick(880);
+    const currIdx = AVAILABLE_MODES.findIndex((m) => m.id === selectedMatchMode);
+    const nextIdx = (currIdx + 1) % AVAILABLE_MODES.length;
+    setSelectedMatchMode(AVAILABLE_MODES[nextIdx].id);
+  };
+
+  const handlePrevAstronaut = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    soundFx.playClick(850);
+    const nextIdx = (selectedCharIndex - 1 + ASTRONAUT_CHARACTERS.length) % ASTRONAUT_CHARACTERS.length;
+    setSelectedCharIndex(nextIdx);
+    setPreviewAstronautId(ASTRONAUT_CHARACTERS[nextIdx].id);
+    if (ASTRONAUT_CHARACTERS[nextIdx].id === 'kalpana_chawla') {
+      setSelectedSuitOption('ACES');
+    } else {
+      setSelectedSuitOption(nextIdx % 2 === 0 ? 'EMU' : 'ARTEMIS');
+    }
+  };
+
+  const handleNextAstronaut = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    soundFx.playClick(900);
+    const nextIdx = (selectedCharIndex + 1) % ASTRONAUT_CHARACTERS.length;
+    setSelectedCharIndex(nextIdx);
+    setPreviewAstronautId(ASTRONAUT_CHARACTERS[nextIdx].id);
+    if (ASTRONAUT_CHARACTERS[nextIdx].id === 'kalpana_chawla') {
+      setSelectedSuitOption('ACES');
+    } else {
+      setSelectedSuitOption(nextIdx % 2 === 0 ? 'EMU' : 'ARTEMIS');
+    }
+  };
+
   const [cadetProg] = useState(() => getCadetProgression());
   const rankInfo = getRankProgress(cadetProg.xp);
 
@@ -444,9 +502,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       )}
 
-      {/* ── TOP TACTICAL STATUS BAR (PUBG / COD MOBILE STYLE) ── */}
+      {/* ── TOP MODERN SCI-FI STATUS BAR (SCREENSHOT MATCH) ── */}
       <header
-        className="tactical-top-bar"
+        className="lobby-hud-topbar"
         style={{
           opacity: isInspectionMode ? 0 : 1,
           pointerEvents: isInspectionMode ? 'none' : 'auto',
@@ -454,744 +512,457 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         }}
       >
         {/* Left: Player Profile Card */}
-        <div 
-          className="tactical-player-card" 
+        <div
+          className="lobby-profile-card"
           onClick={() => handleNavClick(onOpenAuth || onOpenAcademy)}
           title="Manage Callsign, Security Level & Credentials"
         >
-          <div className="tactical-avatar-ring" style={{ borderColor: rankInfo.currentRank.color }}>
-            <span>{currentUser?.avatar || rankInfo.currentRank.badgeEmoji}</span>
-            <span className="tactical-level-badge" style={{ backgroundColor: rankInfo.currentRank.color }}>
-              LV.{rankInfo.currentRank.level}
-            </span>
+          <div className="lobby-profile-avatar-box">
+            <span>{currentUser?.avatar || '👨‍🚀'}</span>
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#ffffff' }}>
-                {currentUser ? (currentUser.role === 'teacher' ? `👩‍🏫 ${currentUser.username}` : `@${currentUser.username}`) : 'CALLSIGN: CADET-01'}
-              </span>
-              <span 
-                style={{ 
-                  fontSize: '9px', 
-                  background: 'rgba(148, 163, 184, 0.16)', 
-                  color: '#e2e8f0', 
-                  fontWeight: 800, 
-                  padding: '1px 5px', 
-                  borderRadius: '3px',
-                  border: '1px solid rgba(148, 163, 184, 0.25)',
+            <div className="lobby-profile-name">
+              <span>{currentUser ? `@${currentUser.username}` : '@CadetArtemis'}</span>
+              <span className="lobby-profile-lvl">[LVL {rankInfo.currentRank.level || 1}]</span>
+            </div>
+            <div className="lobby-profile-bar">
+              <div
+                className="lobby-profile-bar-fill"
+                style={{
+                  width: `${Math.min(100, Math.max(20, (cadetProg.xp / (rankInfo.nextRank?.minXp || 500)) * 100))}%`,
                 }}
-              >
-                {currentUser?.role === 'teacher' ? 'INSTRUCTOR' : rankInfo.currentRank.titleEn.split('&')[0].trim().toUpperCase()}
-              </span>
-            </div>
-            <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
-              <span>XP: {cadetProg.xp} / {rankInfo.nextRank ? rankInfo.nextRank.minXp : 'MAX'}</span>
-              <span style={{ color: '#10b981', fontWeight: 700 }}>● ONLINE</span>
+              />
             </div>
           </div>
         </div>
 
-        {/* Center: Mission Operations & Fast Tools (Replaced old Sector Shackleton & Ping text) */}
-        <div 
-          className="hidden md:flex"
-          style={{ 
-            alignItems: 'center', 
-            gap: '6px',
-            background: 'rgba(10, 15, 26, 0.75)',
-            border: '1px solid rgba(0, 210, 255, 0.22)',
-            borderRadius: '20px',
-            padding: '3px 8px',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          {/* 1. SCHOOL */}
+        {/* Center: Glowing Navigation Pill Tabs */}
+        <nav className="lobby-nav-pills">
           <button
-            onClick={() => handleNavClick(onOpenTrainingCenter || onOpenAcademy, 'chirp')}
-            className="tactical-badge-pill"
-            style={{
-              cursor: 'pointer',
-              background: 'linear-gradient(180deg, rgba(0, 210, 255, 0.2), rgba(15, 23, 42, 0.8))',
-              borderColor: 'rgba(0, 210, 255, 0.45)',
-              color: '#38bdf8',
-              fontWeight: 800,
-              fontSize: '11px',
-              padding: '4px 10px',
-              gap: '5px',
+            className={`lobby-nav-pill-btn ${activeNavTab === 'LOBBY' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveNavTab('LOBBY');
+              soundFx.playClick(800);
             }}
-            title="Junior Astronaut 3D Realistic Training Center (NBL, ECLSS, Habitat & Emergency Drills)"
           >
-            <span>🏫</span>
-            <span>SCHOOL</span>
+            LOBBY
           </button>
-
-          {/* 2. RADAR */}
-          {onOpenTelemetry && (
-            <button
-              id="pubg-btn-telemetry-radar"
-              onClick={() => handleNavClick(onOpenTelemetry, 'chirp')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'rgba(15, 23, 42, 0.8)',
-                borderColor: 'rgba(0, 210, 255, 0.25)',
-                color: '#e2e8f0',
-                fontWeight: 800,
-                fontSize: '11px',
-                padding: '4px 10px',
-                gap: '5px',
-              }}
-              title="NASA Live Telemetry Pipeline & Space Weather"
-            >
-              <span>🛰️</span>
-              <span>RADAR</span>
-            </button>
-          )}
-
-          {/* 3. SCORES */}
-          {onOpenTeacherGradebook && (
-            <button
-              onClick={() => handleNavClick(onOpenTeacherGradebook, 'chirp')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'rgba(15, 23, 42, 0.8)',
-                borderColor: currentUser?.role === 'teacher' ? '#ff9e1b' : 'rgba(0, 210, 255, 0.25)',
-                color: currentUser?.role === 'teacher' ? '#ff9e1b' : '#e2e8f0',
-                fontWeight: 800,
-                fontSize: '11px',
-                padding: '4px 10px',
-                gap: '5px',
-              }}
-              title="Classroom Scores, Student Progress & Gradebook"
-            >
-              <span>📊</span>
-              <span>SCORES</span>
-            </button>
-          )}
-
-          {/* 4. JUDGE */}
-          {onOpenJudgePreview && (
-            <button
-              onClick={() => handleNavClick(onOpenJudgePreview, 'chirp')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'rgba(255, 158, 27, 0.18)',
-                borderColor: '#ff9e1b',
-                color: '#ff9e1b',
-                fontWeight: 900,
-                fontSize: '11px',
-                padding: '4px 10px',
-                gap: '5px',
-              }}
-              title="Space Apps Challenge Judge Speedrun (Instant 1-Click Win)"
-            >
-              <span>🏆</span>
-              <span>JUDGE</span>
-            </button>
-          )}
-
-          {/* 5. DIPLOMA */}
-          {onOpenCertificate && (
-            <button
-              onClick={() => handleNavClick(onOpenCertificate, 'chirp')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'rgba(15, 23, 42, 0.8)',
-                borderColor: 'rgba(0, 210, 255, 0.25)',
-                color: '#e2e8f0',
-                fontWeight: 800,
-                fontSize: '11px',
-                padding: '4px 10px',
-                gap: '5px',
-              }}
-              title="NASA Junior Astronaut Flight Certificate"
-            >
-              <span>📜</span>
-              <span>DIPLOMA</span>
-            </button>
-          )}
-
-          {/* 6. INTEL */}
-          {onOpenComics && (
-            <button
-              onClick={() => handleNavClick(onOpenComics, 'chirp')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'rgba(15, 23, 42, 0.8)',
-                borderColor: 'rgba(0, 210, 255, 0.25)',
-                color: '#e2e8f0',
-                fontWeight: 800,
-                fontSize: '11px',
-                padding: '4px 10px',
-                gap: '5px',
-              }}
-              title="Graphic Intel Briefings & Interactive Comics"
-            >
-              <span>📖</span>
-              <span>INTEL</span>
-            </button>
-          )}
-
-          {/* 7. MARS SURVIVAL (4 MISSIONS) */}
-          {onOpenMarsSurvival && (
-            <button
-              onClick={() => handleNavClick(onOpenMarsSurvival, 'reactor')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.35), rgba(15, 23, 42, 0.95))',
-                borderColor: '#ef4444',
-                color: '#fca5a5',
-                fontWeight: 900,
-                fontSize: '11px',
-                padding: '4px 12px',
-                gap: '6px',
-                boxShadow: '0 0 14px rgba(239, 68, 68, 0.45)',
-              }}
-              title="NASA Mars Planetary Survival Operations (4 Missions: MOXIE, REMS Storm, Ice Core, Marsquake)"
-            >
-              <span>🔴</span>
-              <span>MARS SURVIVAL (4 OPS)</span>
-            </button>
-          )}
-
-          {/* 8. HARDCORE ORBITAL SURVIVAL (5 MISSIONS) */}
-          {onOpenHardcoreSurvival && (
-            <button
-              onClick={() => handleNavClick(onOpenHardcoreSurvival, 'reactor')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'linear-gradient(180deg, rgba(234, 88, 12, 0.4), rgba(15, 23, 42, 0.95))',
-                borderColor: '#f97316',
-                color: '#fed7aa',
-                fontWeight: 900,
-                fontSize: '11px',
-                padding: '4px 12px',
-                gap: '6px',
-                boxShadow: '0 0 16px rgba(249, 115, 22, 0.5)',
-              }}
-              title="5 Hardcore Orbital Survival Missions: Kessler Syndrome, Solar Storm, Apollo 13, Oberth Slingshot & Suicide Burn"
-            >
-              <span>🔥</span>
-              <span>HARDCORE SURVIVAL (5 OPS)</span>
-            </button>
-          )}
-
-          {/* 9. SURVIVAL EXPEDITIONS (4 MANUAL MISSIONS) */}
-          {onOpenFullExpedition && (
-            <button
-              onClick={() => handleNavClick(onOpenFullExpedition, 'reactor')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'linear-gradient(180deg, rgba(37, 99, 235, 0.55), rgba(15, 23, 42, 0.95))',
-                borderColor: '#38bdf8',
-                color: '#bae6fd',
-                fontWeight: 900,
-                fontSize: '11px',
-                padding: '4px 14px',
-                gap: '6px',
-                boxShadow: '0 0 18px rgba(56, 189, 248, 0.65)',
-              }}
-              title="NASA 4 Survival Missions (100% Manual Flight): Sub-Orbital, LEO Orbit, Lunar Voyager [YouTube], Mars Voyager"
-            >
-              <span>🛡️🚀</span>
-              <span>SURVIVAL MISSIONS (4 OPS)</span>
-            </button>
-          )}
-
-          {/* 7. CONFIG */}
-          {onOpenSettings && (
-            <button
-              onClick={() => handleNavClick(onOpenSettings, 'chirp')}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: 'rgba(15, 23, 42, 0.8)',
-                borderColor: 'rgba(148, 163, 184, 0.28)',
-                color: '#cbd5e1',
-                fontWeight: 800,
-                fontSize: '11px',
-                padding: '4px 10px',
-                gap: '5px',
-              }}
-              title="Audio, Graphics & Control Settings"
-            >
-              <span>⚙️</span>
-              <span>CONFIG</span>
-            </button>
-          )}
-        </div>
-
-        {/* Right: Tactical Vitals & Fast Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Cadet Coins */}
           <button
-            onClick={() => handleNavClick(onOpenCharacterLocker || onOpenDepot || onOpenAcademy)}
-            className="tactical-badge-pill"
-            style={{ color: '#fcd34d', borderColor: 'rgba(245, 158, 11, 0.35)', background: 'rgba(15, 23, 42, 0.8)', cursor: 'pointer' }}
-            title="Cadet In-Game Coins (Earn from Missions & Exams)"
+            className="lobby-nav-pill-btn"
+            onClick={() => handleNavClick(onOpenTrainingCenter || onOpenAcademy, 'chirp')}
           >
-            <span>🪙 {(currentUser?.coins ?? 500).toLocaleString()} COINS</span>
+            ACADEMY
+          </button>
+          <button
+            className="lobby-nav-pill-btn"
+            onClick={() => handleNavClick(onOpenDepot, 'chirp')}
+          >
+            SUIT DEPOT
+          </button>
+          <button
+            className="lobby-nav-pill-btn"
+            onClick={() => handleNavClick(onOpenTeacherGradebook, 'chirp')}
+          >
+            LEADERBOARD
+          </button>
+          <button
+            className="lobby-nav-pill-btn"
+            onClick={() => handleNavClick(onOpenCampaign || onOpenComics, 'chirp')}
+          >
+            STORY
+          </button>
+        </nav>
+
+        {/* Right: Status Indicators & Quick Actions */}
+        <div className="lobby-top-right-group">
+          <div className="lobby-stat-badge">
+            <span style={{ color: '#10b981' }}>⚡ 100% FUEL</span>
+            <span style={{ color: '#00d2ff' }}>🔋 850L</span>
+          </div>
+
+          <button
+            className="lobby-currency-pill"
+            onClick={() => handleNavClick(onOpenCharacterLocker || onOpenDepot)}
+            title="Cadet In-Game Currency"
+          >
+            <span style={{ fontSize: '13px' }}>🍁</span>
+            <span style={{ color: '#fcd34d', fontWeight: 800 }}>
+              {(currentUser?.coins ?? 2820).toLocaleString()}
+            </span>
           </button>
 
-          {/* Famous Astronaut Character Locker */}
-          {onOpenCharacterLocker && (
-            <button
-              onClick={() => handleNavClick(onOpenCharacterLocker)}
-              className="tactical-badge-pill"
-              style={{ color: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.25)', background: 'rgba(15, 23, 42, 0.8)', cursor: 'pointer', fontWeight: 800 }}
-              title="Historic Astronaut Hangar & Character Selector"
-            >
-              <span>🧑‍🚀 CREW</span>
-            </button>
-          )}
-
-          {/* Live Mission Radar */}
-          {onOpenLiveActivity && (
-            <button
-              onClick={() => handleNavClick(onOpenLiveActivity)}
-              className="tactical-badge-pill"
-              style={{ color: '#6ee7b7', borderColor: 'rgba(16, 185, 129, 0.35)', background: 'rgba(15, 23, 42, 0.8)', cursor: 'pointer', fontWeight: 800 }}
-              title="Synchronized Real-Time Cadet Mission Radar"
-            >
-              <span>📡 LIVE RADAR</span>
-            </button>
-          )}
-
-          {/* Base Vitals */}
-          <div className="tactical-badge-pill hidden lg:flex" style={{ color: '#6ee7b7', borderColor: 'rgba(16, 185, 129, 0.25)' }} title="Base Power Grid">
-            <span>⚡ 100%</span>
-          </div>
-          <div className="tactical-badge-pill hidden lg:flex" style={{ color: '#7dd3fc', borderColor: 'rgba(2, 132, 199, 0.25)' }} title="Life Support Reserves">
-            <span>💧 850L</span>
-          </div>
-
-          {/* Sign In / Switch Account Button */}
-          {onOpenAuth && (
-            <button
-              onClick={() => handleNavClick(onOpenAuth)}
-              className="tactical-badge-pill"
-              style={{
-                cursor: 'pointer',
-                background: currentUser ? 'rgba(15, 23, 42, 0.8)' : 'linear-gradient(180deg, #334155, #1e293b)',
-                color: '#fff',
-                borderColor: 'rgba(148, 163, 184, 0.28)',
-                fontWeight: 800,
-              }}
-              title="Switch Account / Sign In / Register"
-            >
-              {currentUser ? '👤 ACCOUNT' : '🔒 SIGN IN'}
-            </button>
-          )}
-
-          {/* Multiplayer Co-Op Mission Lobby */}
           {onOpenMultiplayerLobby && (
             <button
+              className="lobby-icon-square-btn"
               onClick={() => handleNavClick(onOpenMultiplayerLobby, 'chirp')}
-              className="tactical-badge-pill"
-              id="landing-top-btn-coop"
-              style={{
-                cursor: 'pointer',
-                background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3))',
-                color: '#6ee7b7',
-                borderColor: 'rgba(16, 185, 129, 0.4)',
-                fontWeight: 800,
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
-              }}
-              title="NASA Multi-Crew Co-Op Mission Lobby · Fly Missions Together"
+              title="Multiplayer Crew (+)"
             >
-              👥 CO-OP LOBBY
+              <span>👤+</span>
             </button>
           )}
 
-          {/* NASA Eyes 3D Solar Orrery Quick Launch */}
-          {onOpenOrrery && (
-            <button
-              onClick={() => handleNavClick(onOpenOrrery, 'chirp')}
-              className="tactical-badge-pill"
-              id="landing-top-btn-orrery"
-              style={{
-                cursor: 'pointer',
-                background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.7))',
-                color: '#f8fafc',
-                borderColor: 'rgba(148, 163, 184, 0.25)',
-                fontWeight: 800,
-              }}
-              title="NASA Eyes: 3D Interactive Solar System Orrery & Space Stations"
-            >
-              🪐 3D SOLAR EYES
-            </button>
-          )}
-
-
-          {/* Background Space Music Toggle */}
           <button
+            className="lobby-icon-square-btn"
             onClick={() => {
               const muted = spaceMusicEngine.toggleMute();
               setMusicMuted(muted);
               soundFx.playClick(850);
             }}
-            className="tactical-badge-pill"
-            style={{
-              cursor: 'pointer',
-              background: !musicMuted ? 'rgba(56, 189, 248, 0.25)' : 'rgba(15, 23, 42, 0.8)',
-              borderColor: !musicMuted ? '#38bdf8' : 'rgba(148, 163, 184, 0.3)',
-              color: !musicMuted ? '#38bdf8' : '#94a3b8',
-              fontWeight: 800,
-            }}
-            title={musicMuted ? 'Turn Space Music ON' : 'Turn Space Music OFF'}
+            title={musicMuted ? 'Turn Sound ON' : 'Turn Sound OFF'}
           >
-            {!musicMuted ? '🎵 MUSIC: ON' : '🔇 MUSIC: OFF'}
+            <span>{musicMuted ? '🔇' : '🔊'}</span>
           </button>
 
-          {/* Quick Sound Toggle */}
-          <button
-            onClick={() => {
-              setAudioMuted(!audioMuted);
-              soundFx.playClick(900);
-            }}
-            className="tactical-badge-pill"
-            style={{ cursor: 'pointer', background: audioMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 23, 42, 0.8)' }}
-            title={audioMuted ? 'Unmute Audio FX' : 'Mute Audio FX'}
-          >
-            {audioMuted ? '🔇 FX' : '🔊 FX'}
-          </button>
+          {onOpenSettings && (
+            <button
+              className="lobby-icon-square-btn"
+              onClick={() => handleNavClick(onOpenSettings, 'chirp')}
+              title="Game Settings"
+            >
+              <span>⚙️</span>
+            </button>
+          )}
         </div>
       </header>
 
-      {/* ── MAIN TACTICAL BATTLE ARENA (3-COLUMN LAYOUT) ── */}
-      <main style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px 20px 8px 20px', width: '100%', overflow: 'hidden', position: 'relative', zIndex: 10 }}>
-        
-        {/* Top Capcom Urgent Directive Bar */}
-        <div 
-          style={{ 
-            background: 'linear-gradient(90deg, rgba(7, 9, 14, 0.94) 0%, rgba(17, 22, 34, 0.88) 50%, rgba(7, 9, 14, 0.94) 100%)',
-            border: '1px solid rgba(0, 210, 255, 0.3)',
-            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
-            padding: '5px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backdropFilter: 'blur(10px)',
-            zIndex: 25,
+      {/* ── PANORAMIC GAME LOBBY ARENA ── */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          position: 'relative',
+          width: '100%',
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
+        {/* ── LEFT PANEL: HUD BLOCKS (SEMI-TRANSPARENT BLUE) ── */}
+        <div
+          className="lobby-left-column"
+          style={{
+            opacity: isInspectionMode ? 0 : 1,
+            pointerEvents: isInspectionMode ? 'none' : 'auto',
+            transform: isInspectionMode ? 'translateX(-30px)' : 'none',
+            transition: 'all 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '14px', animation: 'spin 12s linear infinite' }}>📡</span>
-            <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900 }}>
-              HOUSTON CAPCOM DIRECTIVE:
-            </span>
-            <span style={{ fontSize: '11.5px', color: '#cbd5e1' }}>
-              NASA Artemis III directives active at Shackleton Rim (-89.9°S). Maintain Kilopower grid, drill volatile ice in crater shadows, and survive polar night.
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Direct Animation Video & Ground School Launcher */}
-            <button
-              id="pubg-btn-training-center"
-              onClick={() => handleNavClick(onOpenTrainingCenter || onOpenAcademy, 'chirp')}
-              style={{
-                background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.28) 0%, rgba(59, 130, 246, 0.35) 100%)',
-                border: '1px solid #00d2ff',
-                color: '#ffffff',
-                padding: '4px 14px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 0 15px rgba(0, 210, 255, 0.45)',
-                transition: 'all 0.2s ease',
+          {/* Top Block: CADET JOURNEY (80% Complete) */}
+          <div className="lobby-hud-card">
+            <div
+              className="lobby-hud-card-header"
+              onClick={() => {
+                setIsCadetJourneyOpen(!isCadetJourneyOpen);
+                soundFx.playClick(800);
               }}
-              title="Watch Space Animation Videos & 3D Ground School"
+              title="Toggle Cadet Journey Checklist"
             >
-              <span style={{ fontSize: '13px' }}>🎬</span>
-              <span>ANIMATION VIDEOS & 3D GROUND SCHOOL</span>
-              <span style={{ color: '#00d2ff', fontWeight: 900 }}>▶</span>
-            </button>
-            {currentUser?.role === 'teacher' && onOpenTeacherGradebook && (
-              <button
-                onClick={() => handleNavClick(onOpenTeacherGradebook, 'chirp')}
-                style={{
-                  background: 'rgba(255, 158, 27, 0.2)',
-                  border: '1px solid #ff9e1b',
-                  color: '#ffb03a',
-                  padding: '2px 8px',
-                  borderRadius: '3px',
-                  fontSize: '10px',
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 800,
-                  cursor: 'pointer',
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#f97316', fontSize: '12px' }}>●</span>
+                <span>CADET JOURNEY (80% Complete)</span>
+              </div>
+              <span style={{ color: '#94a3b8', fontSize: '11px' }}>{isCadetJourneyOpen ? '▲' : '▼'}</span>
+            </div>
+
+            {isCadetJourneyOpen && (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+                  Current Objective:
+                </div>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#f8fafc',
+                    fontFamily: 'var(--font-space)',
+                    marginTop: '2px',
+                  }}
+                >
+                  Step 4 - Moonquake Lab
+                </div>
+
+                <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div
+                    className="lobby-hud-step-item"
+                    onClick={() => (onOpenClassroom || onOpenAcademy)?.()}
+                    title="Open Step 1 Ground School"
+                  >
+                    <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>
+                    <span>Step 1 - Moonquake</span>
+                  </div>
+                  <div
+                    className="lobby-hud-step-item"
+                    onClick={() => (onOpenDepot || onOpenTrainingCenter)?.()}
+                    title="Open Step 2 Training Center"
+                  >
+                    <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>
+                    <span>Step 2 - Moonquake Lab</span>
+                  </div>
+                  <div
+                    className="lobby-hud-step-item"
+                    onClick={() => onOpenExpedition?.()}
+                    title="Open Step 3 Lunar Expedition"
+                  >
+                    <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>
+                    <span>Step 3 - Moonquake Lab</span>
+                  </div>
+                  <div
+                    className="lobby-hud-step-item"
+                    onClick={() => onOpenRover?.()}
+                    title="Open Step 4 Moonquake Lab & Rover"
+                  >
+                    <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>
+                    <span style={{ fontWeight: 800, color: '#38bdf8' }}>Step 4 - Moonquake Lab</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Lower Block: SURVIVAL EXPEDITIONS (MANUAL MISSIONS) */}
+          <div className="lobby-hud-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ color: '#f97316', fontSize: '12px' }}>●</span>
+              <div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-space)',
+                    fontWeight: 800,
+                    fontSize: '11px',
+                    color: '#f8fafc',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  SURVIVAL EXPEDITIONS
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: '#94a3b8' }}>
+                  (MANUAL MISSIONS)
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div
+                className={`lobby-hud-expedition-item ${selectedMatchMode === 'FULL_EXPEDITION' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedMatchMode('FULL_EXPEDITION');
+                  soundFx.playClick(850);
                 }}
               >
-                📊 TEACHER GRADEBOOK READY →
-              </button>
-            )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>
+                  <span style={{ fontSize: '11px', color: '#e2e8f0', fontFamily: 'var(--font-space)', fontWeight: 700 }}>
+                    Sub-Orbital
+                  </span>
+                </div>
+                <span style={{ fontSize: '9px', color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                  STATUS
+                </span>
+              </div>
 
+              <div
+                className={`lobby-hud-expedition-item ${selectedMatchMode === 'HARDCORE_SURVIVAL' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedMatchMode('HARDCORE_SURVIVAL');
+                  soundFx.playClick(850);
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ color: '#10b981', fontWeight: 900 }}>✓</span>
+                  <span style={{ fontSize: '11px', color: '#e2e8f0', fontFamily: 'var(--font-space)', fontWeight: 700 }}>
+                    Sub-Orbital
+                  </span>
+                </div>
+                <span style={{ fontSize: '9px', color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                  STATUS
+                </span>
+              </div>
+
+              <div
+                className={`lobby-hud-expedition-item ${selectedMatchMode === 'MARS_SURVIVAL' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedMatchMode('MARS_SURVIVAL');
+                  soundFx.playClick(850);
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ color: '#00d2ff', fontSize: '12px' }}>●</span>
+                  <span style={{ fontSize: '11px', color: '#38bdf8', fontFamily: 'var(--font-space)', fontWeight: 800 }}>
+                    Mars Voyager
+                  </span>
+                </div>
+                <span style={{ fontSize: '9px', color: '#10b981', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                  ACTIVE
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Guided 5-Step Cadet Journey Progression Banner */}
-        {!isInspectionMode && (
-          <div style={{ width: '100%', padding: '0 24px', margin: '4px 0 8px 0', zIndex: 30 }}>
-            <GuidedCadetJourney
-              completedMissionsCount={currentUser?.completedMissions?.length || (hasSavedGame ? 1 : 0)}
-              onOpenStep={(step) => {
-                if (step === 1) (onOpenClassroom || onOpenAcademy)?.();
-                else if (step === 2) (onOpenDepot || onOpenTrainingCenter)?.();
-                else if (step === 3) onOpenExpedition?.();
-                else if (step === 4) onOpenRover?.();
-                else if (step === 5) onOpenCertificate?.();
-              }}
-            />
+        {/* ── VERY BOTTOM LEFT: HOUSTON CAPCON DIRECTIVE TICKER ── */}
+        <div
+          className="lobby-houston-ticker"
+          style={{
+            opacity: isInspectionMode ? 0 : 1,
+            pointerEvents: isInspectionMode ? 'none' : 'auto',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#f97316', fontSize: '11px' }}>●</span>
+            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900 }}>
+              HOUSTON CAPCON DIRECTIVE:
+            </span>
+            <span style={{ fontSize: '10.5px', color: '#cbd5e1' }}>
+              Artemis III active at Shackleton Rim. Maintain Kilopower grid.
+            </span>
           </div>
-        )}
-
-        {/* ── PANORAMIC MID-SECTION (PUBG MOBILE HUD OVERLAYS) ── */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', width: '100%', minHeight: 0, overflow: 'hidden' }}>
-          
-          {/* ── LEFT COLUMN: GAME MODE SELECTOR (FADES IN INSPECTION MODE) ── */}
-          <div
-            style={{
-              zIndex: 20,
-              alignSelf: 'flex-start',
-              marginTop: '10px',
-              marginLeft: '20px',
-              opacity: isInspectionMode ? 0 : 1,
-              pointerEvents: isInspectionMode ? 'none' : 'auto',
-              transform: isInspectionMode ? 'translateX(-30px)' : 'none',
-              transition: 'all 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-          >
-            {/* PUBG MODE SELECTOR CARD */}
-            <div 
-              className="pubg-mode-card"
-              onClick={() => {
-                const modes: ('FULL_EXPEDITION' | 'HARDCORE_SURVIVAL' | 'MARS_SURVIVAL' | 'SPACE_GAMES' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL')[] = [
-                  'FULL_EXPEDITION',
-                  'HARDCORE_SURVIVAL',
-                  'MARS_SURVIVAL',
-                  'SPACE_GAMES',
-                  'EARTH_TO_MOON',
-                  'SOL1_SURVIVAL',
-                  'MOONBASE_ALPHA',
-                  'BLACK_HOLE',
-                  'NEW_CAMPAIGN',
-                  'JUDGE_DEMO',
-                  'MARS_EDL'
-                ];
-                const nextIdx = (modes.indexOf(selectedMatchMode) + 1) % modes.length;
-                setSelectedMatchMode(modes[nextIdx]);
-                soundFx.playClick(900);
-              }}
-              title="Click to Switch Mission Mode"
-              style={{ width: '270px' }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#ff9e1b', fontWeight: 900, letterSpacing: '0.06em' }}>
-                  {selectedMatchMode === 'FULL_EXPEDITION' && '🛡️🚀 SURVIVAL EXPEDITIONS (4 MANUAL MISSIONS)'}
-                  {selectedMatchMode === 'HARDCORE_SURVIVAL' && '🔥 HARDCORE ORBITAL SURVIVAL (5 MISSIONS)'}
-                  {selectedMatchMode === 'MARS_SURVIVAL' && '🔴 MARS SURVIVAL SUITE (4 MISSIONS)'}
-                  {selectedMatchMode === 'SPACE_GAMES' && '🪐 DEDICATED SPACE GAMES ARCADE (3 AGE TIERS)'}
-                  {selectedMatchMode === 'EARTH_TO_MOON' && '🚀 ADVANCED ASTRONAUT EXPEDITIONS (LEVEL 5)'}
-                  {selectedMatchMode === 'SOL1_SURVIVAL' && '🌕 LUNAR EXPEDITION'}
-                  {selectedMatchMode === 'MOONBASE_ALPHA' && '🧑‍🚀 MOONBASE ALPHA (EVA)'}
-                  {selectedMatchMode === 'BLACK_HOLE' && '🕳️ BLACK HOLE RELATIVITY'}
-                  {selectedMatchMode === 'NEW_CAMPAIGN' && '🚀 NASA 76 MISSIONS'}
-                  {selectedMatchMode === 'JUDGE_DEMO' && '🏆 JUDGE SPEEDRUN'}
-                  {selectedMatchMode === 'MARS_EDL' && '🔴 MARS 2020 EDL'}
-                </span>
-                <span style={{ fontSize: '9px', color: '#00d2ff', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
-                  SWITCH ▾
-                </span>
-              </div>
-              <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)' }}>
-                {selectedMatchMode === 'FULL_EXPEDITION' && '100% Manual Flight Controls (W/S/A/D/Space/G/P) · Sub-Orbital, LEO Orbit, Lunar Voyager (YouTube), Mars Voyager'}
-                {selectedMatchMode === 'HARDCORE_SURVIVAL' && 'Kessler Syndrome · Solar Storm · Apollo 13 · Oberth · Suicide Burn'}
-                {selectedMatchMode === 'MARS_SURVIVAL' && "Jezero Delta · Gale REMS Storm · Valles Marineris · Elysium SEIS"}
-                {selectedMatchMode === 'SPACE_GAMES' && "No Man's Sky · KSP · Space Engineers · Star Citizen"}
-                {selectedMatchMode === 'EARTH_TO_MOON' && 'New Shepard (10 Min to Space), Artemis V, Apollo 11'}
-                {selectedMatchMode === 'SOL1_SURVIVAL' && 'Moon Base Survival (Sol 1)'}
-                {selectedMatchMode === 'MOONBASE_ALPHA' && 'Outpost Crisis: Low-G EVA Repair'}
-                {selectedMatchMode === 'BLACK_HOLE' && 'SpaceEngine Relativistic Lensing'}
-                {selectedMatchMode === 'NEW_CAMPAIGN' && 'All 76 Flight Missions'}
-                {selectedMatchMode === 'JUDGE_DEMO' && '1-Click Judge Victory Demo'}
-                {selectedMatchMode === 'MARS_EDL' && 'Jezero Crater Sky Crane EDL'}
-              </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '6px', fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
-                <span>📍 {selectedMatchMode === 'FULL_EXPEDITION' ? 'Tsiolkovsky Equation, 45th Weather Squadron & Full Return Cycle' : selectedMatchMode === 'HARDCORE_SURVIVAL' ? 'Newtonian Gravity, Keplerian Solver & Real Telemetry' : selectedMatchMode === 'MARS_SURVIVAL' ? 'NASA PDS, REMS, Mars Trek GIS & Eyes Data' : selectedMatchMode === 'SPACE_GAMES' ? 'Dedicated Arcade Suite (Ages 6-10 / 11-15 / 16+)' : selectedMatchMode === 'EARTH_TO_MOON' ? 'Classified: Advanced Astronauts Only' : selectedMatchMode === 'BLACK_HOLE' ? 'Kerr Event Horizon' : 'Shackleton Rim'}</span>
-                <span>•</span>
-                <span style={{ color: '#10b981' }}>● Real-Time 3D Simulation</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── CENTER: LIVE 3D MOVING FULL-BODY ARTEMIS ASTRONAUT (PUBG LOBBY STYLE) ── */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', position: 'relative', zIndex: 15, paddingBottom: '0px' }}>
-            
-            {/* Live Interactive Full-Body 3D Real NASA Astronaut Character (Moving, Idle Breathing, Drag 360°, Zero Weapons) */}
-            <LobbyAstronaut3D 
-              characterId={inspectingAstronaut.id}
-              astronautName={inspectingAstronaut.name} 
-              isInspectionMode={isInspectionMode}
-              envMapUrl="/assets/artemis_lobby_clean_hangar.png"
-              onInteract={() => {
-                if (!isInspectionMode) {
-                  handleOpenInspection(inspectingAstronaut.id);
-                }
-              }} 
-            />
-
-            {/* Astronaut Overhead Nameplate & Switch Suit Action (Faded in Inspection Mode) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px', opacity: isInspectionMode ? 0 : 1, pointerEvents: isInspectionMode ? 'none' : 'auto', transition: 'all 0.3s ease' }}>
-              <div 
-                style={{ 
-                  background: 'rgba(17, 22, 34, 0.9)', 
-                  border: '1px solid rgba(0, 210, 255, 0.45)', 
-                  clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
-                  padding: '5px 20px', 
-                  backdropFilter: 'blur(12px)',
-                  textAlign: 'center',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.85), 0 0 20px rgba(0, 210, 255, 0.3)',
-                }}
-              >
-                <div style={{ fontSize: '13px', fontWeight: 900, color: '#f8fafc', fontFamily: 'var(--font-space)', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                  <span>{inspectingAstronaut.avatar}</span>
-                  <span>{inspectingAstronaut.name.toUpperCase()}</span>
-                  <span style={{ fontSize: '11px', color: '#38bdf8' }}>{inspectingAstronaut.countryFlag.split(' ')[0]}</span>
-                </div>
-                <div style={{ fontSize: '10px', color: '#00d2ff', fontFamily: 'var(--font-mono)', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <span>SUIT: NASA EMU EVA SPACESUIT</span>
-                  <span>•</span>
-                  <span style={{ color: '#10b981' }}>O₂: 100% NOMINAL</span>
-                  <span>•</span>
-                  <span>RAD: 0.12 mSv</span>
-                </div>
-              </div>
-
-              {/* Character Locker / Switch Astronaut Action Button */}
-              <button
-                onClick={() => handleOpenInspection(inspectingAstronaut.id)}
-                style={{
-                  background: 'rgba(22, 30, 46, 0.92)',
-                  border: '1px solid rgba(255, 158, 27, 0.55)',
-                  clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
-                  padding: '8px 16px',
-                  color: '#ff9e1b',
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
-                  backdropFilter: 'blur(8px)',
-                  transition: 'all 0.2s ease',
-                  height: '100%',
-                }}
-                title="Inspect Astronaut on Glowing Pedestal"
-              >
-                <span>🔍</span>
-                <span>INSPECT & SWITCH</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ── RIGHT COLUMN: 5 FLIGHT HUBS STACKED DIRECTLY ABOVE START BUTTON (FADES IN INSPECTION MODE) ── */}
           <div
             style={{
               display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              zIndex: 25,
-              alignSelf: 'flex-end',
-              marginBottom: '10px',
-              marginRight: '20px',
-              width: '240px',
-              opacity: isInspectionMode ? 0 : 1,
-              pointerEvents: isInspectionMode ? 'none' : 'auto',
-              transform: isInspectionMode ? 'translateX(30px)' : 'none',
-              transition: 'all 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '9.5px',
+              color: '#38bdf8',
+              fontFamily: 'var(--font-mono)',
+              whiteSpace: 'nowrap',
             }}
           >
-            {/* Mission Hubs Header Tag */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px 2px 4px' }}>
-              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#00d2ff', fontWeight: 900, letterSpacing: '0.08em' }}>
-                ✦ MISSION HUBS
-              </span>
-              <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#10b981', fontWeight: 700 }}>
-                ● 5 HUBS READY
-              </span>
-            </div>
+            <span>• Sol: 0.15</span>
+            <span>• RAD: 550%</span>
+            <span>• G-Force: 6.27%</span>
+            <span>• RAD: 0.20V</span>
+          </div>
+        </div>
 
-            {/* 1. Missions Campaign (76 Missions) */}
+        {/* ── CENTER: 3D ANIMATED ASTRONAUT IN SPACE HANGAR ── */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            position: 'relative',
+            zIndex: 15,
+            paddingBottom: '0px',
+          }}
+        >
+          <LobbyAstronaut3D
+            characterId={inspectingAstronaut.id}
+            astronautName={inspectingAstronaut.name}
+            currentSuit={selectedSuitOption}
+            isInspectionMode={isInspectionMode}
+            hideOverlays={true}
+            onInteract={() => {
+              if (!isInspectionMode) {
+                handleOpenInspection(inspectingAstronaut.id);
+              }
+            }}
+            onSuitChange={(s) => setSelectedSuitOption(s)}
+          />
+        </div>
+
+        {/* ── CENTER-BOTTOM: SELECTION CAPSULE READ-OUT & VITALS ── */}
+        <div
+          className="lobby-center-bottom"
+          style={{
+            opacity: isInspectionMode ? 0 : 1,
+            pointerEvents: isInspectionMode ? 'none' : 'auto',
+          }}
+        >
+          {/* Top Vitals Pill */}
+          <div className="lobby-vitals-pill">
+            <span style={{ color: '#00d2ff' }}>💧 Oxygen 100%</span>
+            <span style={{ color: '#f59e0b' }}>☢️ RAD 1.00%</span>
+            <span style={{ color: '#ef4444' }}>❤️ RAD: 0.12%</span>
+          </div>
+
+          {/* Selection Capsule Read-Out */}
+          <div className="lobby-astronaut-capsule">
             <button
-              className="pubg-bottom-tab"
+              className="lobby-capsule-arrow"
+              onClick={handlePrevAstronaut}
+              title="Previous Astronaut / Suit"
+            >
+              ◄
+            </button>
+            <div
+              className="lobby-capsule-name"
+              onClick={() => handleOpenInspection(inspectingAstronaut.id)}
+              title="Click to Inspect Flight Gear"
+            >
+              {inspectingAstronaut.name.toUpperCase()} /{' '}
+              {selectedSuitOption === 'EMU'
+                ? 'xEMU ARTEMIS'
+                : selectedSuitOption === 'ARTEMIS'
+                ? 'APOLLO 11 HD'
+                : 'ACES ORANGE'}
+            </div>
+            <button
+              className="lobby-capsule-arrow"
+              onClick={handleNextAstronaut}
+              title="Next Astronaut / Suit"
+            >
+              ►
+            </button>
+          </div>
+
+          <div className="lobby-drag-hint">
+            DRAG 360° TO INSPECT GEAR
+          </div>
+        </div>
+
+        {/* ── RIGHT PANEL: HIGH-TECH STACKED BUTTONS + MODE SELECTOR + LAUNCH ── */}
+        <div
+          className="lobby-right-column"
+          style={{
+            opacity: isInspectionMode ? 0 : 1,
+            pointerEvents: isInspectionMode ? 'none' : 'auto',
+            transform: isInspectionMode ? 'translateX(30px)' : 'none',
+            transition: 'all 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          {/* High-Tech Stacked Pills */}
+          <div className="lobby-right-stacked-pills">
+            <button
+              className="lobby-action-pill-btn"
               onClick={() => handleNavClick(onOpenCampaign, 'reactor')}
-              id="pubg-tab-missions"
-              title="Browse all 76 NASA Flight Missions (Mercury to Artemis)"
-              style={{
-                borderColor: 'rgba(0, 210, 255, 0.6)',
-                background: 'linear-gradient(90deg, rgba(0, 210, 255, 0.22), rgba(15, 23, 42, 0.95))',
-                width: '100%',
-                boxSizing: 'border-box',
-                justifyContent: 'space-between',
-                padding: '7px 12px',
-                height: '38px',
-              }}
+              title="Browse all 78 Active NASA Flight Missions"
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>🚀</span>
-                <span>76 MISSIONS</span>
+                <span style={{ color: '#00d2ff' }}>●</span>
+                <span>MISSIONS ACTIVE (78)</span>
               </div>
-              <div className="pubg-tab-badge" style={{ position: 'static', background: '#00d2ff', width: '7px', height: '7px' }} />
+              <span style={{ fontSize: '13px' }}>🎯</span>
             </button>
 
-            {/* 2. Simulation Labs Hub (Dropdown Menu) */}
             <div style={{ position: 'relative', width: '100%' }}>
               <button
-                className={`pubg-bottom-tab ${isSimsHubOpen ? 'active' : ''}`}
+                className="lobby-action-pill-btn"
                 onClick={() => {
                   setIsSimsHubOpen(!isSimsHubOpen);
-                  setIsAcademyHubOpen(false);
-                  setIsCrewHubOpen(false);
                   soundFx.playClick(800);
                 }}
-                id="pubg-tab-sims-hub"
-                style={{
-                  borderColor: 'rgba(168, 85, 247, 0.65)',
-                  background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.22), rgba(15, 23, 42, 0.95))',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  justifyContent: 'space-between',
-                  padding: '7px 12px',
-                  height: '38px',
-                }}
-                title="Open 3D Real-Time Simulation Labs"
+                title="Open 3D Planetary Simulation Labs"
+                style={{ borderColor: isSimsHubOpen ? '#a855f7' : undefined }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '16px' }}>🧪</span>
+                  <span style={{ color: '#a855f7' }}>●</span>
                   <span>SIMULATION LABS</span>
                 </div>
-                <span style={{ fontSize: '10px', color: '#c084fc' }}>{isSimsHubOpen ? '◀' : '▼'}</span>
+                <span style={{ fontSize: '13px' }}>🧪</span>
               </button>
 
-              {/* Flyout menu to the LEFT */}
+              {/* Flyout menu if opened */}
               {isSimsHubOpen && (
                 <div
                   style={{
                     position: 'absolute',
-                    bottom: 0,
-                    right: 'calc(100% + 12px)',
+                    bottom: '100%',
+                    right: 0,
+                    marginBottom: '8px',
                     background: 'rgba(10, 15, 26, 0.96)',
                     border: '1px solid rgba(168, 85, 247, 0.5)',
                     borderRadius: '12px',
@@ -1199,124 +970,143 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '8px',
-                    minWidth: '290px',
+                    minWidth: '280px',
                     backdropFilter: 'blur(20px)',
                     boxShadow: '0 16px 40px rgba(0,0,0,0.9), 0 0 30px rgba(168, 85, 247, 0.35)',
                     zIndex: 100,
-                    animation: 'characterSlideIn 0.2s ease-out',
                   }}
                 >
-                  <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#c084fc', letterSpacing: '0.1em', fontWeight: 800, paddingBottom: '6px', borderBottom: '1px solid rgba(168, 85, 247, 0.2)', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>✦ 3D PLANETARY SIMULATION LABS</span>
-                    <span style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setIsSimsHubOpen(false)}>✕</span>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#c084fc',
+                      fontWeight: 800,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      paddingBottom: '4px',
+                      borderBottom: '1px solid rgba(168, 85, 247, 0.2)',
+                    }}
+                  >
+                    <span>✦ 3D SIMULATION LABS</span>
+                    <span
+                      style={{ cursor: 'pointer', color: '#94a3b8' }}
+                      onClick={() => setIsSimsHubOpen(false)}
+                    >
+                      ✕
+                    </span>
                   </div>
                   {onOpenHardcoreSurvival && (
                     <button
                       className="pubg-hub-subitem"
-                      style={{ border: '1px solid rgba(249, 115, 22, 0.5)', background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.22), rgba(15, 23, 42, 0.95))' }}
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenHardcoreSurvival, 'reactor'); }}
+                      onClick={() => {
+                        setIsSimsHubOpen(false);
+                        handleNavClick(onOpenHardcoreSurvival, 'reactor');
+                      }}
                     >
-                      <span style={{ fontSize: '20px' }}>🔥</span>
+                      <span style={{ fontSize: '18px' }}>🔥</span>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#fed7aa', fontSize: '12px' }}>Hardcore Survival Mode (5 Ops)</div>
-                        <div style={{ fontSize: '10px', color: '#fb923c' }}>Newtonian Gravity · Kessler · Oberth · Suicide Burn</div>
+                        <div style={{ fontWeight: 800, color: '#fed7aa', fontSize: '11px' }}>
+                          Hardcore Survival (5 Ops)
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#fb923c' }}>
+                          Kessler · Solar Storm · Oberth · Suicide Burn
+                        </div>
                       </div>
                     </button>
                   )}
                   {onOpenMarsSurvival && (
                     <button
                       className="pubg-hub-subitem"
-                      style={{ border: '1px solid rgba(239, 68, 68, 0.5)', background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.2), rgba(15, 23, 42, 0.9))' }}
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenMarsSurvival, 'reactor'); }}
+                      onClick={() => {
+                        setIsSimsHubOpen(false);
+                        handleNavClick(onOpenMarsSurvival, 'reactor');
+                      }}
                     >
-                      <span style={{ fontSize: '20px' }}>🔴</span>
+                      <span style={{ fontSize: '18px' }}>🔴</span>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#fca5a5', fontSize: '12px' }}>Mars Planetary Survival (4 Ops)</div>
-                        <div style={{ fontSize: '10px', color: '#f87171' }}>MOXIE · Gale Storm · Valles Ice · Marsquake</div>
+                        <div style={{ fontWeight: 800, color: '#fca5a5', fontSize: '11px' }}>
+                          Mars Planetary Survival (4 Ops)
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#f87171' }}>
+                          MOXIE · Gale Storm · Valles Ice · Marsquake
+                        </div>
                       </div>
                     </button>
                   )}
                   {onOpenMoonbaseAlpha && (
                     <button
                       className="pubg-hub-subitem"
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenMoonbaseAlpha, 'reactor'); }}
+                      onClick={() => {
+                        setIsSimsHubOpen(false);
+                        handleNavClick(onOpenMoonbaseAlpha, 'reactor');
+                      }}
                     >
-                      <span style={{ fontSize: '20px' }}>🌕</span>
+                      <span style={{ fontSize: '18px' }}>🌕</span>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Moonbase Alpha 3D</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Lunar South Pole EVA Crisis Outpost</div>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '11px' }}>
+                          Moonbase Alpha 3D
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#94a3b8' }}>
+                          Lunar South Pole EVA Crisis Outpost
+                        </div>
                       </div>
                     </button>
                   )}
                   {onOpenBlackHole && (
                     <button
                       className="pubg-hub-subitem"
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenBlackHole, 'chirp'); }}
+                      onClick={() => {
+                        setIsSimsHubOpen(false);
+                        handleNavClick(onOpenBlackHole, 'chirp');
+                      }}
                     >
-                      <span style={{ fontSize: '20px' }}>🕳️</span>
+                      <span style={{ fontSize: '18px' }}>🕳️</span>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Relativistic Black Hole</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Gravitational Lensing & Event Horizon Lab</div>
-                      </div>
-                    </button>
-                  )}
-                  {onOpenOrrery && (
-                    <button
-                      className="pubg-hub-subitem"
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenOrrery, 'chirp'); }}
-                    >
-                      <span style={{ fontSize: '20px' }}>🪐</span>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>3D Solar System Orrery</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Real Trajectories & Orbital Mechanics</div>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '11px' }}>
+                          Relativistic Black Hole
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#94a3b8' }}>
+                          Gravitational Lensing & Event Horizon
+                        </div>
                       </div>
                     </button>
                   )}
                   {onOpenRover && (
                     <button
                       className="pubg-hub-subitem"
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenRover, 'chirp'); }}
+                      onClick={() => {
+                        setIsSimsHubOpen(false);
+                        handleNavClick(onOpenRover, 'chirp');
+                      }}
                     >
-                      <span style={{ fontSize: '20px' }}>🚜</span>
+                      <span style={{ fontSize: '18px' }}>🚜</span>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Mars Rover Surface EVA</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Perseverance Sample Return Mission</div>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '11px' }}>
+                          Mars Rover Surface EVA
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#94a3b8' }}>
+                          Perseverance Sample Return Mission
+                        </div>
                       </div>
                     </button>
                   )}
                   {onOpenMarsEDL && (
                     <button
                       className="pubg-hub-subitem"
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenMarsEDL, 'reactor'); }}
+                      onClick={() => {
+                        setIsSimsHubOpen(false);
+                        handleNavClick(onOpenMarsEDL, 'reactor');
+                      }}
                     >
-                      <span style={{ fontSize: '20px' }}>🔥</span>
+                      <span style={{ fontSize: '18px' }}>🔥</span>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Mars 2020 EDL Simulator</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>7 Minutes of Terror Entry & Landing</div>
-                      </div>
-                    </button>
-                  )}
-                  {onOpenExpedition && (
-                    <button
-                      className="pubg-hub-subitem"
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenExpedition, 'reactor'); }}
-                    >
-                      <span style={{ fontSize: '20px' }}>🚀</span>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Earth to Moon Expedition</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Artemis Multi-Stage Lunar Mission</div>
-                      </div>
-                    </button>
-                  )}
-                  {onOpenSpaceGamesHub && (
-                    <button
-                      className="pubg-hub-subitem"
-                      onClick={() => { setIsSimsHubOpen(false); handleNavClick(onOpenSpaceGamesHub, 'reactor'); }}
-                    >
-                      <span style={{ fontSize: '20px' }}>🎮</span>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Dedicated Space Games</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>KSP, Space Engineers, Star Citizen Suite</div>
+                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '11px' }}>
+                          Mars 2020 EDL Simulator
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#94a3b8' }}>
+                          7 Minutes of Terror Entry & Landing
+                        </div>
                       </div>
                     </button>
                   )}
@@ -1324,327 +1114,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               )}
             </div>
 
-            {/* 3. Astronaut Academy & Training Hub (Dropdown Menu) */}
-            <div style={{ position: 'relative', width: '100%' }}>
-              <button
-                className={`pubg-bottom-tab ${isAcademyHubOpen ? 'active' : ''}`}
-                onClick={() => {
-                  setIsAcademyHubOpen(!isAcademyHubOpen);
-                  setIsSimsHubOpen(false);
-                  setIsCrewHubOpen(false);
-                  soundFx.playClick(800);
-                }}
-                id="pubg-tab-academy-hub"
-                style={{
-                  borderColor: 'rgba(59, 130, 246, 0.65)',
-                  background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(15, 23, 42, 0.95))',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  justifyContent: 'space-between',
-                  padding: '7px 12px',
-                  height: '38px',
-                }}
-                title="Open Cadet Training Academy"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '16px' }}>🪖</span>
-                  <span>ACADEMY</span>
-                </div>
-                <span style={{ fontSize: '10px', color: '#60a5fa' }}>{isAcademyHubOpen ? '◀' : '▼'}</span>
-              </button>
-
-              {/* Flyout menu to the LEFT */}
-              {isAcademyHubOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 'calc(100% + 12px)',
-                    background: 'rgba(10, 15, 26, 0.96)',
-                    border: '1px solid rgba(59, 130, 246, 0.5)',
-                    borderRadius: '12px',
-                    padding: '12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    minWidth: '270px',
-                    backdropFilter: 'blur(20px)',
-                    boxShadow: '0 16px 40px rgba(0,0,0,0.9), 0 0 30px rgba(59, 130, 246, 0.35)',
-                    zIndex: 100,
-                    animation: 'characterSlideIn 0.2s ease-out',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#60a5fa', letterSpacing: '0.1em', fontWeight: 800, paddingBottom: '6px', borderBottom: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>✦ CADET TRAINING ACADEMY</span>
-                    <span style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setIsAcademyHubOpen(false)}>✕</span>
-                  </div>
-                  <button
-                    className="pubg-hub-subitem"
-                    onClick={() => { setIsAcademyHubOpen(false); handleNavClick(onOpenTrainingCenter || onOpenAcademy, 'chirp'); }}
-                    style={{ border: '1px solid #00d2ff', background: 'rgba(0, 210, 255, 0.12)' }}
-                  >
-                    <span style={{ fontSize: '20px' }}>🏫</span>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: 800, color: '#00d2ff', fontSize: '12px' }}>3D Realistic Training Center</div>
-                      <div style={{ fontSize: '10px', color: '#cbd5e1' }}>NBL Pool, ECLSS, 4.3 psi Suit, Habitat & Drills</div>
-                    </div>
-                  </button>
-                  {onOpenAcademy && (
-                    <button
-                      className="pubg-hub-subitem"
-                      onClick={() => { setIsAcademyHubOpen(false); handleNavClick(onOpenAcademy, 'chirp'); }}
-                    >
-                      <span style={{ fontSize: '20px' }}>🪖</span>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Astronaut Academy</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Rank Exams, Flight Certification</div>
-                      </div>
-                    </button>
-                  )}
-                  {onOpenClassroom && (
-                    <button
-                      className="pubg-hub-subitem"
-                      onClick={() => { setIsAcademyHubOpen(false); handleNavClick(onOpenClassroom, 'chirp'); }}
-                    >
-                      <span style={{ fontSize: '20px' }}>🎓</span>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Ground School Classroom</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Educator Dossier & Gradebook</div>
-                      </div>
-                    </button>
-                  )}
-                  {onOpenLearningHub && (
-                    <button
-                      className="pubg-hub-subitem"
-                      onClick={() => { setIsAcademyHubOpen(false); handleNavClick(() => onOpenLearningHub('NOTEBOOK'), 'chirp'); }}
-                    >
-                      <span style={{ fontSize: '20px' }}>📓</span>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Flight Notes & Journal</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Student Mission Debrief Logs</div>
-                      </div>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 4. Crew Locker & Lunar Depot Hub (Dropdown Menu) */}
-            <div style={{ position: 'relative', width: '100%' }}>
-              <button
-                className={`pubg-bottom-tab ${isCrewHubOpen ? 'active' : ''}`}
-                onClick={() => {
-                  setIsCrewHubOpen(!isCrewHubOpen);
-                  setIsSimsHubOpen(false);
-                  setIsAcademyHubOpen(false);
-                  soundFx.playClick(800);
-                }}
-                id="pubg-tab-crew-hub"
-                style={{
-                  borderColor: 'rgba(245, 158, 11, 0.65)',
-                  background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.22), rgba(15, 23, 42, 0.95))',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  justifyContent: 'space-between',
-                  padding: '7px 12px',
-                  height: '38px',
-                }}
-                title="Open Crew Locker & Depot Hub"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '16px' }}>🧑‍🚀</span>
-                  <span>CREW & DEPOT</span>
-                </div>
-                <span style={{ fontSize: '10px', color: '#fbbf24' }}>{isCrewHubOpen ? '◀' : '▼'}</span>
-              </button>
-
-              {/* Flyout menu to the LEFT */}
-              {isCrewHubOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 'calc(100% + 12px)',
-                    background: 'rgba(10, 15, 26, 0.96)',
-                    border: '1px solid rgba(245, 158, 11, 0.5)',
-                    borderRadius: '12px',
-                    padding: '12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    minWidth: '270px',
-                    backdropFilter: 'blur(20px)',
-                    boxShadow: '0 16px 40px rgba(0,0,0,0.9), 0 0 30px rgba(245, 158, 11, 0.35)',
-                    zIndex: 100,
-                    animation: 'characterSlideIn 0.2s ease-out',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#fbbf24', letterSpacing: '0.1em', fontWeight: 800, paddingBottom: '6px', borderBottom: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>✦ CREW LOCKER & LUNAR DEPOT</span>
-                    <span style={{ cursor: 'pointer', color: '#94a3b8' }} onClick={() => setIsCrewHubOpen(false)}>✕</span>
-                  </div>
-                  {onOpenCharacterLocker && (
-                    <button
-                      className="pubg-hub-subitem"
-                      onClick={() => { setIsCrewHubOpen(false); handleNavClick(onOpenCharacterLocker, 'chirp'); }}
-                    >
-                      <span style={{ fontSize: '20px' }}>🧑‍🚀</span>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>Astronaut Crew Locker</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Switch Characters, EVA Perks</div>
-                      </div>
-                    </button>
-                  )}
-                  {onOpenDepot && (
-                    <button
-                      className="pubg-hub-subitem"
-                      onClick={() => { setIsCrewHubOpen(false); handleNavClick(onOpenDepot, 'chirp'); }}
-                    >
-                      <span style={{ fontSize: '20px' }}>🏗️</span>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 800, color: '#f8fafc', fontSize: '12px' }}>3D Base Depot</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8' }}>Inspect & Buy Lunar Hardware</div>
-                      </div>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 5. Science & Intel Dossier (Modal Toggle) */}
             <button
-              className="pubg-bottom-tab"
-              onClick={() => {
-                setShowIntelDossier(true);
-                soundFx.playClick(750);
-              }}
-              id="pubg-tab-dossier"
-              style={{
-                borderColor: 'rgba(0, 210, 255, 0.5)',
-                color: '#00d2ff',
-                width: '100%',
-                boxSizing: 'border-box',
-                justifyContent: 'flex-start',
-                padding: '7px 12px',
-                height: '38px',
-                gap: '8px',
-              }}
-              title="Open NASA Open Science & Intel Dossier"
+              className="lobby-action-pill-btn"
+              onClick={() => handleNavClick(onOpenAcademy, 'chirp')}
+              title="View Cadet Certification & Academy Progress"
             >
-              <span style={{ fontSize: '16px' }}>🔬</span>
-              <span>SCIENCE DOSSIER</span>
-            </button>
-
-            {/* 6. Dedicated Mars Survival Operations Button */}
-            {onOpenMarsSurvival && (
-              <button
-                className="pubg-bottom-tab"
-                onClick={() => handleNavClick(onOpenMarsSurvival, 'reactor')}
-                id="pubg-tab-mars-survival-ops"
-                style={{
-                  borderColor: '#ef4444',
-                  background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.35), rgba(15, 23, 42, 0.98))',
-                  color: '#fca5a5',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  justifyContent: 'space-between',
-                  padding: '7px 12px',
-                  height: '40px',
-                  borderWidth: '1.5px',
-                  boxShadow: '0 0 16px rgba(239, 68, 68, 0.35)',
-                }}
-                title="Launch NASA Mars Planetary Survival Operations (4 Missions)"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '16px' }}>🔴</span>
-                  <span style={{ fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>MARS SURVIVAL</span>
-                </div>
-                <span style={{ fontSize: '9px', background: '#ef4444', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
-                  4 OPS
-                </span>
-              </button>
-            )}
-
-            {/* 7. Dedicated Hardcore Survival Mode Button */}
-            {onOpenHardcoreSurvival && (
-              <button
-                className="pubg-bottom-tab"
-                onClick={() => handleNavClick(onOpenHardcoreSurvival, 'reactor')}
-                id="pubg-tab-hardcore-survival"
-                style={{
-                  borderColor: '#f97316',
-                  background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.38), rgba(15, 23, 42, 0.98))',
-                  color: '#fed7aa',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  justifyContent: 'space-between',
-                  padding: '7px 12px',
-                  height: '42px',
-                  borderWidth: '1.5px',
-                  boxShadow: '0 0 18px rgba(249, 115, 22, 0.4)',
-                }}
-                title="Launch 5 Hardcore Orbital Survival Missions (Kessler, Solar Storm, Apollo 13, Oberth, Suicide Burn)"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>🔥</span>
-                  <span style={{ fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>HARDCORE SURVIVAL</span>
-                </div>
-                <span style={{ fontSize: '9px', background: '#f97316', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
-                  5 OPS
-                </span>
-              </button>
-            )}
-
-            {/* 8. Dedicated Survival Missions Expedition Button */}
-            {onOpenFullExpedition && (
-              <button
-                className="pubg-bottom-tab"
-                onClick={() => handleNavClick(onOpenFullExpedition, 'reactor')}
-                id="pubg-tab-full-expedition"
-                style={{
-                  borderColor: '#38bdf8',
-                  background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.55), rgba(15, 23, 42, 0.98))',
-                  color: '#bae6fd',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  justifyContent: 'space-between',
-                  padding: '7px 12px',
-                  height: '42px',
-                  borderWidth: '1.5px',
-                  boxShadow: '0 0 20px rgba(56, 189, 248, 0.55)',
-                }}
-                title="4 NASA Survival Expeditions: Sub-Orbital, LEO Orbit, Lunar Voyager (YouTube), Mars Voyager (100% Manual Flight Controls)"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>🛡️</span>
-                  <span style={{ fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em' }}>SURVIVAL MISSIONS</span>
-                </div>
-                <span style={{ fontSize: '9px', background: '#2563eb', color: '#ffffff', fontWeight: 900, padding: '2px 6px', borderRadius: '4px' }}>
-                  4 OPS MANUAL
-                </span>
-              </button>
-            )}
-
-            {/* ── MASTER PUBG START BUTTON (DIRECTLY BELOW THE 5 HUBS) ── */}
-            <button
-              className="pubg-start-btn"
-              onClick={handleStart}
-              id="pubg-main-start-btn"
-              title="Launch Selected Mission / Expedition"
-              style={{
-                width: '100%',
-                height: '52px',
-                fontSize: '22px',
-                boxShadow: '0 0 32px rgba(255, 158, 27, 0.75), 0 6px 20px rgba(0,0,0,0.85)',
-                margin: 0,
-                marginTop: '4px',
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ fontSize: '22px' }}>▶</span>
-              <span>{hasSavedGame && selectedMatchMode === 'SOL1_SURVIVAL' ? 'CONTINUE' : 'START'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#eab308' }}>●</span>
+                <span>ACADEMY PROGRESS</span>
+              </div>
+              <span style={{ fontSize: '13px' }}>🎓</span>
             </button>
           </div>
+
+          {/* Mode Selector Card & Prominent Glowing LAUNCH Button */}
+          <div className="lobby-mode-launch-group">
+            <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+              Mode Selector
+            </div>
+
+            <div
+              className="lobby-mode-card"
+              onClick={handleCycleMode}
+              title="Click to Switch Mission Mode"
+            >
+              <img
+                src="/assets/artemis_hangar_render_full.png"
+                alt="Mission Preview"
+                className="lobby-mode-thumb"
+              />
+              <div className="lobby-mode-info">
+                <div>
+                  <div className="lobby-mode-title">{currentModeConfig.title}</div>
+                  <div className="lobby-mode-sub">{currentModeConfig.sub}</div>
+                </div>
+                <span style={{ fontSize: '14px', color: '#00d2ff' }}>🎛️</span>
+              </div>
+            </div>
+
+            {/* Glowing Orange-Yellow LAUNCH CTA Button */}
+            <button
+              className="lobby-launch-cta-btn"
+              onClick={handleStart}
+              title="Launch Selected Mission / Expedition"
+            >
+              <span style={{ fontSize: '20px' }}>▶</span>
+              <span>LAUNCH</span>
+            </button>
+          </div>
+        </div>
 
           {/* ═══════════════════════════════════════════════════════════════
               HOLOGRAPHIC INSPECTION HUD OVERLAYS (EXPANDS WHEN ASTRONAUT CLICKED)
@@ -1953,7 +1471,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
         )}
-      </main>
     </div>
   );
 };
