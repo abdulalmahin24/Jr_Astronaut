@@ -540,6 +540,20 @@ export function calculateSuicideBurnAltitude(
   return { suicideBurnDistanceM, timeToIgniteSec };
 }
 
+export interface MissionHazardObject {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  sizeM: number;
+  type: string;
+  name: string;
+  hazardClass: 'debris' | 'plasma_cme' | 'cryo_plume' | 'radiation_arc' | 'boulder' | 'cloud' | 'dust_devil';
+}
+
 /**
  * Generates initial random orbital debris field for Kessler Syndrome
  */
@@ -580,6 +594,181 @@ export function generateOrbitalDebrisField(count = 110, earthRadiusKm = 6371): D
   }
 
   return debris;
+}
+
+/**
+ * Generates custom obstacle fields specifically modeled for each survival mission.
+ */
+export function generateMissionHazardField(
+  mission: HardcoreMissionConfig,
+  bodyRadiusKm = 6371
+): MissionHazardObject[] {
+  const hazards: MissionHazardObject[] = [];
+
+  if (mission.id === 'kessler-syndrome') {
+    // Debris objects
+    const baseDebris = generateOrbitalDebrisField(80, bodyRadiusKm);
+    return baseDebris.map((d) => ({
+      ...d,
+      name: d.type === 'panel' ? 'Shattered Solar Array' : (d.type === 'stage' ? 'Spent Booster Cylinder' : 'Titanium Fragment'),
+      hazardClass: 'debris',
+    }));
+  }
+
+  if (mission.id === 'solar-storm') {
+    // Coronal Mass Ejection plasma clouds & solar proton flux streams
+    const count = 65;
+    for (let i = 0; i < count; i++) {
+      const alt = 90 + Math.random() * 260;
+      const r = bodyRadiusKm + alt;
+      const angle = 0.4 + Math.random() * (Math.PI * 2 - 0.8);
+      const inc = (Math.random() - 0.5) * 0.45;
+      const isBeam = i % 3 === 0;
+
+      hazards.push({
+        id: i,
+        x: r * Math.cos(angle),
+        y: r * Math.sin(inc),
+        z: r * Math.sin(angle),
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: (Math.random() - 0.5) * 0.4,
+        vz: (Math.random() - 0.5) * 0.8,
+        sizeM: isBeam ? 12.0 : 35.0,
+        type: isBeam ? 'proton_beam' : 'cme_plasma_cloud',
+        name: isBeam ? 'Solar Proton Flux Stream' : 'Coronal Mass Ejection Plasma Cloud',
+        hazardClass: 'plasma_cme',
+      });
+    }
+    return hazards;
+  }
+
+  if (mission.id === 'apollo-13') {
+    // Ruptured Service Module Bay 4 honeycomb hull panels and expanding cryogenic ice vapor
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+      const alt = 2000 + Math.random() * 26000;
+      const r = bodyRadiusKm + alt;
+      const angle = 0.25 + Math.random() * (Math.PI * 2 - 0.5);
+      const isGeyser = i % 2 === 0;
+
+      hazards.push({
+        id: i,
+        x: r * Math.cos(angle),
+        y: (Math.random() - 0.5) * 800,
+        z: r * Math.sin(angle),
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.2,
+        vz: (Math.random() - 0.5) * 0.3,
+        sizeM: isGeyser ? 24.0 : 4.5,
+        type: isGeyser ? 'cryo_ice_cloud' : 'ruptured_sm_panel',
+        name: isGeyser ? 'Venting Liquid Oxygen Ice Cloud' : 'Ruptured Service Module Panel',
+        hazardClass: 'cryo_plume',
+      });
+    }
+    return hazards;
+  }
+
+  if (mission.id === 'oberth-slingshot') {
+    // Jovian synchrotron radiation belts, turbulent shockwave drag pockets, and Io dust needles
+    const count = 70;
+    for (let i = 0; i < count; i++) {
+      const alt = 2800 + Math.random() * 5200;
+      const r = bodyRadiusKm + alt;
+      const angle = 0.3 + Math.random() * (Math.PI * 2 - 0.6);
+      const variant = i % 3;
+
+      hazards.push({
+        id: i,
+        x: r * Math.cos(angle),
+        y: (Math.random() - 0.5) * 1200,
+        z: r * Math.sin(angle),
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 0.8,
+        vz: (Math.random() - 0.5) * 1.5,
+        sizeM: variant === 0 ? 50.0 : (variant === 1 ? 30.0 : 8.0),
+        type: variant === 0 ? 'synchrotron_arc' : (variant === 1 ? 'shockwave_pocket' : 'io_dust_needle'),
+        name: variant === 0 ? 'Jovian Synchrotron Radiation Arc' : (variant === 1 ? 'Upper Atmospheric Drag Shockwave' : 'Io Volcanic Ash Needle'),
+        hazardClass: 'radiation_arc',
+      });
+    }
+    return hazards;
+  }
+
+  if (mission.id === 'suicide-burn' || mission.id === 'lunar-voyager') {
+    // Sharp lunar boulders and crater rim hazard ridges near touchdown
+    const count = 50;
+    for (let i = 0; i < count; i++) {
+      const alt = 0.05 + Math.random() * 3.7;
+      const r = bodyRadiusKm + alt;
+      const angle = 0.2 + Math.random() * (Math.PI * 2 - 0.4);
+      const isCrater = i % 3 === 0;
+
+      hazards.push({
+        id: i,
+        x: r * Math.cos(angle),
+        y: (Math.random() - 0.5) * 40,
+        z: r * Math.sin(angle),
+        vx: 0,
+        vy: 0,
+        vz: 0,
+        sizeM: isCrater ? 45.0 : 8.0,
+        type: isCrater ? 'crater_rim' : 'lunar_boulder',
+        name: isCrater ? 'Impact Crater Rim Ridge' : 'Primordial Anorthosite Boulder',
+        hazardClass: 'boulder',
+      });
+    }
+    return hazards;
+  }
+
+  if (mission.id === 'mars-voyager') {
+    // Mars dust devils, sand dunes, and volcanic spires in Jezero Crater
+    const count = 50;
+    for (let i = 0; i < count; i++) {
+      const alt = 0.1 + Math.random() * 11.5;
+      const r = bodyRadiusKm + alt;
+      const angle = 0.25 + Math.random() * (Math.PI * 2 - 0.5);
+      const isDevil = i % 2 === 0;
+
+      hazards.push({
+        id: i,
+        x: r * Math.cos(angle),
+        y: (Math.random() - 0.5) * 60,
+        z: r * Math.sin(angle),
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: 0,
+        vz: (Math.random() - 0.5) * 0.15,
+        sizeM: isDevil ? 35.0 : 18.0,
+        type: isDevil ? 'dust_devil' : 'sand_dune',
+        name: isDevil ? 'Active Swirling Dust Devil' : 'Jezero Delta Sand Dune Ridge',
+        hazardClass: 'dust_devil',
+      });
+    }
+    return hazards;
+  }
+
+  // Fallback: suborbital / orbital cloud & stage debris
+  const count = 45;
+  for (let i = 0; i < count; i++) {
+    const alt = 15 + Math.random() * 180;
+    const r = bodyRadiusKm + alt;
+    const angle = 0.3 + Math.random() * (Math.PI * 2 - 0.6);
+    const isCloud = alt < 40;
+
+    hazards.push({
+      id: i,
+      x: r * Math.cos(angle),
+      y: (Math.random() - 0.5) * 80,
+      z: r * Math.sin(angle),
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: 0,
+      vz: (Math.random() - 0.5) * 0.2,
+      sizeM: isCloud ? 60.0 : 6.0,
+      type: isCloud ? 'stratus_cloud' : 'booster_scrap',
+      name: isCloud ? 'Stratospheric Cloud Bank' : 'Spent Booster Separation Fairing',
+      hazardClass: 'cloud',
+    });
+  }
+  return hazards;
 }
 
 /**
@@ -813,8 +1002,101 @@ export function evaluateMissionRules(
     }
   }
 
+  // 6. Mission 6: Sub-Orbital Pioneer
+  if (mission.id === 'suborbital-pioneer') {
+    if (state.altKm > 100) {
+      warnings.push('✅ KÁRMÁN LINE CROSSED (100+ KM) · MICROGRAVITY ACHIEVED');
+    }
+    if (state.altKm <= 0.05 && state.time > 15) {
+      const impactSpeedMs = Math.abs(state.vyKms * 1000);
+      if (impactSpeedMs <= 15.0) {
+        return {
+          isGameOver: true,
+          outcome: 'SUCCESS',
+          reason: `SUB-ORBITAL MISSION SUCCESS! Kármán line crossed and soft Atlantic splashdown achieved at ${impactSpeedMs.toFixed(1)} m/s!`,
+          warnings,
+        };
+      } else {
+        return {
+          isGameOver: true,
+          outcome: 'FAILED',
+          reason: `SPLASHDOWN IMPACT TOO HARD: Vertical speed was ${impactSpeedMs.toFixed(1)} m/s (Limit: 15.0 m/s). Parachute failure!`,
+          warnings,
+        };
+      }
+    }
+  }
+
+  // 7. Mission 7: Orbital Pioneer
+  if (mission.id === 'orbital-pioneer') {
+    if (kepler.periapsisAltitudeKm > 140 && kepler.apoapsisAltitudeKm > 180 && kepler.apoapsisAltitudeKm < 380 && state.vKms >= 7.65) {
+      return {
+        isGameOver: true,
+        outcome: 'SUCCESS',
+        reason: `LEO ORBITAL INSERTION ACHIEVED! Velocity: ${state.vKms.toFixed(2)} km/s · Perigee: ${kepler.periapsisAltitudeKm.toFixed(0)} km · Apogee: ${kepler.apoapsisAltitudeKm.toFixed(0)} km!`,
+        warnings,
+      };
+    }
+  }
+
+  // 8. Mission 8: Lunar Voyager
+  if (mission.id === 'lunar-voyager') {
+    if (state.altKm <= 0.003) {
+      const impactSpeedMs = Math.abs(state.vyKms * 1000);
+      const horizSpeedMs = Math.abs(state.vxKms * 1000);
+      if (impactSpeedMs <= 3.2 && horizSpeedMs <= 1.2) {
+        return {
+          isGameOver: true,
+          outcome: 'SUCCESS',
+          reason: `LUNAR VOYAGER LANDING SUCCESSFUL! Touchdown speed: ${impactSpeedMs.toFixed(1)} m/s at Hadley Rille. Surface EVA ready!`,
+          warnings,
+        };
+      } else if (impactSpeedMs > 3.2) {
+        return {
+          isGameOver: true,
+          outcome: 'FAILED',
+          reason: `LUNAR CRASH: Touchdown vertical speed was ${impactSpeedMs.toFixed(1)} m/s (Structural limit: 3.2 m/s)`,
+          warnings,
+        };
+      } else {
+        return {
+          isGameOver: true,
+          outcome: 'FAILED',
+          reason: `LANDER TIPPED: Horizontal drift was ${horizSpeedMs.toFixed(1)} m/s on crater rim (Limit: 1.2 m/s)`,
+          warnings,
+        };
+      }
+    }
+  }
+
+  // 9. Mission 9: Mars Voyager
+  if (mission.id === 'mars-voyager') {
+    if (state.altKm < 15) {
+      warnings.push('⚠️ MARS HYPERSONIC DESCENT · SUPERSONIC RETRO-PROPULSION ACTIVE');
+    }
+    if (state.altKm <= 0.004) {
+      const impactSpeedMs = Math.abs(state.vyKms * 1000);
+      const horizSpeedMs = Math.abs(state.vxKms * 1000);
+      if (impactSpeedMs <= 4.0 && horizSpeedMs <= 1.5) {
+        return {
+          isGameOver: true,
+          outcome: 'SUCCESS',
+          reason: `MARS RETRO-TOUCHDOWN SUCCESSFUL! Soft landing at Jezero Delta (${impactSpeedMs.toFixed(1)} m/s). MOXIE O2 extractor initiated!`,
+          warnings,
+        };
+      } else {
+        return {
+          isGameOver: true,
+          outcome: 'FAILED',
+          reason: `MARS HARD IMPACT: Touchdown speed was ${impactSpeedMs.toFixed(1)} m/s (Limit: 4.0 m/s)`,
+          warnings,
+        };
+      }
+    }
+  }
+
   // General Ground Crash check
-  const isLandingMission = mission.id === 'suicide-burn' || mission.id === 'lunar-voyager' || mission.id === 'mars-voyager';
+  const isLandingMission = mission.id === 'suicide-burn' || mission.id === 'lunar-voyager' || mission.id === 'mars-voyager' || mission.id === 'suborbital-pioneer';
   if (state.altKm <= 0 && !isLandingMission) {
     return {
       isGameOver: true,

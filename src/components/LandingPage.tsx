@@ -524,6 +524,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <span>SCHOOL</span>
           </button>
 
+          {/* 1.5 VIDEOS */}
+          {onOpenLearningHub && (
+            <button
+              onClick={() => handleNavClick(() => onOpenLearningHub('VIDEO'), 'chirp')}
+              className="tactical-badge-pill"
+              style={{
+                cursor: 'pointer',
+                background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.25), rgba(15, 23, 42, 0.8))',
+                borderColor: '#f59e0b',
+                color: '#fbbf24',
+                fontWeight: 900,
+                fontSize: '11px',
+                padding: '4px 10px',
+                gap: '5px',
+                boxShadow: '0 0 12px rgba(245, 158, 11, 0.35)',
+              }}
+              title="NASA Video Curriculum & 3D Flight Animations"
+            >
+              <span>🎬</span>
+              <span>VIDEOS</span>
+            </button>
+          )}
+
           {/* 2. RADAR */}
           {onOpenTelemetry && (
             <button
@@ -894,7 +917,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {/* Direct Animation Video & Ground School Launcher */}
             <button
               id="pubg-btn-training-center"
-              onClick={() => handleNavClick(onOpenTrainingCenter || onOpenAcademy, 'chirp')}
+              onClick={() => handleNavClick(onOpenLearningHub ? () => onOpenLearningHub('VIDEO') : (onOpenTrainingCenter || onOpenAcademy), 'chirp')}
               style={{
                 background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.28) 0%, rgba(59, 130, 246, 0.35) 100%)',
                 border: '1px solid #00d2ff',

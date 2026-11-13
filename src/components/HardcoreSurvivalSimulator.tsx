@@ -30,16 +30,20 @@ import {
 } from 'lucide-react';
 import {
   HARDCORE_SURVIVAL_MISSIONS,
+  LIFECYCLE_SURVIVAL_MISSIONS,
+  ALL_SURVIVAL_MISSIONS,
   CELESTIAL_BODIES,
   computeKeplerianElements,
   calculateSuicideBurnAltitude,
   generateOrbitalDebrisField,
+  generateMissionHazardField,
   createInitialTelemetry,
   evaluateMissionRules,
   type HardcoreMissionId,
   type HardcoreMissionConfig,
   type HardcoreTelemetryState,
   type DebrisObject,
+  type MissionHazardObject,
 } from '../missions/survivalMissions';
 import { soundFx } from '../utils/audioEffects';
 import { awardCadetCredits } from '../utils/gearBonusHelper';
