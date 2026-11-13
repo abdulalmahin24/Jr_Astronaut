@@ -73,6 +73,7 @@ import { NasaDataModal } from './NasaDataModal';
 import { awardCadetCredits } from '../utils/gearBonusHelper';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { getSharedGLTFLoader } from '../utils/modelLoader';
+import { MissionSpecificCockpitHUD } from './MissionSpecificCockpitHUD';
 
 interface FullMissionLifecycleModalProps {
   isOpen: boolean;
@@ -2754,311 +2755,48 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* MOON SURFACE EVA OBJECTIVES & ASTRONAUT HUD (PHASE: SURFACE_EVA)    */}
+      {/* DEDICATED MISSION-SPECIFIC COCKPIT HUD (4 DISTINCT INTERFACES)      */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {missionPhase === 'SURFACE_EVA' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '170px',
-            right: '20px',
-            width: '390px',
-            background: 'rgba(15, 23, 42, 0.94)',
-            border: '2px solid #38bdf8',
-            borderRadius: '16px',
-            padding: '18px',
-            zIndex: 120,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            boxShadow: '0 12px 48px rgba(0,0,0,0.85), 0 0 24px rgba(56, 189, 248, 0.3)',
-            maxHeight: 'calc(100vh - 270px)',
-            overflowY: 'auto',
+      {missionPhase !== 'VAB_BUILD' && (
+        <MissionSpecificCockpitHUD
+          destination={destination}
+          missionPhase={missionPhase}
+          flightAltM={flightAltM}
+          flightSpeedMs={flightSpeedMs}
+          flightVyMs={flightVyMs}
+          flightVxMs={flightVxMs}
+          flightFuelPct={flightFuelPct}
+          pitchDeg={pitchDeg}
+          throttle={throttle}
+          onThrottleChange={setThrottle}
+          timeWarp={timeWarp}
+          onTimeWarpChange={setTimeWarp}
+          touchdownStatus={touchdownStatus}
+          evaTasks={evaTasks}
+          onWarpAstroToTask={(key) => {
+            if (key === 'task1') {
+              simRef.current.astroX = 6.0;
+              simRef.current.astroZ = -2.5;
+              setAstroWalkPos({ x: 6.0, z: -2.5, rot: simRef.current.astroRot });
+            } else if (key === 'task2') {
+              simRef.current.astroX = -6.5;
+              simRef.current.astroZ = 7.5;
+              setAstroWalkPos({ x: -6.5, z: 7.5, rot: simRef.current.astroRot });
+            } else if (key === 'task3') {
+              simRef.current.astroX = -8.5;
+              simRef.current.astroZ = -6.0;
+              setAstroWalkPos({ x: -8.5, z: -6.0, rot: simRef.current.astroRot });
+            }
           }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontWeight: 900, fontSize: '13px' }}>
-              <span>🧑‍🚀</span>
-              <span>{destProfile.name.toUpperCase()}</span>
-            </div>
-            <span style={{ fontSize: '10px', background: 'rgba(34, 197, 94, 0.2)', border: '1px solid #22c55e', color: '#4ade80', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
-              {destination === 'MARS' ? 'CADET COMMANDER' : destination === 'SUBORBITAL' ? 'CHIEF PILOT' : destination === 'ORBITAL' ? 'MISSION COMMANDER' : 'NEIL ARMSTRONG'}
-            </span>
-          </div>
-
-          <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-            {taskInfo.subtitle} — Navigate around terrain obstacles and press <strong style={{ color: '#38bdf8' }}>[E]</strong> to interact:
-          </div>
-
-          {/* Checklist */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {/* Task 1 */}
-            <div
-              onClick={() => {
-                if (!evaTasks.flagPlanted) {
-                  simRef.current.astroX = 6.0;
-                  simRef.current.astroZ = -2.5;
-                  setAstroWalkPos({ x: 6.0, z: -2.5, rot: simRef.current.astroRot });
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                background: evaTasks.flagPlanted ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                border: `1.5px solid ${evaTasks.flagPlanted ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
-                cursor: 'pointer',
-              }}
-              title="Click to warp astronaut near Task 1 waypoint"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>{taskInfo.task1.icon}</span>
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{taskInfo.task1.title}</div>
-                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>{taskInfo.task1.desc}</div>
-                </div>
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.flagPlanted ? '#4ade80' : '#fbbf24' }}>
-                {evaTasks.flagPlanted ? taskInfo.task1.doneLabel : 'PENDING'}
-              </span>
-            </div>
-
-            {/* Task 2 */}
-            <div
-              onClick={() => {
-                if (!evaTasks.sampleDrilled) {
-                  simRef.current.astroX = -6.5;
-                  simRef.current.astroZ = 7.5;
-                  setAstroWalkPos({ x: -6.5, z: 7.5, rot: simRef.current.astroRot });
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                background: evaTasks.sampleDrilled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                border: `1.5px solid ${evaTasks.sampleDrilled ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
-                cursor: 'pointer',
-              }}
-              title="Click to warp astronaut near Task 2 waypoint"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>{taskInfo.task2.icon}</span>
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{taskInfo.task2.title}</div>
-                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>{taskInfo.task2.desc}</div>
-                </div>
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.sampleDrilled ? '#4ade80' : '#fbbf24' }}>
-                {evaTasks.sampleDrilled ? taskInfo.task2.doneLabel : 'PENDING'}
-              </span>
-            </div>
-
-            {/* Task 3 */}
-            <div
-              onClick={() => {
-                if (!evaTasks.seismicDeployed) {
-                  simRef.current.astroX = 9.5;
-                  simRef.current.astroZ = 5.5;
-                  setAstroWalkPos({ x: 9.5, z: 5.5, rot: simRef.current.astroRot });
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                background: evaTasks.seismicDeployed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                border: `1.5px solid ${evaTasks.seismicDeployed ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
-                cursor: 'pointer',
-              }}
-              title="Click to warp astronaut near Task 3 waypoint"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>{taskInfo.task3.icon}</span>
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{taskInfo.task3.title}</div>
-                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>{taskInfo.task3.desc}</div>
-                </div>
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.seismicDeployed ? '#4ade80' : '#fbbf24' }}>
-                {evaTasks.seismicDeployed ? taskInfo.task3.doneLabel : 'PENDING'}
-              </span>
-            </div>
-
-            {/* Task 4 */}
-            <div
-              onClick={() => {
-                if (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) {
-                  simRef.current.astroX = 2.2;
-                  simRef.current.astroZ = 2.2;
-                  setAstroWalkPos({ x: 2.2, z: 2.2, rot: simRef.current.astroRot });
-                  handleEvaInteract();
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                background: (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)',
-                border: `1.5px solid ${(evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)'}`,
-                cursor: (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? 'pointer' : 'default',
-              }}
-              title={taskInfo.vehicle.title}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>{taskInfo.vehicle.icon}</span>
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{taskInfo.vehicle.title}</div>
-                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>{taskInfo.vehicle.desc}</div>
-                </div>
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 900, color: (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? '#38bdf8' : '#64748b' }}>
-                {(evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? taskInfo.vehicle.readyLabel : 'LOCKED'}
-              </span>
-            </div>
-          </div>
-
-          {/* Controls Footer */}
-          <div style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '8px', fontSize: '10px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ fontWeight: 800, color: '#38bdf8' }}>🎮 EVA CONTROLS:</div>
-            <div>• <strong>[W][A][S][D] / Arrows</strong>: 3D Surface Walk & Low-G Hop</div>
-            <div>• <strong>[E] / Interact Button</strong>: Deploy / Sample / Board</div>
-            <div>• <strong>Terrain Obstacles</strong>: Physical Collision Blocking</div>
-            <div>• <strong>Mouse Drag</strong>: 360° Panoramic Orbit Camera</div>
-          </div>
-        </div>
+          obstacleAlert={obstacleAlert}
+          activeEvaPrompt={activeEvaPrompt}
+          onExecuteActiveEvaPrompt={handleEvaInteract}
+          navballCanvasRef={navballCanvasRef}
+          directorCallout={directorCallout}
+        />
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* LEFT: FLIGHT TELEMETRY HUD & ATTITUDE NAVBALL (DURING FLIGHT)       */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {missionPhase !== 'VAB_BUILD' && missionPhase !== 'SURFACE_EVA' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '170px',
-            left: '20px',
-            background: 'rgba(15, 23, 42, 0.88)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            borderRadius: '12px',
-            padding: '14px 16px',
-            width: '210px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-            zIndex: 80,
-            pointerEvents: 'auto',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', fontFamily: 'monospace' }}>FLIGHT TELEMETRY</span>
-            <span style={{ fontSize: '9px', color: '#22c55e', fontWeight: 800 }}>LIVE 60 FPS</span>
-          </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>ALTITUDE:</span>
-            <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>
-              {flightAltM >= 1000 ? `${(flightAltM / 1000).toFixed(1)} km` : `${Math.round(flightAltM)} m`}
-            </strong>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>TOTAL VELOCITY:</span>
-            <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>
-              {flightSpeedMs >= 1000 ? `${(flightSpeedMs / 1000).toFixed(2)} km/s` : `${Math.round(flightSpeedMs)} m/s`}
-            </strong>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>VERTICAL SPEED (Vy):</span>
-            <strong style={{ color: flightVyMs < -5 ? '#ef4444' : '#4ade80', fontFamily: 'monospace' }}>
-              {flightVyMs.toFixed(1)} m/s
-            </strong>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>PITCH ANGLE:</span>
-            <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{Math.round(pitchDeg)}°</strong>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>PROPELLANT:</span>
-            <strong style={{ color: flightFuelPct < 20 ? '#ef4444' : '#38bdf8', fontFamily: 'monospace' }}>
-              {flightFuelPct.toFixed(0)}%
-            </strong>
-          </div>
-
-          {/* Attitude Navball */}
-          <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#94a3b8' }}>ATTITUDE NAVBALL</span>
-            <canvas ref={navballCanvasRef} width={96} height={96} style={{ width: '84px', height: '84px' }} />
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* LEFT: APOLLO 11 SPACESUIT VITALS (DURING MOON SURFACE EVA)          */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {missionPhase === 'SURFACE_EVA' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '170px',
-            left: '20px',
-            background: 'rgba(15, 23, 42, 0.92)',
-            border: '1.5px solid #38bdf8',
-            borderRadius: '12px',
-            padding: '14px 16px',
-            width: '220px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-            zIndex: 80,
-            pointerEvents: 'auto',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', fontFamily: 'monospace' }}>{taskInfo.suitTitle}</span>
-            <span style={{ fontSize: '9px', color: '#22c55e', fontWeight: 800 }}>NOMINAL</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>ASTRONAUT:</span>
-            <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>
-              {destination === 'MARS' ? 'CADET ARTEMIS' : destination === 'SUBORBITAL' ? 'CHIEF PILOT' : destination === 'ORBITAL' ? 'CDR. ARMSTRONG' : 'NEIL ARMSTRONG'}
-            </strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>LIFE SUPPORT:</span>
-            <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>100% (4.2 PSI)</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>SUIT BATTERY:</span>
-            <strong style={{ color: '#22c55e', fontFamily: 'monospace' }}>98% (4.5 HRS)</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>SURFACE TEMP:</span>
-            <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{taskInfo.temp}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>GRAVITY:</span>
-            <strong style={{ color: '#a855f7', fontFamily: 'monospace' }}>{taskInfo.gravity}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>ATMOSPHERE:</span>
-            <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{taskInfo.atmo}</strong>
-          </div>
-        </div>
-      )}
 
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* OBSTACLE WARNING ALERT BANNER                                       */}
