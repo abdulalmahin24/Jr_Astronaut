@@ -50,6 +50,25 @@ import { NasaDataModal } from './NasaDataModal';
 // PHOTOREALISTIC AEROSPACE CRAFT & PLANETARY RENDERING ENGINE
 // ============================================================================
 
+function createRoundParticleTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    grad.addColorStop(0.25, 'rgba(191, 219, 254, 0.9)');
+    grad.addColorStop(0.55, 'rgba(96, 165, 250, 0.45)');
+    grad.addColorStop(0.85, 'rgba(37, 99, 235, 0.15)');
+    grad.addColorStop(1, 'rgba(2, 6, 23, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  return tex;
+}
+
 interface RealisticCraft {
   shipGroup: THREE.Group;
   plumeCore: THREE.Mesh;
@@ -628,7 +647,9 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
   const activeMission = HARDCORE_SURVIVAL_MISSIONS.find((m) => m.id === selectedMissionId) || HARDCORE_SURVIVAL_MISSIONS[0];
 
   const [telemetry, setTelemetry] = useState<HardcoreTelemetryState>(() => createInitialTelemetry(activeMission));
-  const [isPaused, setIsPaused] = useState(false);
+  const [missionPhase, setMissionPhase] = useState<'BRIEFING' | 'ACTIVE' | 'VICTORY' | 'FAILED'>('BRIEFING');
+  const [orbitProgressPct, setOrbitProgressPct] = useState<number>(0);
+  const [isPaused, setIsPaused] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [cameraMode, setCameraMode] = useState<'orbit' | 'chase' | 'cockpit'>('chase');
   const [isNasaModalOpen, setIsNasaModalOpen] = useState(false);
@@ -673,10 +694,12 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
   });
 
   // Reset physics state whenever active mission changes
-  const resetMission = useCallback((mission: HardcoreMissionConfig) => {
+  const resetMission = useCallback((mission: HardcoreMissionConfig, showBriefing = true) => {
     const init = createInitialTelemetry(mission);
     setTelemetry(init);
-    setIsPaused(false);
+    setIsPaused(showBriefing);
+    setMissionPhase(showBriefing ? 'BRIEFING' : 'ACTIVE');
+    setOrbitProgressPct(0);
 
     const body = CELESTIAL_BODIES[mission.targetBody];
     const rKm = body.radiusKm + mission.initialAltitudeKm;
@@ -717,7 +740,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     setAutopilotMode('OFF');
     setTimeWarp(1);
 
-    if (soundEnabled) soundFx.playReactorStart();
+    if (soundEnabled && !showBriefing) soundFx.playReactorStart();
   }, [soundEnabled]);
 
   useEffect(() => {
@@ -871,6 +894,24 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     const planet = createPhotorealisticPlanet(activeMission.targetBody, textureLoader);
     scene.add(planet.planetGroup);
 
+    // 4.5 3D Glowing Target Parking Orbit Ring (550 km circular parking orbit for LEO missions)
+    if (activeMission.targetBody === 'EARTH') {
+      const R_earth = 36;
+      const targetAltRatio = 550 / 6371;
+      const targetRingRadius = R_earth + targetAltRatio * (R_earth * 2.2);
+      const targetOrbitGeo = new THREE.RingGeometry(targetRingRadius - 0.18, targetRingRadius + 0.18, 96);
+      const targetOrbitMat = new THREE.MeshBasicMaterial({
+        color: 0x22c55e,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.65,
+        blending: THREE.AdditiveBlending,
+      });
+      const targetOrbitRing = new THREE.Mesh(targetOrbitGeo, targetOrbitMat);
+      targetOrbitRing.rotation.x = Math.PI / 2;
+      planet.planetGroup.add(targetOrbitRing);
+    }
+
     // 5. Authentic NASA Spacecraft (Command Capsule + Service Module + Solar Wings + Engine)
     const craft = createPhotorealisticSpacecraft();
     scene.add(craft.shipGroup);
@@ -909,7 +950,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     threatReticle.visible = false;
     scene.add(threatReticle);
 
-    // 7.5 Cosmic Motion Streaks / Space Dust Particle Field (High-Velocity Orbital Warp)
+    // 7.5 Cosmic Motion Streaks / Space Dust Particle Field (Soft Glowing Radial Particles)
     const speedParticleCount = 650;
     const speedParticleGeo = new THREE.BufferGeometry();
     const speedParticlePos = new Float32Array(speedParticleCount * 3);
@@ -921,11 +962,14 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       speedParticleVels[i] = 0.6 + Math.random() * 1.6;
     }
     speedParticleGeo.setAttribute('position', new THREE.BufferAttribute(speedParticlePos, 3));
+    const roundParticleTex = createRoundParticleTexture();
     const speedParticleMat = new THREE.PointsMaterial({
+      map: roundParticleTex,
       color: 0x93c5fd,
-      size: 1.5,
+      size: 0.65,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.8,
+      depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
     const speedParticles = new THREE.Points(speedParticleGeo, speedParticleMat);
@@ -947,23 +991,30 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       const p = physStateRef.current;
       let nearestDebrisList: Array<{ x: number; y: number; z: number; distanceKm: number }> = [];
 
-      // Autopilot / Flight Computer Steering
+      // Pre-compute current Kepler elements for intelligent flight guidance & autopilot
+      const keplerCurrent = computeKeplerianElements(p.rKm, p.vKms, p.vyKms, bodyConfig);
+
+      // Autopilot / Flight Computer Steering (Newtonian Flight Assistance)
       if (autopilotModeRef.current === 'PROGRADE') {
         p.pitchRad = THREE.MathUtils.lerp(p.pitchRad, 0, dt * 5);
       } else if (autopilotModeRef.current === 'RETROGRADE') {
         p.pitchRad = THREE.MathUtils.lerp(p.pitchRad, Math.PI, dt * 5);
       } else if (autopilotModeRef.current === 'CIRCULARIZE') {
-        p.pitchRad = THREE.MathUtils.lerp(p.pitchRad, 0, dt * 5);
-        if (p.altKm < 535) {
-          if (p.rKm < bodyConfig.radiusKm + 540) {
-            p.throttle = 100;
-          } else {
-            p.throttle = 0;
-          }
-        } else {
-          // Circularization burn
-          if (p.vxKms < 7.58) {
-            p.throttle = 80;
+        p.pitchRad = THREE.MathUtils.lerp(p.pitchRad, 0, dt * 5); // Steer Prograde
+        // Stage 1: Raise Apoapsis to 550 km
+        if (keplerCurrent.apoapsisAltitudeKm < 546) {
+          const deltaAp = 548 - keplerCurrent.apoapsisAltitudeKm;
+          p.throttle = deltaAp < 30 ? 35 : 100;
+        }
+        // Stage 2: Apoapsis reached! Cut throttle to 0% and coast to Apoapsis
+        else if (p.altKm < 515) {
+          p.throttle = 0; // MECO (Main Engine Cut-Off) while coasting to Apoapsis
+        }
+        // Stage 3: Near Apoapsis (Alt >= 515 km), burn Prograde to raise Periapsis to 550 km
+        else {
+          if (keplerCurrent.periapsisAltitudeKm < 546) {
+            const deltaPe = 548 - keplerCurrent.periapsisAltitudeKm;
+            p.throttle = deltaPe < 25 ? 25 : 75;
           } else {
             p.throttle = 0;
             setAutopilotMode('OFF');
@@ -1063,10 +1114,41 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           p.outcome = 'FAILED';
           p.failureReason = 'CRASH IMPACT: Spacecraft crashed into the planetary surface.';
           if (soundEnabled) soundFx.playExplosion();
+          setMissionPhase('FAILED');
+        }
+
+        // Hyperbolic escape safeguard: stop runaway burns past escape velocity (10.6 km/s)
+        if (p.vKms >= 10.6 && activeMission.targetBody === 'EARTH' && activeMission.id !== 'oberth-slingshot') {
+          p.outcome = 'FAILED';
+          p.failureReason = 'HYPERBOLIC ESCAPE: Burn exceeded Earth escape velocity (10.6 km/s). Over-burn propelled vehicle into interplanetary deep space without circularizing at 550 km.';
+          if (soundEnabled) soundFx.playExplosion();
+          setMissionPhase('FAILED');
         }
 
         // Keplerian orbit elements computation
         const kepler = computeKeplerianElements(p.rKm, p.vKms, p.vyKms, bodyConfig);
+
+        // Calculate mission objective completion percentage (0 - 100%)
+        let progress = 0;
+        if (activeMission.id === 'kessler-syndrome') {
+          if (kepler.apoapsisAltitudeKm < 545) {
+            progress = Math.min(48, Math.max(5, ((kepler.apoapsisAltitudeKm - 320) / (550 - 320)) * 48));
+          } else if (p.altKm < 515) {
+            progress = 48 + Math.min(32, Math.max(0, ((p.altKm - 320) / (520 - 320)) * 32));
+          } else {
+            progress = 80 + Math.min(20, Math.max(0, ((kepler.periapsisAltitudeKm - 320) / (550 - 320)) * 20));
+          }
+        } else if (activeMission.id === 'solar-storm') {
+          progress = Math.min(100, Math.max(5, (kepler.periapsisAltitudeKm / 150) * 100));
+        } else if (activeMission.id === 'apollo-13') {
+          const corridorProgress = Math.max(0, 100 - Math.abs(kepler.flightPathAngleDeg - 6.5) * 20);
+          progress = (1 - (p.altKm / 28500)) * 70 + corridorProgress * 0.3;
+        } else if (activeMission.id === 'oberth-slingshot') {
+          progress = Math.min(100, Math.max(0, ((p.vKms - 48.5) / (52.0 - 48.5)) * 100));
+        } else if (activeMission.id === 'suicide-burn') {
+          progress = Math.min(100, Math.max(0, ((3.8 - p.altKm) / 3.8) * 100));
+        }
+        setOrbitProgressPct(Math.round(progress));
 
         // Camera shake computation
         if (effectiveThrottle > 85) {
@@ -1109,6 +1191,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             p.outcome = 'FAILED';
             p.failureReason = 'CATASTROPHIC HULL BREACH: SHIP DESTROYED BY HIGH-VELOCITY SPACE DEBRIS IMPACTS';
             if (soundEnabled) soundFx.playExplosion();
+            setMissionPhase('FAILED');
           }
         }
 
@@ -1148,13 +1231,16 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           p.outcome = ruleCheck.outcome;
           if (ruleCheck.outcome === 'SUCCESS') {
             p.successMessage = ruleCheck.reason || 'HARDCORE SURVIVAL MISSION ACCOMPLISHED!';
-            confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+            confetti({ particleCount: 120, spread: 85, origin: { y: 0.6 } });
             if (soundEnabled) soundFx.playVictory();
             awardCadetCredits(500);
             onMissionCompleted?.(activeMission.id, 500);
+            setMissionPhase('VICTORY');
+            setOrbitProgressPct(100);
           } else {
             p.failureReason = ruleCheck.reason || 'MISSION FAILED';
             if (soundEnabled) soundFx.playExplosion();
+            setMissionPhase('FAILED');
           }
         }
 
@@ -1245,7 +1331,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         }
       }
       speedParticleGeo.attributes.position.needsUpdate = true;
-      speedParticleMat.size = 1.3 + (p.throttle / 100) * 1.6;
+      speedParticleMat.size = 0.55 + (p.throttle / 100) * 0.45;
 
       // 11. Update 3D Space Debris Meshes & Threat Reticle (Kessler Syndrome)
       if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
@@ -1646,40 +1732,58 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           </div>
         )}
 
-        {/* ── REAL-TIME FLIGHT DIRECTOR GUIDANCE BANNER (TOP CENTER) ── */}
+        {/* ── REAL-TIME FLIGHT DIRECTOR GUIDANCE & PROGRESS BANNER (TOP CENTER) ── */}
         <div
           style={{
             position: 'absolute',
             top: telemetry.warningAlerts.length > 0 ? '66px' : '18px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 58, 138, 0.92))',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 58, 138, 0.94))',
             border: '1.5px solid #38bdf8',
-            borderRadius: '10px',
-            padding: '8px 18px',
-            boxShadow: '0 4px 20px rgba(56, 189, 248, 0.35)',
+            borderRadius: '12px',
+            padding: '10px 20px',
+            boxShadow: '0 6px 25px rgba(56, 189, 248, 0.4)',
             zIndex: 28,
             display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            maxWidth: '750px',
+            flexDirection: 'column',
+            gap: '8px',
+            maxWidth: '780px',
+            width: 'calc(100% - 40px)',
             backdropFilter: 'blur(16px)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 900, color: '#38bdf8' }}>
-            <span>🧭 GUIDANCE:</span>
-            <span style={{ color: '#ffffff', fontWeight: 800 }}>
+          {/* Progress Header & Target Percentage */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', fontWeight: 900 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8' }}>
+              <span>🧭 FLIGHT DIRECTOR DIRECTIVE</span>
+              <span style={{ color: '#94a3b8' }}>·</span>
+              <span style={{ color: '#fbbf24' }}>M{activeMission.missionNumber} {activeMission.title.split(':')[1]?.trim() || activeMission.title}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: orbitProgressPct >= 90 ? '#4ade80' : '#38bdf8' }}>MISSION PROGRESS: {orbitProgressPct}%</span>
+              <div style={{ width: '90px', height: '6px', background: 'rgba(255,255,255,0.15)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: `${orbitProgressPct}%`, height: '100%', background: orbitProgressPct >= 90 ? '#22c55e' : 'linear-gradient(90deg, #38bdf8, #0284c7)', transition: 'width 0.3s ease' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Actionable Phase Directives & Quick Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
+            <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '11px', flex: 1 }}>
               {activeMission.id === 'kessler-syndrome' ? (
-                telemetry.apoapsisKm < 530 ? (
-                  `🔥 PHASE 1: BURN PROGRADE [0°] AT 100% THROTTLE TO RAISE APOAPSIS TO 550 KM (CURRENT AP: ${telemetry.apoapsisKm.toFixed(0)} KM)`
-                ) : telemetry.periapsisKm < 515 ? (
-                  `🚀 PHASE 2: CIRCULARIZE! BURN PROGRADE [0°] TO RAISE PERIAPSIS TO 550 KM (CURRENT PE: ${telemetry.periapsisKm.toFixed(0)} KM)`
+                telemetry.apoapsisKm < 545 ? (
+                  `🔥 STEP 1/3: BURN PROGRADE [0°] AT 100% TO RAISE APOAPSIS TO 550 KM (Ap: ${telemetry.apoapsisKm.toFixed(0)}/550 km)`
+                ) : telemetry.altitudeKm < 515 ? (
+                  `⏱️ STEP 2/3: APOAPSIS 550 KM REACHED — THROTTLE CUT (0%)! COASTING TO AP (Alt: ${telemetry.altitudeKm.toFixed(0)}/550 km) [USE WARP 3X]`
+                ) : telemetry.periapsisKm < 540 ? (
+                  `🚀 STEP 3/3: AT APOAPSIS! BURN PROGRADE [0°] TO CIRCULARIZE PERIAPSIS (Pe: ${telemetry.periapsisKm.toFixed(0)}/550 km)`
                 ) : (
-                  `🎉 ORBIT STABILIZED AT 550 KM! MISSION SUCCESS ACHIEVED!`
+                  `🎉 550 KM CIRCULAR ORBIT STABILIZED! OBJECTIVE ACCOMPLISHED!`
                 )
               ) : activeMission.id === 'solar-storm' ? (
                 telemetry.periapsisKm < 120 ? (
-                  `☀️ BLIND NAVIGATION: MAINTAIN THROTTLE 65-75% TO ACHIEVE PERIAPSIS > 120 KM WITHOUT OVERHEATING ENGINE!`
+                  `☀️ BLIND TELEMETRY: MAINTAIN THROTTLE 65-75% TO ACHIEVE PERIAPSIS > 120 KM WITHOUT OVERHEATING ENGINE!`
                 ) : (
                   `🎉 STABLE ORBIT ACHIEVED VIA NUMERICAL TELEMETRY!`
                 )
@@ -1699,30 +1803,58 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
                 )
               )}
             </span>
-          </div>
 
-          {activeMission.id === 'kessler-syndrome' && (
-            <button
-              onClick={() => {
-                setAutopilotMode((prev) => (prev === 'CIRCULARIZE' ? 'OFF' : 'CIRCULARIZE'));
-                if (soundEnabled) soundFx.playClick(1200);
-              }}
-              style={{
-                background: autopilotMode === 'CIRCULARIZE' ? '#16a34a' : 'linear-gradient(135deg, #0284c7, #2563eb)',
-                border: '1px solid #38bdf8',
-                borderRadius: '6px',
-                padding: '4px 10px',
-                color: '#ffffff',
-                fontSize: '10px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 0 10px rgba(56, 189, 248, 0.4)',
-              }}
-            >
-              {autopilotMode === 'CIRCULARIZE' ? '⚡ AUTO-PILOT RUNNING' : '🚀 AUTO-CIRCULARIZE (550 KM)'}
-            </button>
-          )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* MECO Cutoff Warning Helper */}
+              {activeMission.id === 'kessler-syndrome' && telemetry.apoapsisKm >= 548 && telemetry.altitudeKm < 510 && telemetry.throttlePct > 0 && (
+                <button
+                  onClick={() => {
+                    physStateRef.current.throttle = 0;
+                    setTelemetry((prev) => ({ ...prev, throttlePct: 0 }));
+                    if (soundEnabled) soundFx.playClick(900);
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                    border: '1px solid #f87171',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    animation: 'pulse 0.8s infinite alternate',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title="Apoapsis 550 km reached! Cut engine to prevent escape trajectory into deep space"
+                >
+                  ⚠️ CUT THROTTLE [X]
+                </button>
+              )}
+
+              {activeMission.id === 'kessler-syndrome' && (
+                <button
+                  onClick={() => {
+                    setAutopilotMode((prev) => (prev === 'CIRCULARIZE' ? 'OFF' : 'CIRCULARIZE'));
+                    if (soundEnabled) soundFx.playClick(1200);
+                  }}
+                  style={{
+                    background: autopilotMode === 'CIRCULARIZE' ? '#16a34a' : 'linear-gradient(135deg, #0284c7, #2563eb)',
+                    border: '1px solid #38bdf8',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 0 10px rgba(56, 189, 248, 0.4)',
+                  }}
+                >
+                  {autopilotMode === 'CIRCULARIZE' ? '⚡ AUTO-PILOT ACTIVE' : '🚀 AUTO-CIRCULARIZE (550 KM)'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ── LEFT HUD: NUMERICAL TELEMETRY INSTRUMENTS ── */}
@@ -2283,13 +2415,134 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           </div>
         </div>
 
-        {/* ── MISSION OUTCOME OVERLAY (VICTORY OR DEFEAT) ── */}
-        {telemetry.isGameOver && (
+        {/* ── 1. MISSION BRIEFING OVERLAY (MISSION PHASE = BRIEFING) ── */}
+        {missionPhase === 'BRIEFING' && (
           <div
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(2, 6, 23, 0.92)',
+              background: 'rgba(2, 6, 23, 0.88)',
+              backdropFilter: 'blur(20px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+              zIndex: 50,
+              animation: 'fadeIn 0.25s ease',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '680px',
+                width: '100%',
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98))',
+                border: '1.5px solid rgba(56, 189, 248, 0.5)',
+                borderRadius: '20px',
+                padding: '30px',
+                boxShadow: '0 25px 60px rgba(0,0,0,0.9), 0 0 40px rgba(56, 189, 248, 0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '18px',
+              }}
+            >
+              {/* Directive Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(56, 189, 248, 0.25)', paddingBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, #0284c7, #2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(56, 189, 248, 0.5)' }}>
+                    <Compass size={22} color="#ffffff" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.08em' }}>NASA FLIGHT DIRECTIVE · MISSION {activeMission.missionNumber}</div>
+                    <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#f8fafc', margin: 0 }}>{activeMission.title}</h2>
+                  </div>
+                </div>
+                <span style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#fca5a5', padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 900 }}>
+                  HARDCORE SURVIVAL
+                </span>
+              </div>
+
+              {/* Tagline & Scenario Narrative */}
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 800, color: '#fbbf24', marginBottom: '4px' }}>
+                  ⚡ {activeMission.tagline}
+                </div>
+                <p style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: 1.6, margin: 0 }}>
+                  {activeMission.scenario}
+                </p>
+              </div>
+
+              {/* Target Objective Card */}
+              <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '10px', padding: '12px 16px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', marginBottom: '4px' }}>🎯 PRIMARY MISSION Directives & Constraints:</div>
+                <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#ffffff', lineHeight: 1.5 }}>
+                  {activeMission.targetObjective}
+                </div>
+              </div>
+
+              {/* Keplerian 3-Step Execution Plan */}
+              <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '12px 16px', fontSize: '11px', color: '#94a3b8' }}>
+                <div style={{ fontWeight: 900, color: '#e2e8f0', marginBottom: '6px' }}>FLIGHT TRAJECTORY CHECKLIST:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div><strong style={{ color: '#38bdf8' }}>1. PROGRADE INJECTION:</strong> Steer Prograde [0°] & fire engine at 100% until Apoapsis reaches 550 km.</div>
+                  <div><strong style={{ color: '#f59e0b' }}>2. MECO & COAST:</strong> Immediately CUT throttle [X] at 550 km! Coast to Apoapsis (use Warp 3X).</div>
+                  <div><strong style={{ color: '#22c55e' }}>3. CIRCULARIZATION:</strong> At Apoapsis (alt ~550 km), burn Prograde [0°] to circularize Periapsis to 550 km.</div>
+                  {activeMission.hasDebrisField && <div><strong style={{ color: '#ef4444' }}>4. DEBRIS EVASION:</strong> Watch radar pings; avoid debris impacts to prevent continuous fuel leaks.</div>}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '6px' }}>
+                <button
+                  onClick={() => setIsNasaModalOpen(true)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '8px',
+                    padding: '10px 16px',
+                    color: '#94a3b8',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  NASA SCIENTIFIC DATA PLAN
+                </button>
+                <button
+                  onClick={() => {
+                    setMissionPhase('ACTIVE');
+                    setIsPaused(false);
+                    if (soundEnabled) soundFx.playReactorStart();
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #16a34a, #22c55e)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '12px 28px',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    boxShadow: '0 0 24px rgba(34, 197, 94, 0.55)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <span>🚀</span>
+                  <span>INITIATE MISSION & LAUNCH</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 2. MISSION VICTORY OVERLAY (MISSION PHASE = VICTORY) ── */}
+        {missionPhase === 'VICTORY' && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(2, 6, 23, 0.94)',
               backdropFilter: 'blur(20px)',
               display: 'flex',
               alignItems: 'center',
@@ -2301,70 +2554,195 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           >
             <div
               style={{
-                maxWidth: '560px',
+                maxWidth: '620px',
                 width: '100%',
-                background: telemetry.outcome === 'SUCCESS' ? 'rgba(6, 78, 59, 0.9)' : 'rgba(88, 28, 28, 0.9)',
-                border: telemetry.outcome === 'SUCCESS' ? '2px solid #34d399' : '2px solid #ef4444',
-                borderRadius: '16px',
-                padding: '28px',
+                background: 'linear-gradient(135deg, rgba(6, 78, 59, 0.96), rgba(2, 44, 34, 0.98))',
+                border: '2px solid #34d399',
+                borderRadius: '20px',
+                padding: '32px',
                 textAlign: 'center',
-                boxShadow: telemetry.outcome === 'SUCCESS' ? '0 0 50px rgba(52, 211, 153, 0.4)' : '0 0 50px rgba(239, 68, 68, 0.4)',
+                boxShadow: '0 0 60px rgba(52, 211, 153, 0.45)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
               }}
             >
-              <div style={{ fontSize: '48px', marginBottom: '8px' }}>
-                {telemetry.outcome === 'SUCCESS' ? '🏆' : '💥'}
+              <div style={{ fontSize: '54px', lineHeight: 1 }}>🏆</div>
+
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 900, color: '#86efac', letterSpacing: '0.1em' }}>
+                  NASA MISSION OPERATIONS CONFIRMATION
+                </div>
+                <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#ffffff', fontFamily: 'var(--font-space)', margin: '4px 0 0 0' }}>
+                  HARDCORE SURVIVAL MISSION ACCOMPLISHED!
+                </h2>
               </div>
 
-              <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', fontFamily: 'var(--font-space)' }}>
-                {telemetry.outcome === 'SUCCESS' ? 'HARDCORE MISSION ACCOMPLISHED!' : 'MISSION FAILED'}
-              </h2>
-
-              <p style={{ fontSize: '13px', color: '#e2e8f0', marginTop: '10px', lineHeight: 1.6 }}>
-                {telemetry.outcome === 'SUCCESS' ? telemetry.successMessage : telemetry.failureReason}
+              <p style={{ fontSize: '13px', color: '#e2e8f0', lineHeight: 1.6, margin: 0 }}>
+                {telemetry.successMessage || `Orbital insertion nominal! Stabilized at ${telemetry.periapsisKm.toFixed(0)}x${telemetry.apoapsisKm.toFixed(0)} km circular parking orbit.`}
               </p>
 
-              {telemetry.outcome === 'SUCCESS' && (
-                <div style={{ margin: '18px 0', padding: '10px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', color: '#fbbf24', fontSize: '13px', fontWeight: 800 }}>
-                  🎖️ +500 CADET CREDITS AWARDED!
+              {/* Telemetry Stats Card */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', background: 'rgba(0,0,0,0.35)', borderRadius: '12px', padding: '14px' }}>
+                <div>
+                  <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800 }}>FINAL ORBIT (Pe x Ap)</div>
+                  <div style={{ fontSize: '15px', fontWeight: 900, color: '#4ade80' }}>
+                    {telemetry.periapsisKm.toFixed(0)} × {telemetry.apoapsisKm.toFixed(0)} km
+                  </div>
                 </div>
-              )}
+                <div>
+                  <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800 }}>ECCENTRICITY (e)</div>
+                  <div style={{ fontSize: '15px', fontWeight: 900, color: '#38bdf8' }}>
+                    {telemetry.eccentricity.toFixed(4)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 800 }}>HULL INTEGRITY</div>
+                  <div style={{ fontSize: '15px', fontWeight: 900, color: telemetry.hullIntegrityPct > 50 ? '#4ade80' : '#fbbf24' }}>
+                    {telemetry.hullIntegrityPct.toFixed(0)}%
+                  </div>
+                </div>
+              </div>
 
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '20px' }}>
+              <div style={{ padding: '10px', background: 'rgba(251, 191, 36, 0.15)', border: '1px solid #fbbf24', borderRadius: '8px', color: '#fbbf24', fontSize: '13px', fontWeight: 900 }}>
+                🎖️ +500 CADET CREDITS AWARDED!
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '8px' }}>
                 <button
-                  onClick={() => resetMission(activeMission)}
+                  onClick={() => resetMission(activeMission, false)}
                   style={{
                     padding: '10px 20px',
                     borderRadius: '8px',
-                    background: '#38bdf8',
-                    border: 'none',
-                    color: '#0f172a',
-                    fontWeight: 900,
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  RETRY MISSION
-                </button>
-
-                <button
-                  onClick={() => {
-                    // Advance to next mission
-                    const currentIndex = HARDCORE_SURVIVAL_MISSIONS.findIndex((m) => m.id === selectedMissionId);
-                    const nextMission = HARDCORE_SURVIVAL_MISSIONS[(currentIndex + 1) % HARDCORE_SURVIVAL_MISSIONS.length];
-                    setSelectedMissionId(nextMission.id);
-                  }}
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    background: 'rgba(255, 255, 255, 0.12)',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
                     color: '#ffffff',
                     fontWeight: 800,
                     fontSize: '12px',
                     cursor: 'pointer',
                   }}
                 >
+                  ↺ REPLAY MISSION
+                </button>
+
+                <button
+                  onClick={() => {
+                    const currentIndex = HARDCORE_SURVIVAL_MISSIONS.findIndex((m) => m.id === selectedMissionId);
+                    const nextMission = HARDCORE_SURVIVAL_MISSIONS[(currentIndex + 1) % HARDCORE_SURVIVAL_MISSIONS.length];
+                    setSelectedMissionId(nextMission.id);
+                  }}
+                  style={{
+                    padding: '12px 26px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontWeight: 900,
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(56, 189, 248, 0.5)',
+                  }}
+                >
                   NEXT HARDCORE MISSION ▶
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 3. MISSION FAILED OVERLAY (MISSION PHASE = FAILED) ── */}
+        {missionPhase === 'FAILED' && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(2, 6, 23, 0.94)',
+              backdropFilter: 'blur(20px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+              zIndex: 50,
+              animation: 'fadeIn 0.3s ease',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '600px',
+                width: '100%',
+                background: 'linear-gradient(135deg, rgba(88, 28, 28, 0.96), rgba(45, 10, 10, 0.98))',
+                border: '2px solid #ef4444',
+                borderRadius: '20px',
+                padding: '32px',
+                textAlign: 'center',
+                boxShadow: '0 0 60px rgba(239, 68, 68, 0.45)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '16px',
+              }}
+            >
+              <div style={{ fontSize: '54px', lineHeight: 1 }}>💥</div>
+
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 900, color: '#fca5a5', letterSpacing: '0.1em' }}>
+                  NASA MISSION OPERATIONS ALERT
+                </div>
+                <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#ffffff', fontFamily: 'var(--font-space)', margin: '4px 0 0 0' }}>
+                  MISSION FAILED
+                </h2>
+              </div>
+
+              <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '10px', padding: '14px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                <div style={{ fontSize: '10px', color: '#f87171', fontWeight: 900, marginBottom: '4px' }}>TELEMETRY BLACK BOX RECORD:</div>
+                <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 700, lineHeight: 1.5 }}>
+                  {telemetry.failureReason || 'Vehicle lost in space.'}
+                </div>
+              </div>
+
+              {/* NASA Flight Director Operational Recovery Advice */}
+              <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '10px 14px', fontSize: '11px', color: '#cbd5e1', textAlign: 'left', lineHeight: 1.5 }}>
+                <strong style={{ color: '#fbbf24' }}>💡 FLIGHT DIRECTOR ADVICE:</strong>{' '}
+                {activeMission.id === 'kessler-syndrome'
+                  ? 'Do not burn throttle past 550 km! Once Apoapsis reaches 550 km, immediately CUT throttle [X] and coast to Apoapsis before circularizing Periapsis.'
+                  : activeMission.id === 'solar-storm'
+                  ? 'Throttle down to 70% to prevent engine thermal locks.'
+                  : activeMission.id === 'apollo-13'
+                  ? 'Make micro-pulsed RCS burns to maintain re-entry angle strictly between 5.5° and 7.5°.'
+                  : 'Adjust thrust timing to match orbital mechanics constraints.'}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '8px' }}>
+                <button
+                  onClick={() => resetMission(activeMission, true)}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '11.5px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  MISSION BRIEFING
+                </button>
+
+                <button
+                  onClick={() => resetMission(activeMission, false)}
+                  style={{
+                    padding: '12px 26px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontWeight: 900,
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)',
+                  }}
+                >
+                  ↺ RETRY TRAJECTORY
                 </button>
               </div>
             </div>

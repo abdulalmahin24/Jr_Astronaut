@@ -449,6 +449,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   ageTierRef.current = ageTier;
   const scanWaveMeshRef = useRef<THREE.Mesh | null>(null);
   const guidanceCorridorRef = useRef<THREE.Group | null>(null);
+  const [roverAutoNav, setRoverAutoNav] = useState<boolean>(false);
+  const roverAutoNavRef = useRef<boolean>(false);
 
   const isLunar =
     mission.gameType === 'lunar_landing' ||
@@ -1334,25 +1336,40 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       }
       state.keys['w'] = true;
       audioSynthRef.current.playRcsPuff();
-      setTimeout(() => { state.keys['w'] = false; }, 350);
+      setTimeout(() => { state.keys['w'] = false; }, 1200);
     } else if (action === 'rover_rev') {
       if (state.roverLandingPhase !== 'landed') {
         handleSkipToDrive();
       }
       state.keys['s'] = true;
-      setTimeout(() => { state.keys['s'] = false; }, 350);
+      setTimeout(() => { state.keys['s'] = false; }, 1200);
     } else if (action === 'rover_left') {
       if (state.roverLandingPhase !== 'landed') {
         handleSkipToDrive();
       }
       state.keys['a'] = true;
-      setTimeout(() => { state.keys['a'] = false; }, 250);
+      setTimeout(() => { state.keys['a'] = false; }, 600);
     } else if (action === 'rover_right') {
       if (state.roverLandingPhase !== 'landed') {
         handleSkipToDrive();
       }
       state.keys['d'] = true;
-      setTimeout(() => { state.keys['d'] = false; }, 250);
+      setTimeout(() => { state.keys['d'] = false; }, 600);
+    } else if (action === 'rover_autonav') {
+      if (state.roverLandingPhase !== 'landed') {
+        handleSkipToDrive();
+      }
+      roverAutoNavRef.current = !roverAutoNavRef.current;
+      setRoverAutoNav(roverAutoNavRef.current);
+      if (roverAutoNavRef.current) {
+        soundFx.playReactorStart();
+        state.statusText = '🤖 AUTONAV ENGAGED: NAVIGATING DIRECTLY TO TARGET SAMPLE BEACON';
+        state.statusColor = '#38bdf8';
+      } else {
+        soundFx.playClick(800);
+        state.statusText = 'MANUAL ROVER CONTROL ACTIVE [WASD / CONTROLS]';
+        state.statusColor = '#22c55e';
+      }
     } else if (action === 'rover_sample') {
       const waypoints = roverWaypointsRef.current;
       const activeWp = waypoints.find((w) => !w.collected);
@@ -5651,27 +5668,75 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           skyCraneCablesRef.current.forEach((c) => (c.visible = false));
           if (marsDustRef.current) marsDustRef.current.visible = false;
 
-          const speed = 15 * dt;
+          const speed = 18 * dt;
           let isMoving = false;
-          if (state.keys['w'] || state.keys['arrowup']) {
+
+          // Autonav AI Driving / Waypoint Traversal
+          const waypoints = roverWaypointsRef.current;
+          const activeWp = waypoints.find((w) => !w.collected);
+
+          if (roverAutoNavRef.current && activeWp) {
+            const dx = activeWp.x - playerVehicle.position.x;
+            const dz = activeWp.z - playerVehicle.position.z;
+            const dist = Math.hypot(dx, dz);
+            const targetHeading = Math.atan2(-dx, -dz);
+
+            let diff = targetHeading - playerVehicle.rotation.y;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+
+            playerVehicle.rotation.y += Math.sign(diff) * Math.min(Math.abs(diff), 2.5 * dt);
             playerVehicle.translateZ(-speed);
-            audioSynthRef.current.playRcsPuff();
             isMoving = true;
-          }
-          if (state.keys['s'] || state.keys['arrowdown']) {
-            playerVehicle.translateZ(speed * 0.6);
-            isMoving = true;
-          }
-          if (state.keys['a'] || state.keys['arrowleft']) {
-            playerVehicle.rotation.y += 1.8 * dt;
-            state.rollDeg = -10;
-            isMoving = true;
-          } else if (state.keys['d'] || state.keys['arrowright']) {
-            playerVehicle.rotation.y -= 1.8 * dt;
-            state.rollDeg = 10;
-            isMoving = true;
+
+            state.statusText = `🤖 AUTONAV ACTIVE · CRUISING TO ${activeWp.name} (${dist.toFixed(0)}M)...`;
+            state.statusColor = '#38bdf8';
+
+            // Auto-secure geological sample when rover arrives inside waypoint ring
+            if (dist <= 7.8) {
+              activeWp.collected = true;
+              state.samples = waypoints.filter((w) => w.collected).length;
+              if (activeWp.ringMesh) (activeWp.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x22c55e);
+              if (activeWp.beaconMesh) (activeWp.beaconMesh.material as THREE.MeshBasicMaterial).color.setHex(0x22c55e);
+              soundFx.playRadioChirp();
+              audioSynthRef.current.playQuindarBeep();
+
+              if (state.samples >= waypoints.length) {
+                state.isFinished = true;
+                roverAutoNavRef.current = false;
+                setRoverAutoNav(false);
+                state.statusText = '🎉 ALL SCIENTIFIC REGOLITH CORES SECURED · ROVER MISSION ACCOMPLISHED!';
+                state.statusColor = '#22c55e';
+                soundFx.playVictory();
+                confetti({ particleCount: 220, spread: 90 });
+                onSuccess(1000);
+              } else {
+                state.statusText = `✓ SAMPLE SECURED: ${activeWp.name} · AUTONAV ADVANCING TO NEXT TARGET SITE`;
+                state.statusColor = '#22c55e';
+              }
+            }
           } else {
-            state.rollDeg *= 0.9;
+            // Manual Driving with WASD / On-Screen Touch Controls
+            if (state.keys['w'] || state.keys['arrowup']) {
+              playerVehicle.translateZ(-speed);
+              audioSynthRef.current.playRcsPuff();
+              isMoving = true;
+            }
+            if (state.keys['s'] || state.keys['arrowdown']) {
+              playerVehicle.translateZ(speed * 0.6);
+              isMoving = true;
+            }
+            if (state.keys['a'] || state.keys['arrowleft']) {
+              playerVehicle.rotation.y += 1.8 * dt;
+              state.rollDeg = -10;
+              isMoving = true;
+            } else if (state.keys['d'] || state.keys['arrowright']) {
+              playerVehicle.rotation.y -= 1.8 * dt;
+              state.rollDeg = 10;
+              isMoving = true;
+            } else {
+              state.rollDeg *= 0.9;
+            }
           }
 
           state.velocityKms = isMoving ? 0.015 : 0;
@@ -8263,6 +8328,28 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
                     style={{ background: 'rgba(56, 189, 248, 0.2)', border: '1px solid #38bdf8', color: '#38bdf8', borderRadius: '5px', padding: '3px 7px', fontSize: '9px', fontWeight: 800, cursor: 'pointer', userSelect: 'none' }}
                   >
                     RIGHT [D] ▶
+                  </button>
+
+                  <button
+                    onClick={() => handleSimAction('rover_autonav')}
+                    style={{
+                      background: roverAutoNav ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'rgba(56, 189, 248, 0.2)',
+                      border: roverAutoNav ? '1.5px solid #38bdf8' : '1px solid rgba(56, 189, 248, 0.4)',
+                      color: roverAutoNav ? '#ffffff' : '#38bdf8',
+                      borderRadius: '5px',
+                      padding: '3px 9px',
+                      fontSize: '9px',
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: roverAutoNav ? '0 0 14px rgba(56, 189, 248, 0.65)' : 'none',
+                    }}
+                    title="Toggle Autonomous Rover Navigation AI to directly drive & sample waypoints"
+                  >
+                    <span>🤖</span>
+                    <span>{roverAutoNav ? 'AUTONAV [ON]' : 'AUTONAV [OFF]'}</span>
                   </button>
 
                   <button
