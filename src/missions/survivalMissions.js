@@ -1,172 +1,55 @@
-const CELESTIAL_BODIES = {
+// ============================================================================
+// NASA Junior Astronaut — Hardcore Survival Missions Engine (JavaScript Module)
+// Modular initial conditions, rules, and win/loss triggers
+// References: benjamin-awd/solar-system-threejs, jakerunzer/space-flight
+// ============================================================================
+
+export const CELESTIAL_BODIES = {
   EARTH: {
-    name: "Earth",
+    name: 'Earth',
     radiusKm: 6371,
-    mu: 398600.4418,
-    // km^3 / s^2
-    color: "#2563eb",
+    mu: 398600.4418, // km^3 / s^2
+    color: '#2563eb',
     atmosphereHeightKm: 120,
-    surfaceGravityMs2: 9.80665
+    surfaceGravityMs2: 9.80665,
   },
   MOON: {
-    name: "Moon",
+    name: 'Moon',
     radiusKm: 1737.4,
-    mu: 4902.8,
-    color: "#94a3b8",
+    mu: 4902.8000,
+    color: '#94a3b8',
     atmosphereHeightKm: 0,
-    surfaceGravityMs2: 1.622
+    surfaceGravityMs2: 1.622,
   },
   MARS: {
-    name: "Mars",
+    name: 'Mars',
     radiusKm: 3389.5,
     mu: 42828.3752,
-    color: "#ef4444",
+    color: '#ef4444',
     atmosphereHeightKm: 80,
-    surfaceGravityMs2: 3.72
+    surfaceGravityMs2: 3.72,
   },
   GAS_GIANT: {
-    name: "Jupiter Analogue (Zephyrus)",
+    name: 'Jupiter Analogue (Zephyrus)',
     radiusKm: 69911,
-    mu: 126686534,
-    // km^3 / s^2
-    color: "#d97706",
-    atmosphereHeightKm: 1e3,
-    surfaceGravityMs2: 24.79
-  }
+    mu: 126686534, // km^3 / s^2
+    color: '#d97706',
+    atmosphereHeightKm: 1000,
+    surfaceGravityMs2: 24.79,
+  },
 };
-const HARDCORE_SURVIVAL_MISSIONS = [
+
+export const HARDCORE_SURVIVAL_MISSIONS = [
   {
-    id: "suborbital-pioneer",
+    id: 'kessler-syndrome',
     missionNumber: 1,
-    title: "Mission 1: Sub-Orbital Pioneer & K\xE1rm\xE1n Boundary",
-    tagline: "100 km Atmospheric Punch, Microgravity & Ocean Splashdown",
-    scenario: "Manual launch from Cape Canaveral. Throttle up, steer a gradual gravity turn, punch through atmospheric drag past the 100 km K\xE1rm\xE1n line into microgravity space. Decouple booster, orient capsule heat shield, and deploy parachutes below 4,000 m for ocean recovery.",
-    targetBody: "EARTH",
-    initialAltitudeKm: 0.1,
-    initialVelocityKms: 0.05,
-    initialVerticalSpeedKms: 0.05,
-    initialPitchDeg: 90,
-    initialFuelPct: 100,
-    mainEngineAvailable: true,
-    rcsOnly: false,
-    hideTrajectoryLine: false,
-    hasDebrisField: false,
-    hasEngineHeat: false,
-    hasHeatShield: true,
-    hasCountdownTimer: false,
-    countdownDurationSec: 0,
-    targetObjective: "Manually pilot rocket past 100 km K\xE1rm\xE1n line, achieve microgravity, re-enter atmosphere safely, and splash down with parachute below 8 m/s.",
-    scientificContext: "Project Mercury Redstone (MR-3 Freedom 7) sent Alan Shepard on a 15-minute suborbital flight peaking at 187 km. Proved human ability to withstand launch Gs and microgravity disorientation.",
-    nasaDataSources: [
-      {
-        title: "NASA Project Mercury Flight Operations Report MR-3",
-        url: "https://www.nasa.gov/mission_pages/mercury/",
-        portal: "data.nasa.gov"
-      }
-    ]
-  },
-  {
-    id: "orbital-pioneer",
-    missionNumber: 2,
-    title: "Mission 2: Orbital Pioneer: Low Earth Orbit 200 km",
-    tagline: "Multi-Stage Staging, 7.8 km/s Orbital Velocity & De-Orbit Burn",
-    scenario: "Execute a full multi-stage orbital insertion. Steer the gravity turn pitch program (90\xB0 down to 10\xB0), decouple stage 1 booster with [SPACE], accelerate to orbital velocity (7.8 km/s), circularize orbit at 200 km, perform retrograde de-orbit burn, and splash down.",
-    targetBody: "EARTH",
-    initialAltitudeKm: 0.1,
-    initialVelocityKms: 0.05,
-    initialVerticalSpeedKms: 0.05,
-    initialPitchDeg: 90,
-    initialFuelPct: 100,
-    mainEngineAvailable: true,
-    rcsOnly: false,
-    hideTrajectoryLine: false,
-    hasDebrisField: false,
-    hasEngineHeat: false,
-    hasHeatShield: true,
-    hasCountdownTimer: false,
-    countdownDurationSec: 0,
-    targetObjective: "Achieve stable 200 km circular Low Earth Orbit (velocity >= 7.75 km/s, Periapsis > 150 km), complete orbit verification, retrograde burn, and ocean splashdown.",
-    scientificContext: "First orbital velocity requirement (v = sqrt(G*M / r) = 7.8 km/s). Gravity turn optimizes fuel by letting gravity curve the flight vector without expending lateral gimbal energy.",
-    nasaDataSources: [
-      {
-        title: "NASA Launch Vehicle Guidance & Trajectory Optimization",
-        url: "https://data.nasa.gov/",
-        portal: "data.nasa.gov"
-      }
-    ]
-  },
-  {
-    id: "lunar-voyager",
-    missionNumber: 3,
-    title: "Mission 3: Lunar Voyager (Full Moon Expedition \u2014 YouTube Reference)",
-    tagline: "Earth Launch \u2794 TLI \u2794 Lunar Retro Touchdown \u2794 Surface EVA \u2794 Splashdown",
-    scenario: "Modeled directly after Ellipse: Lunar Voyager Mission 3 (YouTube: qXYpltxSTK0). Earth liftoff, Trans-Lunar Injection burn, enter lunar orbit, perform manual retro powered descent to touch down gently (< 3 m/s), plant flag & drill core on surface EVA, liftoff into lunar orbit, trans-Earth return burn, hypersonic atmospheric entry, and parachute ocean splashdown!",
-    targetBody: "MOON",
-    initialAltitudeKm: 3.5,
-    initialVelocityKms: 0.22,
-    initialVerticalSpeedKms: -0.21,
-    initialPitchDeg: 90,
-    initialFuelPct: 40,
-    mainEngineAvailable: true,
-    rcsOnly: false,
-    hideTrajectoryLine: false,
-    hasDebrisField: false,
-    hasEngineHeat: false,
-    hasHeatShield: true,
-    hasCountdownTimer: false,
-    countdownDurationSec: 0,
-    targetObjective: "Execute pinpoint manual powered landing (< 3 m/s touchdown), complete surface EVA science, liftoff from Moon, and return capsule safely to Earth splashdown.",
-    scientificContext: "Apollo Lunar Module Descent Propulsion System (LMDE) required throttlable deep-throttling pintle engines to cancel 1.6 km/s orbital velocity and touch down gently on unpredictable lunar crater topography.",
-    nasaDataSources: [
-      {
-        title: "NASA Apollo Lunar Surface Journal (ALSJ) Descent Radar Data",
-        url: "https://data.nasa.gov/",
-        portal: "data.nasa.gov"
-      }
-    ]
-  },
-  {
-    id: "mars-voyager",
-    missionNumber: 4,
-    title: "Mission 4: Mars Interplanetary Voyager",
-    tagline: "Earth Launch \u2794 TMI \u2794 Mars Hypersonic EDL \u2794 MOXIE EVA \u2794 Return Splashdown",
-    scenario: "The ultimate interplanetary survival expedition. Earth launch, Trans-Mars Injection burn, brave hypersonic entry through thin Martian atmosphere (entry corridor heating), supersonic retro-propulsion touchdown in Jezero Crater, extract O2 with MOXIE, surface liftoff, trans-Earth return burn, and Pacific recovery.",
-    targetBody: "MARS",
-    initialAltitudeKm: 12,
-    initialVelocityKms: 1.25,
-    initialVerticalSpeedKms: -0.65,
-    initialPitchDeg: 80,
-    initialFuelPct: 55,
-    mainEngineAvailable: true,
-    rcsOnly: false,
-    hideTrajectoryLine: false,
-    hasDebrisField: false,
-    hasEngineHeat: true,
-    hasHeatShield: true,
-    hasCountdownTimer: false,
-    countdownDurationSec: 0,
-    targetObjective: "Survive Mars Entry, Descent, and Landing (EDL), land softly in Jezero Crater, complete MOXIE/sample science, launch from Mars surface, and return to Earth ocean recovery.",
-    scientificContext: "Mars EDL combines atmospheric drag, supersonic parachutes, and powered terminal descent in a 610 Pa carbon dioxide atmosphere with 38% Earth gravity.",
-    nasaDataSources: [
-      {
-        title: "NASA Mars 2020 Perseverance Entry, Descent, and Landing (EDL) Telemetry",
-        url: "https://mars.nasa.gov/mars2020/",
-        portal: "jpl.nasa.gov"
-      }
-    ]
-  }
-];
-const BONUS_ORBITAL_CHALLENGE_MISSIONS = [
-  {
-    id: "kessler-syndrome",
-    missionNumber: 5,
-    title: "Kessler Syndrome: Orbital Debris Survival",
-    tagline: "Cascade Collisions & Rapid Fuel Leak Mitigation",
-    scenario: "Spawn a dense field of 120 high-velocity orbital debris fragments (red pings on tactical radar) orbiting Earth between 200 km and 500 km altitude. Navigate through the debris storm with active hull breach detection.",
-    targetBody: "EARTH",
+    title: 'Mission 1: Kessler Syndrome (Orbital Debris Survival)',
+    tagline: 'High-Velocity Debris Field & Rapid Fuel Leak Mitigation',
+    scenario: 'Spawn in a dense field of high-velocity space debris orbiting Earth between 200 km and 500 km altitude. Debris fragments appear as red pings on tactical radar. Any impact reduces hull integrity and activates a continuous fuel leak. Navigate safely to reach a circular 550 km parking orbit.',
+    targetBody: 'EARTH',
     initialAltitudeKm: 320,
     initialVelocityKms: 7.71,
-    initialVerticalSpeedKms: 0,
+    initialVerticalSpeedKms: 0.0,
     initialPitchDeg: 0,
     initialFuelPct: 85,
     mainEngineAvailable: true,
@@ -177,28 +60,23 @@ const BONUS_ORBITAL_CHALLENGE_MISSIONS = [
     hasHeatShield: false,
     hasCountdownTimer: false,
     countdownDurationSec: 0,
-    targetObjective: "Navigate safely through the debris field and raise orbit to a stable, circular orbit at 550 km altitude (Apoapsis & Periapsis \xB130 km, Eccentricity < 0.05).",
-    scientificContext: "Proposed by NASA astrophysicist Donald J. Kessler in 1978: when space debris density in Low Earth Orbit (LEO) exceeds critical threshold, a single collision causes cascading fragmentations, creating a runaway debris belt rendering LEO unusable.",
+    targetObjective: 'Navigate safely through the debris field and raise orbit to a stable, circular orbit at 550 km altitude (Apoapsis & Periapsis 550 ±35 km, Eccentricity < 0.05) with hull integrity intact.',
+    scientificContext: 'Proposed by NASA astrophysicist Donald J. Kessler in 1978: cascading collisions create a runaway debris belt rendering orbital slots impassable.',
     nasaDataSources: [
       {
-        title: "NASA Orbital Debris Program Office (ODPO) Datasets",
-        url: "https://orbitaldebris.jsc.nasa.gov/",
-        portal: "data.nasa.gov"
+        title: 'NASA Orbital Debris Program Office (ODPO) Datasets',
+        url: 'https://orbitaldebris.jsc.nasa.gov/',
+        portal: 'data.nasa.gov',
       },
-      {
-        title: "NASA Spacecraft Conjunction Assessment Risk Analysis (CARA)",
-        url: "https://data.nasa.gov/browse?q=orbital+debris",
-        portal: "data.nasa.gov"
-      }
-    ]
+    ],
   },
   {
-    id: "solar-storm",
+    id: 'solar-storm',
     missionNumber: 2,
-    title: "Solar Storm: Blind Telemetry Navigation",
-    tagline: "Coronal Mass Ejection Trajectory Blackout",
-    scenario: "A severe X-Class Coronal Mass Ejection (CME) strikes Earth's magnetosphere, causing complete telemetry blackout. Visual trajectory arc and radar orbital path are disabled. Navigate purely by raw numerical instruments.",
-    targetBody: "EARTH",
+    title: 'Mission 2: Solar Storm (Blind Telemetry Navigation)',
+    tagline: 'Coronal Mass Ejection Trajectory Blackout & Engine Heat Management',
+    scenario: 'A severe X-Class Coronal Mass Ejection (CME) strikes Earth\'s magnetosphere, blinding orbital navigation cameras. The visual orbital trajectory prediction line is disabled. Running throttle above 80% overheats the engine, triggering an automated shutdown. Achieve a stable orbit relying purely on numerical instruments.',
+    targetBody: 'EARTH',
     initialAltitudeKm: 92,
     initialVelocityKms: 4.85,
     initialVerticalSpeedKms: 0.42,
@@ -212,28 +90,23 @@ const BONUS_ORBITAL_CHALLENGE_MISSIONS = [
     hasHeatShield: false,
     hasCountdownTimer: false,
     countdownDurationSec: 0,
-    targetObjective: "Achieve a stable Earth parking orbit (Periapsis > 120 km and Apoapsis between 180 km and 350 km) relying strictly on numerical altitude, velocity, vertical speed, and pitch angle without overheating the engine.",
-    scientificContext: "Extreme solar particle events (SPE) induce severe geomagnetic currents, frying orbital transponders and GPS receivers. Astronauts must rely on inertial measurement units (IMUs) and throttle temperature management.",
+    targetObjective: 'Achieve a stable Earth parking orbit (Periapsis > 120 km and Apoapsis between 180 km and 380 km) relying strictly on numerical altitude, velocity, vertical speed, and pitch angle without triggering engine overheat shutdown.',
+    scientificContext: 'Extreme solar particle events (SPE) induce severe geomagnetic currents, disabling transponders and visual guidance.',
     nasaDataSources: [
       {
-        title: "NASA Space Weather Database Of Notifications, Knowledge, Information (DONKI)",
-        url: "https://api.nasa.gov/",
-        portal: "api.nasa.gov"
+        title: 'NASA Space Weather Database (DONKI)',
+        url: 'https://api.nasa.gov/',
+        portal: 'api.nasa.gov',
       },
-      {
-        title: "NASA Solar Dynamics Observatory (SDO) Heliophysics",
-        url: "https://science.nasa.gov/heliophysics/",
-        portal: "data.nasa.gov"
-      }
-    ]
+    ],
   },
   {
-    id: "apollo-13",
+    id: 'apollo-13',
     missionNumber: 3,
-    title: "Apollo 13 Crisis: Critical System Failure",
-    tagline: "Free-Return Trajectory & 5.5\xB0\u20137.5\xB0 Atmospheric Re-Entry Corridor",
-    scenario: "Service Module oxygen tank 2 exploded, disabling the primary Service Propulsion System (SPS) main engine. The crew is plunging toward Earth at 10.9 km/s on a lunar free-return trajectory with only low-thrust RCS maneuvering thrusters.",
-    targetBody: "EARTH",
+    title: 'Mission 3: Apollo 13 Crisis (Critical System Failure)',
+    tagline: 'Free-Return Trajectory & 5.5°–7.5° Atmospheric Re-Entry Corridor',
+    scenario: 'The primary Service Propulsion System (SPS) main engine is permanently disabled following an oxygen tank rupture. The spacecraft is hurtling toward Earth on a lunar return path with only 5 minutes of emergency Oxygen & Battery power. Only low-thrust RCS maneuvering thrusters remain available.',
+    targetBody: 'EARTH',
     initialAltitudeKm: 28500,
     initialVelocityKms: 4.15,
     initialVerticalSpeedKms: -3.85,
@@ -246,30 +119,24 @@ const BONUS_ORBITAL_CHALLENGE_MISSIONS = [
     hasEngineHeat: false,
     hasHeatShield: false,
     hasCountdownTimer: true,
-    countdownDurationSec: 300,
-    // 5 minutes
-    targetObjective: "Execute precision RCS burns to steer Earth atmospheric re-entry corridor flight path angle to exactly between 5.5\xB0 and 7.5\xB0 before the 5-minute Oxygen & Battery timer expires.",
-    scientificContext: "During Apollo 13, NASA flight controllers calculated that if the entry angle was shallower than 5.5\xB0, the spacecraft would skip off Earth's upper atmosphere like a flat stone on water into solar orbit; steeper than 7.5\xB0, atmospheric deceleration would exceed 30 Gs, incinerating the heat shield.",
+    countdownDurationSec: 300, // 5 minutes
+    targetObjective: 'Perform precise RCS manual burns to steer the Earth atmospheric re-entry corridor flight path angle to exactly between 5.5° and 7.5° before the 5-minute Oxygen & Battery timer runs out.',
+    scientificContext: 'NASA calculated that if entry was shallower than 5.5°, the capsule would skip off Earth\'s atmosphere; steeper than 7.5°, deceleration exceeds 30 Gs, destroying the capsule.',
     nasaDataSources: [
       {
-        title: "NASA Apollo 13 Mission Operations Report & Flight Telemetry",
-        url: "https://www.nasa.gov/mission_pages/apollo/missions/apollo13.html",
-        portal: "jpl.nasa.gov"
+        title: 'NASA Apollo 13 Mission Operations Report',
+        url: 'https://www.nasa.gov/mission_pages/apollo/missions/apollo13.html',
+        portal: 'jpl.nasa.gov',
       },
-      {
-        title: "NASA Earth Atmospheric Density Profiles (MSIS-E-90)",
-        url: "https://earthdata.nasa.gov/",
-        portal: "earthdata.nasa.gov"
-      }
-    ]
+    ],
   },
   {
-    id: "oberth-slingshot",
+    id: 'oberth-slingshot',
     missionNumber: 4,
-    title: "Gravity Well Escape: Oberth Effect Slingshot",
-    tagline: "Deep Gas Giant Pericenter Burn & Heat Shield Melting",
-    scenario: "Plunging deep into the extreme gravity well of a massive gas giant (Jupiter analogue) on a dangerously decaying hyperbolic trajectory. The intense radiation and atmospheric friction melts your heat shield as altitude drops.",
-    targetBody: "GAS_GIANT",
+    title: 'Mission 4: Gravity Well Escape (Oberth Effect Slingshot)',
+    tagline: 'Deep Gas Giant Pericenter Burn & Heat Shield Melting',
+    scenario: 'Plunging deep into the extreme gravity well of a massive gas giant (Jupiter analogue) on a decaying hyperbolic trajectory. The intense atmospheric friction melts your heat shield as altitude drops below 3,500 km. Wait for the exact moment of Periapsis to execute a full-throttle burn to escape before the heat shield hits 0%.',
+    targetBody: 'GAS_GIANT',
     initialAltitudeKm: 6500,
     initialVelocityKms: 48.5,
     initialVerticalSpeedKms: -6.2,
@@ -283,37 +150,28 @@ const BONUS_ORBITAL_CHALLENGE_MISSIONS = [
     hasHeatShield: true,
     hasCountdownTimer: false,
     countdownDurationSec: 0,
-    targetObjective: "Wait for the exact moment of Periapsis (closest approach) to fire maximum prograde burn (Hermann Oberth effect) to achieve hyperbolic escape velocity before the heat shield melts to 0%.",
-    scientificContext: "The Oberth Effect proves that rocket engines generate far more kinetic energy when burned at high speed in the deepest point of a gravitational potential well, because Delta-E = v * Delta-v. Burning at pericenter is 4x more energy-efficient than burning at high altitude.",
+    targetObjective: 'Wait until the exact moment of Periapsis (closest approach) to execute maximum prograde burn (Oberth Effect) to achieve hyperbolic escape velocity (>= 52.0 km/s) before the heat shield melts to 0%.',
+    scientificContext: 'The Oberth Effect proves rocket engines generate far more kinetic energy when burned at high speed deep within a gravitational potential well (Delta-E = v * Delta-v).',
     nasaDataSources: [
       {
-        title: "NASA Juno Jupiter Gravity Science Investigation Telemetry",
-        url: "https://www.jpl.nasa.gov/missions/juno",
-        portal: "jpl.nasa.gov"
+        title: 'NASA Juno Jupiter Gravity Investigation',
+        url: 'https://www.jpl.nasa.gov/missions/juno',
+        portal: 'jpl.nasa.gov',
       },
-      {
-        title: "NASA JPL Solar System Dynamics (SSD) Horizons Orbit Ephemerides",
-        url: "https://ssd.jpl.nasa.gov/horizons/",
-        portal: "api.nasa.gov"
-      }
-    ]
+    ],
   },
   {
-    id: "suicide-burn",
+    id: 'suicide-burn',
     missionNumber: 5,
-    title: "Pinpoint Suicide Burn: Hover Slam Landing",
-    tagline: "Last-Second Ignition & Zero-Margin Deceleration",
-    scenario: "Plunging toward the cratered lunar surface at 215 m/s downward velocity with zero atmosphere and only 8.5% fuel remaining. There is zero fuel to hover \u2014 you must ignite at the exact last fraction of a second to touch down safely.",
-    targetBody: "MOON",
+    title: 'Mission 5: Pinpoint Suicide Burn (Hover Slam Landing)',
+    tagline: 'Last-Second Ignition & Zero-Margin Deceleration',
+    scenario: 'Descending rapidly toward the cratered lunar surface at 215 m/s downward velocity with zero atmosphere and only 8.0% fuel remaining. There is zero fuel to hover — you must calculate and execute the ignition at the exact last fraction of a second to touch down safely under 3 m/s.',
+    targetBody: 'MOON',
     initialAltitudeKm: 3.8,
-    // 3,800 meters
     initialVelocityKms: 0.22,
-    // 220 m/s
     initialVerticalSpeedKms: -0.215,
-    // -215 m/s
     initialPitchDeg: 90,
-    // pointed vertically up for retrograde burn
-    initialFuelPct: 8.5,
+    initialFuelPct: 8.0,
     mainEngineAvailable: true,
     rcsOnly: false,
     hideTrajectoryLine: false,
@@ -322,41 +180,42 @@ const BONUS_ORBITAL_CHALLENGE_MISSIONS = [
     hasHeatShield: false,
     hasCountdownTimer: false,
     countdownDurationSec: 0,
-    targetObjective: "Calculate the exact terminal suicide burn altitude. Ignite 100% throttle at the last second to achieve touchdown speed < 3.0 m/s and horizontal speed < 1.0 m/s before running out of fuel.",
-    scientificContext: "SpaceX Falcon 9 and NASA Apollo Lunar Module (LMDE) descent profiles use optimal control suicide burns (hoverslam), where thrust acceleration matches kinematic stopping distance: h_burn = v^2 / (2 * (a_thrust - g)). Igniting even 0.5s too late causes catastrophic impact.",
+    targetObjective: 'Calculate the exact terminal suicide burn altitude. Ignite 100% throttle at the last second to achieve touchdown speed < 3.0 m/s and horizontal drift < 1.0 m/s without running out of fuel mid-air.',
+    scientificContext: 'SpaceX Falcon 9 and NASA Apollo LM descent profiles use hoverslam suicide burns: h_burn = v^2 / (2 * (a_thrust - g)).',
     nasaDataSources: [
       {
-        title: "NASA Apollo Lunar Surface Journal (ALSJ) Descent Radar Data",
-        url: "https://data.nasa.gov/",
-        portal: "data.nasa.gov"
+        title: 'NASA Apollo Lunar Surface Journal Descent Data',
+        url: 'https://data.nasa.gov/',
+        portal: 'data.nasa.gov',
       },
-      {
-        title: "NASA Planetary Data System (PDS) Moon Topography (LOLA)",
-        url: "https://pds.nasa.gov/",
-        portal: "data.nasa.gov"
-      }
-    ]
-  }
+    ],
+  },
 ];
-function computeKeplerianElements(radiusKm, velocityKms, verticalSpeedKms, body) {
+
+export function computeKeplerianElements(radiusKm, velocityKms, verticalSpeedKms, body) {
   const mu = body.mu;
   const r = Math.max(radiusKm, body.radiusKm);
-  const v = Math.max(velocityKms, 1e-4);
-  const epsilon = v * v / 2 - mu / r;
+  const v = Math.max(velocityKms, 0.0001);
+
+  const epsilon = (v * v) / 2 - mu / r;
   const sinGamma = Math.max(-1, Math.min(1, verticalSpeedKms / v));
-  const flightPathAngleDeg = Math.asin(sinGamma) * 180 / Math.PI;
-  const cosGamma = Math.cos(flightPathAngleDeg * Math.PI / 180);
+  const flightPathAngleDeg = (Math.asin(sinGamma) * 180) / Math.PI;
+
+  const cosGamma = Math.cos((flightPathAngleDeg * Math.PI) / 180);
   const h = r * v * Math.abs(cosGamma);
-  const eTerm = 1 + 2 * epsilon * h * h / (mu * mu);
+
+  const eTerm = 1 + (2 * epsilon * h * h) / (mu * mu);
   const eccentricity = Math.sqrt(Math.max(0, eTerm));
+
   let semiMajorAxisKm = 0;
   let periapsisAltitudeKm = 0;
   let apoapsisAltitudeKm = 0;
   let periodSec = 0;
-  const isHyperbolic = epsilon >= 0 || eccentricity >= 1;
+  const isHyperbolic = epsilon >= 0 || eccentricity >= 1.0;
+
   if (isHyperbolic) {
-    semiMajorAxisKm = Math.abs(mu / (2 * Math.max(1e-3, epsilon)));
-    const rp = h * h / (mu * (1 + eccentricity));
+    semiMajorAxisKm = Math.abs(mu / (2 * Math.max(0.001, epsilon)));
+    const rp = (h * h) / (mu * (1 + eccentricity));
     periapsisAltitudeKm = rp - body.radiusKm;
     apoapsisAltitudeKm = Infinity;
     periodSec = Infinity;
@@ -368,6 +227,7 @@ function computeKeplerianElements(radiusKm, velocityKms, verticalSpeedKms, body)
     apoapsisAltitudeKm = ra - body.radiusKm;
     periodSec = 2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxisKm, 3) / mu);
   }
+
   return {
     semiMajorAxisKm,
     eccentricity,
@@ -376,36 +236,42 @@ function computeKeplerianElements(radiusKm, velocityKms, verticalSpeedKms, body)
     specificEnergyKm2s2: epsilon,
     periodSec,
     flightPathAngleDeg,
-    isHyperbolic
+    isHyperbolic,
   };
 }
-function calculateSuicideBurnAltitude(downwardSpeedMs, maxThrustAccelMs2, gravityMs2) {
+
+export function calculateSuicideBurnAltitude(downwardSpeedMs, maxThrustAccelMs2, gravityMs2) {
   const vy = Math.abs(downwardSpeedMs);
   const netDecel = maxThrustAccelMs2 - gravityMs2;
   if (netDecel <= 0) {
     return { suicideBurnDistanceM: Infinity, timeToIgniteSec: 0 };
   }
-  const suicideBurnDistanceM = vy * vy / (2 * netDecel);
+  const suicideBurnDistanceM = (vy * vy) / (2 * netDecel);
   const timeToIgniteSec = vy / netDecel;
   return { suicideBurnDistanceM, timeToIgniteSec };
 }
-function generateOrbitalDebrisField(count = 90, earthRadiusKm = 6371) {
+
+export function generateOrbitalDebrisField(count = 110, earthRadiusKm = 6371) {
   const debris = [];
-  const types = ["fragment", "stage", "panel"];
+  const types = ['fragment', 'stage', 'panel'];
+
   for (let i = 0; i < count; i++) {
-    const altitude = 220 + Math.random() * 320;
+    const altitude = 200 + Math.random() * 300;
     const r = earthRadiusKm + altitude;
     const minSafeAngle = 0.35;
     const angleRange = Math.PI * 2 - 2 * minSafeAngle;
     const angle = minSafeAngle + Math.random() * angleRange;
-    const inc = (Math.random() - 0.5) * 0.3;
+    const inc = (Math.random() - 0.5) * 0.35;
+
     const x = r * Math.cos(angle);
     const y = r * Math.sin(inc);
     const z = r * Math.sin(angle);
-    const vMag = Math.sqrt(398600.44 / r) * (0.98 + Math.random() * 0.04);
+
+    const vMag = Math.sqrt(398600.44 / r) * (0.97 + Math.random() * 0.06);
     const vx = -vMag * Math.sin(angle);
-    const vy = (Math.random() - 0.5) * 0.2;
+    const vy = (Math.random() - 0.5) * 0.25;
     const vz = vMag * Math.cos(angle);
+
     debris.push({
       id: i,
       x,
@@ -414,13 +280,15 @@ function generateOrbitalDebrisField(count = 90, earthRadiusKm = 6371) {
       vx,
       vy,
       vz,
-      sizeM: 0.5 + Math.random() * 4.5,
-      type: types[i % types.length]
+      sizeM: 0.4 + Math.random() * 4.0,
+      type: types[i % types.length],
     });
   }
+
   return debris;
 }
-function createInitialTelemetry(mission) {
+
+export function createInitialTelemetry(mission) {
   const body = CELESTIAL_BODIES[mission.targetBody];
   const r = body.radiusKm + mission.initialAltitudeKm;
   const kepler = computeKeplerianElements(
@@ -429,6 +297,7 @@ function createInitialTelemetry(mission) {
     mission.initialVerticalSpeedKms,
     body
   );
+
   return {
     missionId: mission.id,
     timeSec: 0,
@@ -457,15 +326,177 @@ function createInitialTelemetry(mission) {
     warningAlerts: [],
     cameraShakeIntensity: 0,
     isGameOver: false,
-    outcome: "IN_PROGRESS"
+    outcome: 'IN_PROGRESS',
   };
 }
-export {
-  BONUS_ORBITAL_CHALLENGE_MISSIONS,
-  CELESTIAL_BODIES,
-  HARDCORE_SURVIVAL_MISSIONS,
-  calculateSuicideBurnAltitude,
-  computeKeplerianElements,
-  createInitialTelemetry,
-  generateOrbitalDebrisField
-};
+
+export function evaluateMissionRules(mission, state, kepler) {
+  const warnings = [];
+
+  if (mission.id === 'kessler-syndrome') {
+    if (state.fuelLeak) warnings.push('⚠️ HULL BREACH · FUEL LEAK DETECTED');
+    if (state.hull <= 0) {
+      return {
+        isGameOver: true,
+        outcome: 'FAILED',
+        reason: 'CATASTROPHIC HULL BREACH: SHIP DESTROYED BY HIGH-VELOCITY SPACE DEBRIS IMPACTS',
+        warnings,
+      };
+    }
+    const apDist = Math.abs(kepler.apoapsisAltitudeKm - 550);
+    const peDist = Math.abs(kepler.periapsisAltitudeKm - 550);
+    if (apDist <= 35 && peDist <= 35 && kepler.eccentricity < 0.05 && state.hull > 0) {
+      return {
+        isGameOver: true,
+        outcome: 'SUCCESS',
+        reason: `KESSLER SYNDROME ESCAPED! Stabilized in ${kepler.periapsisAltitudeKm.toFixed(0)}x${kepler.apoapsisAltitudeKm.toFixed(0)} km safe orbit with ${state.hull.toFixed(0)}% hull intact!`,
+        warnings,
+      };
+    }
+  }
+
+  if (mission.id === 'solar-storm') {
+    if (state.engineOverheated) warnings.push('⚠️ ENGINE OVERHEAT · SHUTDOWN LOCK');
+    else if (state.engineHeat > 80) warnings.push('⚠️ ENGINE TEMPERATURE CRITICAL');
+
+    if (kepler.periapsisAltitudeKm > 120 && kepler.apoapsisAltitudeKm >= 180 && kepler.apoapsisAltitudeKm <= 380) {
+      return {
+        isGameOver: true,
+        outcome: 'SUCCESS',
+        reason: `SOLAR STORM BLIND NAVIGATION SUCCESSFUL! Stable orbit insertion achieved: Pe ${kepler.periapsisAltitudeKm.toFixed(0)} km / Ap ${kepler.apoapsisAltitudeKm.toFixed(0)} km!`,
+        warnings,
+      };
+    }
+  }
+
+  if (mission.id === 'apollo-13') {
+    if (state.countdownTimer < 90) warnings.push('⚠️ LOW O2 / BATTERY CRITICAL');
+
+    if (state.countdownTimer <= 0) {
+      return {
+        isGameOver: true,
+        outcome: 'FAILED',
+        reason: 'CRITICAL ECLSS FAILURE: OXYGEN & BATTERY DEPLETED BEFORE RE-ENTRY INTERFACE',
+        warnings,
+      };
+    }
+
+    if (state.altKm < 2000) {
+      const ang = Math.abs(kepler.flightPathAngleDeg);
+      if (ang < 5.5) warnings.push(`⚠️ RE-ENTRY SHALLOW (${ang.toFixed(1)}° < 5.5° - WILL SKIP INTO SPACE)`);
+      else if (ang > 7.5) warnings.push(`⚠️ RE-ENTRY STEEP (${ang.toFixed(1)}° > 7.5° - WILL INCINERATE)`);
+    }
+
+    if (state.altKm <= 120) {
+      const entryAngle = Math.abs(kepler.flightPathAngleDeg);
+      if (entryAngle >= 5.5 && entryAngle <= 7.5) {
+        return {
+          isGameOver: true,
+          outcome: 'SUCCESS',
+          reason: `APOLLO 13 SAVED! Precision re-entry corridor hit at ${entryAngle.toFixed(2)}° (Target: 5.5° - 7.5°). Capsule safely landed!`,
+          warnings,
+        };
+      } else if (entryAngle < 5.5) {
+        return {
+          isGameOver: true,
+          outcome: 'FAILED',
+          reason: `SKIPPED OFF ATMOSPHERE: Entry angle was ${entryAngle.toFixed(2)}° (< 5.5°). Capsule ricocheted into deep space!`,
+          warnings,
+        };
+      } else {
+        return {
+          isGameOver: true,
+          outcome: 'FAILED',
+          reason: `ENTRY TOO STEEP: Entry angle was ${entryAngle.toFixed(2)}° (> 7.5°). Deceleration exceeded 30 Gs; heat shield destroyed!`,
+          warnings,
+        };
+      }
+    }
+  }
+
+  if (mission.id === 'oberth-slingshot') {
+    if (state.heatShield < 35) warnings.push('⚠️ HEAT SHIELD CRITICAL (< 35%)');
+    if (state.altKm < 3500) warnings.push('⚠️ ATMOSPHERIC FRICTION HEATING ACTIVE');
+
+    if (state.heatShield <= 0) {
+      return {
+        isGameOver: true,
+        outcome: 'FAILED',
+        reason: 'HEAT SHIELD ABLATED TO 0% — SPACECRAFT VAPORIZED IN UPPER ATMOSPHERE',
+        warnings,
+      };
+    }
+
+    if (kepler.isHyperbolic && state.vKms >= 52.0 && state.heatShield > 0) {
+      return {
+        isGameOver: true,
+        outcome: 'SUCCESS',
+        reason: `OBERTH SLINGSHOT ACHIEVED! Escaped Gas Giant gravity well at ${state.vKms.toFixed(1)} km/s with ${state.heatShield.toFixed(0)}% heat shield remaining!`,
+        warnings,
+      };
+    }
+  }
+
+  if (mission.id === 'suicide-burn') {
+    const suicideCalc = calculateSuicideBurnAltitude(state.vyKms * 1000, 28.5, 1.62);
+    const suicideBurnAltM = suicideCalc.suicideBurnDistanceM;
+    const currentAltM = state.altKm * 1000;
+
+    if (currentAltM <= suicideBurnAltM * 1.05 && currentAltM > 5) {
+      warnings.push('⚠️ SUICIDE BURN IGNITION POINT [FULL THROTTLE NOW]');
+    }
+
+    if (state.fuel <= 0 && currentAltM > 10) {
+      return {
+        isGameOver: true,
+        outcome: 'FAILED',
+        reason: 'FUEL EXHAUSTION: Propellant depleted mid-air during suicide burn.',
+        warnings,
+      };
+    }
+
+    if (state.altKm <= 0.002) {
+      const impactSpeedMs = Math.abs(state.vyKms * 1000);
+      const horizSpeedMs = Math.abs(state.vxKms * 1000);
+
+      if (impactSpeedMs <= 3.0 && horizSpeedMs <= 1.0) {
+        return {
+          isGameOver: true,
+          outcome: 'SUCCESS',
+          reason: `PINPOINT SUICIDE BURN SUCCESSFUL! Touchdown speed: ${impactSpeedMs.toFixed(1)} m/s (Remaining Fuel: ${state.fuel.toFixed(1)}%)`,
+          warnings,
+        };
+      } else if (impactSpeedMs > 3.0) {
+        return {
+          isGameOver: true,
+          outcome: 'FAILED',
+          reason: `HARD IMPACT CRASH: Touchdown vertical speed was ${impactSpeedMs.toFixed(1)} m/s (Structural safety limit is 3.0 m/s)`,
+          warnings,
+        };
+      } else {
+        return {
+          isGameOver: true,
+          outcome: 'FAILED',
+          reason: `LANDER TIPPED: Horizontal drift was ${horizSpeedMs.toFixed(1)} m/s (Limit: 1.0 m/s)`,
+          warnings,
+        };
+      }
+    }
+  }
+
+  const isLandingMission = mission.id === 'suicide-burn' || mission.id === 'lunar-voyager' || mission.id === 'mars-voyager';
+  if (state.altKm <= 0 && !isLandingMission) {
+    return {
+      isGameOver: true,
+      outcome: 'FAILED',
+      reason: 'CRASH IMPACT: Spacecraft crashed into the planetary surface.',
+      warnings,
+    };
+  }
+
+  return {
+    isGameOver: false,
+    outcome: 'IN_PROGRESS',
+    warnings,
+  };
+}

@@ -34,6 +34,7 @@ import {
   calculateSuicideBurnAltitude,
   generateOrbitalDebrisField,
   createInitialTelemetry,
+  evaluateMissionRules,
   type HardcoreMissionId,
   type HardcoreMissionConfig,
   type HardcoreTelemetryState,
@@ -51,7 +52,7 @@ interface HardcoreSurvivalSimulatorProps {
 }
 
 export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps> = ({
-  initialMissionId = 'suborbital-pioneer',
+  initialMissionId = 'kessler-syndrome',
   onClose,
   onMissionCompleted,
 }) => {
@@ -462,14 +463,15 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           p.shakeIntensity = Math.max(0, p.shakeIntensity - 1.2 * dt);
         }
 
-        // Debris collision physics for Mission 1 (Kessler Syndrome)
+        // Debris collision & proximity tracking for Mission 1 (Kessler Syndrome)
         if (p.invulnTimer > 0) p.invulnTimer -= dt;
+        let nearestDebrisList: Array<{ x: number; y: number; z: number; distanceKm: number }> = [];
         if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
           const px = p.rKm * Math.cos(p.orbitalTheta);
           const pz = p.rKm * Math.sin(p.orbitalTheta);
           const py = 0;
 
-          for (const d of debrisFieldRef.current) {
+          nearestDebrisList = debrisFieldRef.current.map((d) => {
             d.x += d.vx * dt;
             d.y += d.vy * dt;
             d.z += d.vz * dt;
@@ -478,19 +480,21 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             const dy = d.y - py;
             const dz = d.z - pz;
             const distKm = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
             if (distKm < 0.12 && p.invulnTimer <= 0) {
-              // Collision!
-              p.hull = Math.max(0, p.hull - 18);
+              // Collision impact!
+              p.hull = Math.max(0, p.hull - 20);
               p.fuelLeak = true;
-              p.invulnTimer = 2.0; // 2 seconds invulnerability grace period
+              p.invulnTimer = 2.0; // 2s invulnerability grace
               p.shakeIntensity = 1.0;
               if (soundEnabled) soundFx.playImpact();
-              d.x += 200; // disperse collided debris
-              break;
+              d.x += 200; // disperse collided fragment
             }
-          }
 
-          if (p.hull <= 0) {
+            return { x: dx, y: dy, z: dz, distanceKm: distKm };
+          }).sort((a, b) => a.distanceKm - b.distanceKm);
+
+          if (p.hull <= 0 && p.outcome === 'IN_PROGRESS') {
             p.outcome = 'FAILED';
             p.failureReason = 'CATASTROPHIC HULL BREACH: SHIP DESTROYED BY HIGH-VELOCITY SPACE DEBRIS IMPACTS';
             if (soundEnabled) soundFx.playExplosion();
@@ -507,158 +511,51 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           if (currentAltM <= suicideBurnAltM * 1.05 && currentAltM > 5) {
             suicideIgnitionRequired = true;
           }
-
-          // Touchdown check
-          if (p.altKm <= 0.002) {
-            p.altKm = 0;
-            const impactSpeedMs = Math.abs(p.vyKms * 1000);
-            const horizSpeedMs = Math.abs(p.vxKms * 1000);
-
-            if (impactSpeedMs <= 3.0 && horizSpeedMs <= 1.0) {
-              p.outcome = 'SUCCESS';
-              p.successMessage = `PINPOINT SUICIDE BURN SUCCESSFUL! Touchdown speed: ${impactSpeedMs.toFixed(1)} m/s (Remaining Fuel: ${p.fuel.toFixed(1)}%)`;
-            } else if (impactSpeedMs > 3.0) {
-              p.outcome = 'FAILED';
-              p.failureReason = `HARD IMPACT CRASH: Touchdown vertical speed was ${impactSpeedMs.toFixed(1)} m/s (Structural limit is 3.0 m/s)`;
-              if (soundEnabled) soundFx.playExplosion();
-            } else {
-              p.outcome = 'FAILED';
-              p.failureReason = `LANDER TIPPED: Horizontal drift was ${horizSpeedMs.toFixed(1)} m/s (Limit: 1.0 m/s)`;
-              if (soundEnabled) soundFx.playExplosion();
-            }
-          }
         }
 
-        // Mission 1 Win Condition: Sub-Orbital Pioneer (Kármán 100 km Boundary)
-        if (activeMission.id === 'suborbital-pioneer') {
-          if (p.altKm >= 100 || (kepler.apoapsisAltitudeKm >= 100 && p.altKm >= 80)) {
-            p.outcome = 'SUCCESS';
-            p.successMessage = `KÁRMÁN BOUNDARY BREACHED! Sub-orbital apogee achieved: ${Math.max(p.altKm, kepler.apoapsisAltitudeKm).toFixed(1)} km (> 100 km target). Microgravity reached!`;
-          }
-        }
+        // Evaluate modular mission rules from survivalMissions.js
+        const ruleCheck = evaluateMissionRules(
+          activeMission,
+          {
+            altKm: p.altKm,
+            vKms: p.vKms,
+            vyKms: p.vyKms,
+            vxKms: p.vxKms,
+            fuel: p.fuel,
+            hull: p.hull,
+            fuelLeak: p.fuelLeak,
+            engineHeat: p.engineHeat,
+            engineOverheated: p.overheatCooldown > 0,
+            heatShield: p.heatShield,
+            countdownTimer: p.countdownTimer,
+            time: p.time,
+          },
+          kepler
+        );
 
-        // Mission 2 Win Condition: Orbital Pioneer (Low Earth Orbit 200 km)
-        if (activeMission.id === 'orbital-pioneer') {
-          if (kepler.periapsisAltitudeKm >= 140 && p.vKms >= 7.6) {
-            p.outcome = 'SUCCESS';
-            p.successMessage = `LOW EARTH ORBIT INSERTION CONFIRMED! Periapsis: ${kepler.periapsisAltitudeKm.toFixed(0)} km, Velocity: ${p.vKms.toFixed(2)} km/s (Target: >= 7.6 km/s). Multi-stage ascent complete!`;
+        if (ruleCheck.isGameOver && p.outcome === 'IN_PROGRESS') {
+          p.outcome = ruleCheck.outcome;
+          if (ruleCheck.outcome === 'SUCCESS') {
+            p.successMessage = ruleCheck.reason || 'HARDCORE SURVIVAL MISSION ACCOMPLISHED!';
+            confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+            if (soundEnabled) soundFx.playVictory();
+            awardCadetCredits(500);
+            onMissionCompleted?.(activeMission.id, 500);
+          } else {
+            p.failureReason = ruleCheck.reason || 'MISSION FAILED';
+            if (soundEnabled) soundFx.playExplosion();
           }
-        }
-
-        // Mission 3 Win Condition: Lunar Voyager (Powered Retro Landing)
-        if (activeMission.id === 'lunar-voyager') {
-          if (p.altKm <= 0.005) {
-            p.altKm = 0;
-            const impactSpeedMs = Math.abs(p.vyKms * 1000);
-            const horizSpeedMs = Math.abs(p.vxKms * 1000);
-            if (impactSpeedMs <= 3.5 && horizSpeedMs <= 1.5) {
-              p.outcome = 'SUCCESS';
-              p.successMessage = `TOUCHDOWN CONFIRMED! Lunar Voyager landed safely on Moon surface! Vertical speed: ${impactSpeedMs.toFixed(1)} m/s, Remaining Fuel: ${p.fuel.toFixed(1)}%. Ready for Neil Armstrong EVA!`;
-            } else if (impactSpeedMs > 3.5) {
-              p.outcome = 'FAILED';
-              p.failureReason = `LUNAR HARD CRASH: Touchdown vertical speed was ${impactSpeedMs.toFixed(1)} m/s (Structural safety limit: 3.5 m/s). Lander crushed!`;
-              if (soundEnabled) soundFx.playExplosion();
-            } else {
-              p.outcome = 'FAILED';
-              p.failureReason = `LANDER TIPPED: Horizontal drift was ${horizSpeedMs.toFixed(1)} m/s on crater slope (Limit: 1.5 m/s).`;
-              if (soundEnabled) soundFx.playExplosion();
-            }
-          }
-        }
-
-        // Mission 4 Win Condition: Mars Interplanetary Voyager (EDL Touchdown)
-        if (activeMission.id === 'mars-voyager') {
-          if (p.altKm <= 0.005) {
-            p.altKm = 0;
-            const impactSpeedMs = Math.abs(p.vyKms * 1000);
-            const horizSpeedMs = Math.abs(p.vxKms * 1000);
-            if (impactSpeedMs <= 4.0 && horizSpeedMs <= 2.0 && p.heatShield > 0) {
-              p.outcome = 'SUCCESS';
-              p.successMessage = `MARS JEZERO CRATER TOUCHDOWN! Velocity: ${impactSpeedMs.toFixed(1)} m/s, Heat Shield: ${p.heatShield.toFixed(0)}%. Planetary survival mission active!`;
-            } else if (p.heatShield <= 0) {
-              p.outcome = 'FAILED';
-              p.failureReason = `HEAT SHIELD FAILURE: Atmospheric entry temperatures breached structural bulkheads!`;
-              if (soundEnabled) soundFx.playExplosion();
-            } else {
-              p.outcome = 'FAILED';
-              p.failureReason = `MARS CRASH IMPACT: Touchdown vertical speed was ${impactSpeedMs.toFixed(1)} m/s (Structural limit: 4.0 m/s).`;
-              if (soundEnabled) soundFx.playExplosion();
-            }
-          }
-        }
-
-        // Mission 1 Win Condition (Circular 550 km orbit)
-        if (activeMission.id === 'kessler-syndrome') {
-          const apDist = Math.abs(kepler.apoapsisAltitudeKm - 550);
-          const peDist = Math.abs(kepler.periapsisAltitudeKm - 550);
-          if (apDist <= 35 && peDist <= 35 && kepler.eccentricity < 0.06 && p.hull > 0) {
-            p.outcome = 'SUCCESS';
-            p.successMessage = `KESSLER SYNDROME ESCAPED! Stabilized in ${kepler.periapsisAltitudeKm.toFixed(0)}x${kepler.apoapsisAltitudeKm.toFixed(0)} km safe orbit with ${p.hull.toFixed(0)}% hull intact!`;
-          }
-        }
-
-        // Mission 2 Win Condition (Blind Telemetry)
-        if (activeMission.id === 'solar-storm') {
-          if (kepler.periapsisAltitudeKm > 120 && kepler.apoapsisAltitudeKm >= 180 && kepler.apoapsisAltitudeKm <= 380) {
-            p.outcome = 'SUCCESS';
-            p.successMessage = `SOLAR STORM BLIND NAVIGATION SUCCESSFUL! Orbit insertion achieved: Pe ${kepler.periapsisAltitudeKm.toFixed(0)} km / Ap ${kepler.apoapsisAltitudeKm.toFixed(0)} km!`;
-          }
-        }
-
-        // Mission 3 Win Condition (Apollo 13 Re-Entry Corridor)
-        if (activeMission.id === 'apollo-13') {
-          if (p.altKm <= 120) {
-            // Re-entry interface!
-            const entryAngle = Math.abs(kepler.flightPathAngleDeg);
-            if (entryAngle >= 5.5 && entryAngle <= 7.5) {
-              p.outcome = 'SUCCESS';
-              p.successMessage = `APOLLO 13 SAVED! Precision re-entry corridor hit at ${entryAngle.toFixed(2)}° (Target: 5.5° - 7.5°). Capsule safely landed!`;
-            } else if (entryAngle < 5.5) {
-              p.outcome = 'FAILED';
-              p.failureReason = `SKIPPED OFF ATMOSPHERE: Entry angle was ${entryAngle.toFixed(2)}° (< 5.5°). Capsule ricocheted into deep space!`;
-              if (soundEnabled) soundFx.playAlarm();
-            } else {
-              p.outcome = 'FAILED';
-              p.failureReason = `ENTRY TOO STEEP: Entry angle was ${entryAngle.toFixed(2)}° (> 7.5°). Deceleration exceeded 30 Gs; heat shield destroyed!`;
-              if (soundEnabled) soundFx.playExplosion();
-            }
-          }
-        }
-
-        // Mission 4 Win Condition (Oberth Effect Slingshot)
-        if (activeMission.id === 'oberth-slingshot') {
-          if (kepler.isHyperbolic && p.vKms >= 52.0 && p.heatShield > 0) {
-            p.outcome = 'SUCCESS';
-            p.successMessage = `OBERTH SLINGSHOT ACHIEVED! Escaped Gas Giant gravity well at ${p.vKms.toFixed(1)} km/s with ${p.heatShield.toFixed(0)}% heat shield remaining!`;
-          }
-        }
-
-        // Victory celebration trigger
-        if (p.outcome === 'SUCCESS') {
-          confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-          if (soundEnabled) soundFx.playVictory();
-          awardCadetCredits(500);
-          onMissionCompleted?.(activeMission.id, 500);
         }
 
         // HUD Warnings list
-        const warnings: string[] = [];
-        if (p.overheatCooldown > 0) warnings.push('⚠️ ENGINE OVERHEAT · COOLDOWN LOCK');
-        if (p.fuelLeak) warnings.push('⚠️ HULL BREACH · FUEL LEAK DETECTED');
-        if (activeMission.hasCountdownTimer && p.countdownTimer < 90) warnings.push('⚠️ LOW O2 / BATTERY CRITICAL');
-        if (activeMission.hasHeatShield && p.heatShield < 35) warnings.push('⚠️ HEAT SHIELD CRITICAL');
-        if (suicideIgnitionRequired) warnings.push('⚠️ SUICIDE BURN IGNITION POINT REACHED [FULL THROTTLE NOW]');
-        if (activeMission.id === 'apollo-13' && p.altKm < 2000) {
-          const ang = Math.abs(kepler.flightPathAngleDeg);
-          if (ang < 5.5) warnings.push(`⚠️ RE-ENTRY SHALLOW (${ang.toFixed(1)}° < 5.5° - WILL SKIP)`);
-          else if (ang > 7.5) warnings.push(`⚠️ RE-ENTRY STEEP (${ang.toFixed(1)}° > 7.5° - WILL BURN)`);
+        const warnings: string[] = [...ruleCheck.warnings];
+        if (nearestDebrisList[0] && nearestDebrisList[0].distanceKm < 60) {
+          warnings.unshift(`⚠️ PROXIMITY ALERT · DEBRIS CLOSING (${nearestDebrisList[0].distanceKm.toFixed(1)} km)`);
         }
 
         // Update React HUD state (throttled to 10 FPS for optimal performance)
         if (now - lastHudTime > 90 || p.outcome !== 'IN_PROGRESS') {
           lastHudTime = now;
-          const px = p.rKm * Math.cos(p.orbitalTheta);
-          const pz = p.rKm * Math.sin(p.orbitalTheta);
 
           setTelemetry({
             missionId: activeMission.id,
@@ -684,12 +581,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             flightPathAngleDeg: kepler.flightPathAngleDeg,
             suicideBurnDistanceM: suicideBurnAltM,
             suicideBurnIgnitionRequired: suicideIgnitionRequired,
-            radarDebris: debrisFieldRef.current.slice(0, 15).map((d) => ({
-              x: d.x - px,
-              y: d.y,
-              z: d.z - pz,
-              distanceKm: Math.sqrt((d.x - px) ** 2 + d.y ** 2 + (d.z - pz) ** 2),
-            })),
+            radarDebris: nearestDebrisList.slice(0, 35),
             warningAlerts: warnings,
             cameraShakeIntensity: p.shakeIntensity,
             isGameOver: p.outcome !== 'IN_PROGRESS',
@@ -802,6 +694,10 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         flexDirection: 'column',
         fontFamily: 'var(--font-mono, monospace)',
         overflow: 'hidden',
+        transform: telemetry.cameraShakeIntensity > 0.05
+          ? `translate(${(Math.random() - 0.5) * telemetry.cameraShakeIntensity * 6}px, ${(Math.random() - 0.5) * telemetry.cameraShakeIntensity * 6}px)`
+          : 'none',
+        transition: telemetry.cameraShakeIntensity > 0.05 ? 'none' : 'transform 0.1s ease',
       }}
     >
       {/* ─── TOP HEADER BAR ─── */}
@@ -955,24 +851,28 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           borderBottom: '1px solid rgba(148, 163, 184, 0.15)',
           padding: '8px 24px',
           display: 'flex',
+          alignItems: 'center',
           gap: '8px',
           overflowX: 'auto',
           zIndex: 35,
-          backdropFilter: 'blur(10px)',
+          backdropFilter: 'blur(16px)',
         }}
       >
-        {HARDCORE_SURVIVAL_MISSIONS.map((m) => {
+        <div style={{ fontSize: '10px', fontWeight: 900, color: '#ef4444', letterSpacing: '0.08em', marginRight: '6px', whiteSpace: 'nowrap' }}>
+          CHOOSE MISSION:
+        </div>
+        {HARDCORE_SURVIVAL_MISSIONS.slice(0, 5).map((m) => {
           const isSelected = m.id === selectedMissionId;
           return (
             <button
               key={m.id}
               onClick={() => setSelectedMissionId(m.id)}
               style={{
-                padding: '7px 14px',
+                padding: '8px 16px',
                 borderRadius: '8px',
-                border: isSelected ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.08)',
+                border: isSelected ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
                 background: isSelected
-                  ? 'linear-gradient(90deg, rgba(239, 68, 68, 0.35), rgba(15, 23, 42, 0.95))'
+                  ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(15, 23, 42, 0.95))'
                   : 'rgba(255, 255, 255, 0.03)',
                 color: isSelected ? '#ffffff' : '#94a3b8',
                 fontSize: '11px',
@@ -982,7 +882,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
                 alignItems: 'center',
                 gap: '8px',
                 whiteSpace: 'nowrap',
-                boxShadow: isSelected ? '0 0 16px rgba(239, 68, 68, 0.4)' : 'none',
+                boxShadow: isSelected ? '0 0 16px rgba(239, 68, 68, 0.45)' : 'none',
                 transition: 'all 0.2s ease',
               }}
             >
@@ -991,6 +891,31 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             </button>
           );
         })}
+      </div>
+
+      {/* ─── SCENARIO & OBJECTIVE QUICK BAR ─── */}
+      <div
+        style={{
+          background: 'rgba(2, 6, 23, 0.85)',
+          borderBottom: '1px solid rgba(239, 68, 68, 0.2)',
+          padding: '6px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '11px',
+          color: '#cbd5e1',
+          backdropFilter: 'blur(12px)',
+          zIndex: 34,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ color: '#ef4444', fontWeight: 900 }}>SCENARIO:</span>
+          <span style={{ color: '#f8fafc', fontWeight: 600 }}>{activeMission.scenario}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', marginLeft: '16px' }}>
+          <span style={{ color: '#38bdf8', fontWeight: 900 }}>🎯 GOAL:</span>
+          <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{activeMission.targetObjective}</span>
+        </div>
       </div>
 
       {/* ─── 3D VIEWPORT CONTAINER & HUD OVERLAYS ─── */}
@@ -1134,6 +1059,148 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
               </div>
             </div>
           )}
+        </div>
+
+        {/* ── TACTICAL CIRCULAR ORBITAL DEBRIS RADAR (KESSLER & THREAT TRACKER) ── */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            left: '20px',
+            width: '260px',
+            background: 'rgba(10, 15, 26, 0.90)',
+            border: activeMission.hasDebrisField
+              ? '1.5px solid rgba(239, 68, 68, 0.55)'
+              : '1px solid rgba(56, 189, 248, 0.35)',
+            borderRadius: '12px',
+            padding: '10px 12px',
+            backdropFilter: 'blur(16px)',
+            boxShadow: activeMission.hasDebrisField
+              ? '0 8px 30px rgba(239, 68, 68, 0.25)'
+              : '0 8px 30px rgba(0,0,0,0.7)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '6px',
+            zIndex: 25,
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              paddingBottom: '4px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', fontWeight: 900, color: activeMission.hasDebrisField ? '#ef4444' : '#38bdf8' }}>
+              <Compass size={13} />
+              <span>TACTICAL ORBITAL RADAR</span>
+            </div>
+            <span style={{ fontSize: '8.5px', fontFamily: 'var(--font-mono)', color: '#94a3b8' }}>
+              {activeMission.hasDebrisField ? 'DEBRIS: 110' : activeMission.hideTrajectoryLine ? 'OFFLINE' : 'RNG: 500KM'}
+            </span>
+          </div>
+
+          {/* SVG Radar Display */}
+          <div style={{ position: 'relative', width: '150px', height: '150px' }}>
+            <svg width="150" height="150" viewBox="0 0 150 150">
+              <defs>
+                <radialGradient id="radarGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#032541" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#020817" stopOpacity="0.95" />
+                </radialGradient>
+              </defs>
+              {/* Background Circle */}
+              <circle cx="75" cy="75" r="70" fill="url(#radarGrad)" stroke={activeMission.hasDebrisField ? 'rgba(239, 68, 68, 0.4)' : 'rgba(56, 189, 248, 0.3)'} strokeWidth="1.5" />
+
+              {/* Concentric Range Rings */}
+              <circle cx="75" cy="75" r="50" fill="none" stroke="rgba(255, 255, 255, 0.12)" strokeDasharray="3,3" />
+              <circle cx="75" cy="75" r="30" fill="none" stroke="rgba(255, 255, 255, 0.12)" strokeDasharray="3,3" />
+              <circle cx="75" cy="75" r="10" fill="none" stroke="rgba(255, 255, 255, 0.15)" />
+
+              {/* Crosshairs */}
+              <line x1="75" y1="5" x2="75" y2="145" stroke="rgba(255, 255, 255, 0.08)" />
+              <line x1="5" y1="75" x2="145" y2="75" stroke="rgba(255, 255, 255, 0.08)" />
+
+              {/* Rotating Radar Sweep Line */}
+              {!activeMission.hideTrajectoryLine && (
+                <line
+                  x1="75"
+                  y1="75"
+                  x2={75 + 68 * Math.cos(telemetry.timeSec * 2.5)}
+                  y2={75 + 68 * Math.sin(telemetry.timeSec * 2.5)}
+                  stroke={activeMission.hasDebrisField ? 'rgba(239, 68, 68, 0.7)' : 'rgba(56, 189, 248, 0.7)'}
+                  strokeWidth="1.5"
+                />
+              )}
+
+              {/* Geomagnetic Storm Static Lines (Mission 2) */}
+              {activeMission.hideTrajectoryLine && (
+                <>
+                  <line x1="15" y1="35" x2="135" y2="35" stroke="rgba(245, 158, 11, 0.4)" strokeDasharray="4,6" />
+                  <line x1="25" y1="75" x2="125" y2="75" stroke="rgba(245, 158, 11, 0.5)" strokeDasharray="2,5" />
+                  <line x1="15" y1="115" x2="135" y2="115" stroke="rgba(245, 158, 11, 0.4)" strokeDasharray="5,8" />
+                  <text x="75" y="79" fill="#f59e0b" fontSize="8" fontWeight="bold" textAnchor="middle">SENSOR BLINDED</text>
+                </>
+              )}
+
+              {/* Debris Blips (Red Dots on Radar for Kessler Syndrome) */}
+              {activeMission.hasDebrisField &&
+                telemetry.radarDebris.slice(0, 25).map((deb, i) => {
+                  const maxRangeKm = 500;
+                  const rPx = Math.min(68, (deb.distanceKm / maxRangeKm) * 68);
+                  const angle = Math.atan2(deb.z, deb.x);
+                  const cx = 75 + rPx * Math.cos(angle);
+                  const cy = 75 + rPx * Math.sin(angle);
+                  const isThreat = deb.distanceKm < 80;
+
+                  return (
+                    <g key={i}>
+                      <circle cx={cx} cy={cy} r={isThreat ? 3.5 : 2.2} fill="#ef4444" stroke="#ffffff" strokeWidth="0.6" />
+                      {isThreat && (
+                        <circle cx={cx} cy={cy} r="5.5" fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="2,2" />
+                      )}
+                    </g>
+                  );
+                })}
+
+              {/* Center Spacecraft Triangle */}
+              <polygon
+                points="75,69 71,81 79,81"
+                fill="#34d399"
+                stroke="#ffffff"
+                strokeWidth="0.8"
+                transform={`rotate(${telemetry.pitchDeg}, 75, 75)`}
+              />
+            </svg>
+
+            {/* Range Labels */}
+            <div style={{ position: 'absolute', top: '10px', right: '14px', fontSize: '7.5px', color: '#64748b' }}>500km</div>
+            <div style={{ position: 'absolute', top: '27px', right: '28px', fontSize: '7.5px', color: '#64748b' }}>250km</div>
+            <div style={{ position: 'absolute', top: '45px', right: '44px', fontSize: '7.5px', color: '#64748b' }}>100km</div>
+          </div>
+
+          {/* Radar Threat Readout */}
+          <div style={{ fontSize: '9px', textAlign: 'center', width: '100%' }}>
+            {activeMission.hasDebrisField ? (
+              <span style={{ color: telemetry.radarDebris[0]?.distanceKm < 80 ? '#ef4444' : '#fbbf24', fontWeight: 800 }}>
+                {telemetry.radarDebris[0]
+                  ? `NEAREST DEBRIS: ${telemetry.radarDebris[0].distanceKm.toFixed(1)} km`
+                  : 'RADAR SCANNING DEBRIS BELT'}
+              </span>
+            ) : activeMission.hideTrajectoryLine ? (
+              <span style={{ color: '#f59e0b', fontWeight: 800 }}>GEOMAGNETIC CME INTERFERENCE ACTIVE</span>
+            ) : activeMission.id === 'apollo-13' ? (
+              <span style={{ color: '#38bdf8', fontWeight: 800 }}>FREE-RETURN TRAJECTORY CORRIDOR</span>
+            ) : activeMission.id === 'oberth-slingshot' ? (
+              <span style={{ color: '#fb923c', fontWeight: 800 }}>PERIAPSIS ESCAPE THRESHOLD: 52.0 km/s</span>
+            ) : (
+              <span style={{ color: '#34d399', fontWeight: 800 }}>DESCENT RADAR ALTIMETER ONLINE</span>
+            )}
+          </div>
         </div>
 
         {/* ── RIGHT HUD: SPACECRAFT VITALS & SYSTEMS GAUGES ── */}
