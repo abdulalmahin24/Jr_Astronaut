@@ -437,28 +437,28 @@ export const MissionGameModal: React.FC<MissionGameModalProps> = ({
   const getTrailerMap = (m: MissionGameConfig): PlanetMapConfig => {
     const nameLower = (m.missionName + ' ' + m.programName).toLowerCase();
     if (m.gameType === 'lunar_landing' || nameLower.includes('apollo') || nameLower.includes('artemis') || nameLower.includes('surveyor') || nameLower.includes('lunar') || nameLower.includes('moon')) {
-      return NASA_MAPS['map-moon-aitken'];
+      return NASA_MAPS['map-moon-aitken'] || NASA_MAPS['map-earth-lc39b'];
     }
     if (m.gameType === 'rover' || nameLower.includes('mars') || nameLower.includes('viking') || nameLower.includes('perseverance') || nameLower.includes('curiosity') || nameLower.includes('spirit') || nameLower.includes('opportunity') || nameLower.includes('pathfinder')) {
-      return NASA_MAPS['map-mars-jezero'];
+      return NASA_MAPS['map-mars-jezero'] || NASA_MAPS['map-earth-lc39b'];
     }
     if (nameLower.includes('europa')) {
-      return NASA_MAPS['map-europa-ice'];
+      return NASA_MAPS['map-europa-rift'] || NASA_MAPS['map-earth-lc39b'];
     }
     if (nameLower.includes('titan') || nameLower.includes('saturn') || nameLower.includes('cassini')) {
-      return NASA_MAPS['map-titan-methane'];
+      return NASA_MAPS['map-titan-kraken'] || NASA_MAPS['map-earth-lc39b'];
     }
     if (nameLower.includes('psyche') || nameLower.includes('asteroid') || nameLower.includes('dart') || nameLower.includes('dawn') || nameLower.includes('osiris')) {
-      return NASA_MAPS['map-psyche-belt'];
+      return NASA_MAPS['map-psyche-belt'] || NASA_MAPS['map-earth-lc39b'];
     }
     if (m.gameType === 'telescope' || nameLower.includes('jwst') || nameLower.includes('hubble') || nameLower.includes('spitzer') || nameLower.includes('chandra') || nameLower.includes('kepler')) {
-      return NASA_MAPS['map-nebula-deep'];
+      return NASA_MAPS['map-nebula-eagle'] || NASA_MAPS['map-earth-lc39b'];
     }
     if (m.gameType === 'deep_space' || nameLower.includes('voyager') || nameLower.includes('pioneer') || nameLower.includes('horizons')) {
-      return NASA_MAPS['map-nebula-deep'];
+      return NASA_MAPS['map-nebula-eagle'] || NASA_MAPS['map-earth-lc39b'];
     }
     if (m.gameType === 'docking' || nameLower.includes('iss') || nameLower.includes('skylab') || nameLower.includes('station') || nameLower.includes('gemini') || nameLower.includes('rendezvous')) {
-      return NASA_MAPS['map-gateway-orbit'];
+      return NASA_MAPS['map-gateway-nrho'] || NASA_MAPS['map-earth-lc39b'];
     }
     return NASA_MAPS['map-earth-lc39b'];
   };
