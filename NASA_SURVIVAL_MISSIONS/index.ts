@@ -45,7 +45,11 @@ export {
   type HeatShieldParachuteConfig,
 } from './data/fullMissionLifecycle';
 
-// 4. Standalone UI Components
+// 4. Standalone UI Components & 3D Video Simulators
 export { NasaSurvivalPlanViewer } from './components/NasaSurvivalPlanViewer';
 export { HardcoreSurvivalSimulator } from './components/HardcoreSurvivalSimulator';
 export { FullMissionLifecycleModal } from './components/FullMissionLifecycleModal';
+export { ThreeCurriculumVideoStage } from './components/ThreeCurriculumVideoStage';
+export { VideoLessonPlayerView } from './components/VideoLessonPlayerView';
+export { CURRICULUM_NASA_VIDEO_SOURCES } from './data/curriculumNasaVideoSources';
+
