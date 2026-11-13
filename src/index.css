@@ -7042,8 +7042,82 @@ body.mobile-menu-open { overflow: hidden; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   AUTHENTIC PC MONITOR PHOTO FRAME LAYER (EXACT MATCH FOR PHOTO REFERENCE)
+   AUTHENTIC PC MONITOR PHOTO FRAME LAYER (EXACT MATCH FOR USER REFERENCE PHOTO)
+   Embeds the live project directly into the user's monitor photo
    ═══════════════════════════════════════════════════════════════ */
+
+.pc-monitor-photo-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #020305;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+.pc-monitor-photo-aspect-box {
+  position: relative;
+  width: min(100vw, calc(100vh * (1024 / 768)));
+  height: min(100vh, calc(100vw * (768 / 1024)));
+  background-image: url('/assets/artemis_lobby_reference.jpg');
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.95);
+}
+
+.pc-monitor-live-screen-portal {
+  position: absolute;
+  left: 0.49%;
+  top: 11.98%;
+  width: 98.93%;
+  height: 80.21%;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #07090e;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.pc-monitor-photo-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 45%, rgba(0, 210, 255, 0.02) 100%);
+  z-index: 50;
+}
+
+/* Floating Expand Fullscreen Toggle on Monitor Photo View */
+.pc-monitor-floating-toggle {
+  position: absolute;
+  top: 16px;
+  right: 22px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 16, 28, 0.88);
+  border: 1px solid rgba(0, 210, 255, 0.45);
+  border-radius: 20px;
+  padding: 6px 14px;
+  color: #00d2ff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 210, 255, 0.35);
+  transition: all 0.2s ease;
+}
+
+.pc-monitor-floating-toggle:hover {
+  background: rgba(0, 210, 255, 0.22);
+  border-color: #00d2ff;
+  transform: scale(1.05);
+  box-shadow: 0 0 25px rgba(0, 210, 255, 0.65);
+}
 
 .pc-monitor-frame-outer {
   position: relative;

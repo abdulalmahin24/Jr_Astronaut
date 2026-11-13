@@ -213,9 +213,12 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => authService.getCurrentUser());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(() => {
     try {
-      if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('guest')) return false;
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('auth') || params.has('login')) return true;
+      }
     } catch {}
-    return !authService.getCurrentUser();
+    return false;
   });
   const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
   const [isLiveActivityModalOpen, setIsLiveActivityModalOpen] = useState(false);

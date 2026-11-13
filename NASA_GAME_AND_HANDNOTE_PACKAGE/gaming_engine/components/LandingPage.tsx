@@ -184,7 +184,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // Cinematic Astronaut Inspection Mode & Camera Dolly
   const [isInspectionMode, setIsInspectionMode] = useState(false);
-  const [isMonitorPhotoView, setIsMonitorPhotoView] = useState(false);
+  const [isMonitorPhotoView, setIsMonitorPhotoView] = useState(true);
   const [previewAstronautId, setPreviewAstronautId] = useState<string | null>(null);
   const [toastFeedback, setToastFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -1510,43 +1510,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   if (isMonitorPhotoView) {
     return (
-      <div className="pc-monitor-frame-outer">
-        <div className="pc-monitor-bezel">
-          <div className="pc-monitor-screen-inner">
-            <div className="pc-monitor-glare-overlay" />
+      <div className="pc-monitor-photo-container">
+        {/* Floating Expand Fullscreen Toggle */}
+        <button
+          className="pc-monitor-floating-toggle"
+          onClick={() => {
+            setIsMonitorPhotoView(false);
+            soundFx.playClick(900);
+          }}
+          title="Expand Project to Clean Fullscreen View"
+        >
+          <span>⛶</span>
+          <span>EXPAND FULLSCREEN</span>
+        </button>
+
+        {/* 4:3 Aspect Ratio Box fitting the user's reference monitor photo */}
+        <div className="pc-monitor-photo-aspect-box">
+          {/* Live Screen Portal where the project runs */}
+          <div className="pc-monitor-live-screen-portal">
+            <div className="pc-monitor-photo-glare" />
             {lobbyViewport}
-          </div>
-          <div className="pc-monitor-chin">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span
-                style={{
-                  fontSize: '9px',
-                  color: '#64748b',
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 800,
-                  letterSpacing: '0.12em',
-                }}
-              >
-                NASA ARTEMIS MISSION CONTROL · GAMING DISPLAY
-              </span>
-              <button
-                onClick={() => setIsMonitorPhotoView(false)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '4px',
-                  color: '#94a3b8',
-                  fontSize: '9px',
-                  padding: '2px 8px',
-                  cursor: 'pointer',
-                  fontFamily: 'var(--font-mono)',
-                }}
-                title="Exit Monitor View"
-              >
-                EXIT MONITOR VIEW
-              </button>
-            </div>
-            <div className="pc-monitor-power-led" title="Display Power: Active" />
           </div>
         </div>
       </div>
