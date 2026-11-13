@@ -41,6 +41,7 @@ import {
   type MultiplayerRoomState,
 } from '../utils/multiplayerMissionService';
 import { AuthenticCockpitOverlay } from './AuthenticCockpitOverlay';
+import { AstrelixFlightHUD, type AstrelixSASMode } from './AstrelixFlightHUD';
 
 export type VisualToneMode = 'REALISTIC_NASA' | 'CINEMATIC_GRADE' | 'TACTICAL_HUD';
 
@@ -452,6 +453,17 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const [roverAutoNav, setRoverAutoNav] = useState<boolean>(false);
   const roverAutoNavRef = useRef<boolean>(false);
 
+  // Astrelix (Ellipse: Rocket Simulator) Time Warp, SAS Flight Computer & Conic Orbit Map States
+  const [timeWarp, setTimeWarp] = useState<number>(1);
+  const timeWarpRef = useRef<number>(1);
+  timeWarpRef.current = timeWarp;
+
+  const [sasMode, setSasMode] = useState<AstrelixSASMode>('HOLD');
+  const sasModeRef = useRef<AstrelixSASMode>('HOLD');
+  sasModeRef.current = sasMode;
+
+  const [orbitMapOpen, setOrbitMapOpen] = useState<boolean>(false);
+
   const isLunar =
     mission.gameType === 'lunar_landing' ||
     mission.missionName.toLowerCase().includes('apollo') ||
@@ -856,7 +868,28 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         handleTriggerScanner();
       }
       if (k === 'z') {
-        handleToggleFlightAssist();
+        simStateRef.current.throttle = 1.0;
+        soundFx.playReactorStart();
+      }
+      if (k === 'x') {
+        simStateRef.current.throttle = 0.0;
+        soundFx.playClick(600);
+      }
+      if (k === 'm') {
+        setOrbitMapOpen((prev) => !prev);
+        soundFx.playClick(920);
+      }
+      if (k === ',') {
+        const steps = [1, 2, 5, 10];
+        const idx = Math.max(0, steps.indexOf(timeWarpRef.current) - 1);
+        setTimeWarp(steps[idx]);
+        soundFx.playClick(700);
+      }
+      if (k === '.') {
+        const steps = [1, 2, 5, 10];
+        const idx = Math.min(steps.length - 1, steps.indexOf(timeWarpRef.current) + 1);
+        setTimeWarp(steps[idx]);
+        soundFx.playClick(950);
       }
       if (k === '1') {
         handleSelectAgeTier('cadet');
@@ -2833,7 +2866,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       loxVentMeshRef.current = loxVent;
       playerVehicle.add(loxVent);
 
-      // Rocket Exhaust Plume with Mach Shock Diamonds
+      // Astrelix (Ellipse: Rocket Simulator) Multi-Layered Supersonic Plume with Mach Shock Diamonds & Vacuum Bell
       machDiamondGroup = new THREE.Group();
       machDiamondGroupRef.current = machDiamondGroup;
       machDiamondGroup.position.y = -8;
@@ -2852,11 +2885,40 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       const coreMat = new THREE.MeshBasicMaterial({
         color: 0x38bdf8,
         transparent: true,
-        opacity: 0.75,
+        opacity: 0.85,
         blending: THREE.AdditiveBlending,
       });
       const coreMesh = new THREE.Mesh(coreGeo, coreMat);
       machDiamondGroup.add(coreMesh);
+
+      // Outer Vacuum Underexpansion Bell Plume (Astrelix signature expanding violet-blue vacuum bell)
+      const vacBellGeo = new THREE.ConeGeometry(5.6, 28, 32, 1, true);
+      const vacBellMat = new THREE.MeshBasicMaterial({
+        color: 0x60a5fa,
+        transparent: true,
+        opacity: 0.36,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      });
+      const vacBellMesh = new THREE.Mesh(vacBellGeo, vacBellMat);
+      vacBellMesh.position.y = -2;
+      machDiamondGroup.add(vacBellMesh);
+
+      // 7 Periodic Incandescent Supersonic Mach Shock Diamonds inside exhaust jet
+      for (let md = 0; md < 7; md++) {
+        const mdRadius = Math.max(0.28, 1.15 - md * 0.12);
+        const mdGeo = new THREE.OctahedronGeometry(mdRadius, 1);
+        const mdMat = new THREE.MeshBasicMaterial({
+          color: md % 2 === 0 ? 0xffffff : 0x7dd3fc,
+          transparent: true,
+          opacity: 0.92 - md * 0.09,
+          blending: THREE.AdditiveBlending,
+        });
+        const mdMesh = new THREE.Mesh(mdGeo, mdMat);
+        mdMesh.scale.set(1.0, 0.55, 1.0);
+        mdMesh.position.y = 6.5 - md * 2.5;
+        machDiamondGroup.add(mdMesh);
+      }
 
       machDiamondGroup.visible = false;
       playerVehicle.add(machDiamondGroup);
@@ -4734,6 +4796,61 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     scanWaveMeshRef.current = scanWaveMesh;
     scene.add(scanWaveMesh);
 
+    // Ensure non-launch spaceflight vehicles (lunar_landing, docking, deep_space) also have an Astrelix Vacuum Plume & Shock Diamonds
+    if (!machDiamondGroup && (mission.gameType === 'lunar_landing' || mission.gameType === 'docking' || mission.gameType === 'deep_space')) {
+      machDiamondGroup = new THREE.Group();
+      machDiamondGroupRef.current = machDiamondGroup;
+      if (mission.gameType === 'lunar_landing') {
+        machDiamondGroup.position.set(0, -1.6, 0);
+      } else if (mission.gameType === 'docking') {
+        machDiamondGroup.position.set(0, 0, 5.2);
+        machDiamondGroup.rotation.x = -Math.PI / 2;
+      } else {
+        machDiamondGroup.position.set(0, 0, 3.8);
+        machDiamondGroup.rotation.x = -Math.PI / 2;
+      }
+
+      const vacCone = new THREE.Mesh(
+        new THREE.ConeGeometry(1.9, 9.5, 24, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0.42,
+          side: THREE.DoubleSide,
+          blending: THREE.AdditiveBlending,
+        })
+      );
+      machDiamondGroup.add(vacCone);
+
+      const innerCore = new THREE.Mesh(
+        new THREE.ConeGeometry(0.75, 5.5, 20),
+        new THREE.MeshBasicMaterial({
+          color: 0xffedd5,
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending,
+        })
+      );
+      machDiamondGroup.add(innerCore);
+
+      for (let md = 0; md < 4; md++) {
+        const mdMesh = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.45 - md * 0.08, 1),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9 - md * 0.15,
+            blending: THREE.AdditiveBlending,
+          })
+        );
+        mdMesh.scale.set(1, 0.5, 1);
+        mdMesh.position.y = 1.6 - md * 1.1;
+        machDiamondGroup.add(mdMesh);
+      }
+      machDiamondGroup.visible = false;
+      playerVehicle.add(machDiamondGroup);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // 6. ANIMATION & PHYSICS FLIGHT LOOP
     // ─────────────────────────────────────────────────────────────
@@ -4744,10 +4861,73 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
     const animate = (time: number) => {
       animationFrameId = requestAnimationFrame(animate);
-      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      const rawDt = Math.min((time - lastTime) / 1000, 0.1);
+      const dt = rawDt * timeWarpRef.current;
       lastTime = time;
 
       const state = simStateRef.current;
+      const activeSas = sasModeRef.current;
+
+      // Astrelix SAS & Autopilot Computer Guidance across all 76 Missions
+      if (!state.isFinished) {
+        if (activeSas === 'GRAV_TURN' || activeSas === 'PROGRADE') {
+          if (mission.gameType === 'launch' && state.altitudeKm > 1.2) {
+            const targetPitch = Math.max(15, 90 - Math.min(75, (state.altitudeKm / 115) * 75));
+            state.pitchDeg = THREE.MathUtils.lerp(state.pitchDeg, targetPitch, dt * 1.8);
+          }
+        } else if (activeSas === 'RETROGRADE') {
+          if (mission.gameType === 'launch') {
+            state.pitchDeg = THREE.MathUtils.lerp(state.pitchDeg, 90, dt * 2.0);
+          }
+        } else if (activeSas === 'AUTOPILOT') {
+          if (mission.gameType === 'launch') {
+            state.throttle = 1.0;
+            const targetPitch = state.altitudeKm < 1.5 ? 90 : Math.max(18, 90 - Math.min(72, (state.altitudeKm / 110) * 72));
+            state.pitchDeg = THREE.MathUtils.lerp(state.pitchDeg, targetPitch, dt * 2.2);
+            if (hasSideBoosters && !state.boosterSeparated && state.altitudeKm >= 36) {
+              handleBoosterSeparation();
+            }
+            if (!state.fairingSeparated && state.altitudeKm >= 75) {
+              handleFairingSeparation();
+            }
+            if (state.stage === 1 && state.altitudeKm >= 122) {
+              handleStage1Separation();
+            }
+            if (isLunarMission && !state.tliActive && state.altitudeKm >= 142) {
+              handleInitiateTli();
+            }
+          } else if (mission.gameType === 'lunar_landing') {
+            state.agcAuto = true;
+            playerVehicle.position.x = THREE.MathUtils.lerp(playerVehicle.position.x, 0, dt * 1.5);
+            playerVehicle.position.z = THREE.MathUtils.lerp(playerVehicle.position.z, 0, dt * 1.5);
+          } else if (mission.gameType === 'rover') {
+            if (state.roverLandingPhase !== 'landed') {
+              handleSkipToDrive();
+            }
+            roverAutoNavRef.current = true;
+          } else if (mission.gameType === 'docking') {
+            playerVehicle.position.x = THREE.MathUtils.lerp(playerVehicle.position.x, 0, dt * 2.5);
+            state.keys['w'] = state.distanceM > 9.5;
+            if (state.distanceM <= 10.5) {
+              handleSimAction('dock_latch');
+            }
+          } else if (mission.gameType === 'deep_space') {
+            if (state.distanceM > 18) {
+              if (playerVehicleRef.current && targetObjectRef.current) {
+                playerVehicleRef.current.position.z -= 22 * dt;
+                state.distanceM = Math.max(0, playerVehicleRef.current.position.z - (targetObjectRef.current.position.z + 10));
+              }
+            } else {
+              handleSimAction('dsn_transmit');
+            }
+          } else if (mission.gameType === 'telescope') {
+            state.telescopeFocus = Math.min(98, state.telescopeFocus + dt * 28);
+            if (state.telescopeFocus >= 92) {
+              handleSimAction('telescope_capture');
+            }
+          }
+        }
+      }
 
       // Pulse guidance corridor gates
       if (guidanceCorridorRef.current && guidanceCorridorRef.current.visible) {
@@ -6297,6 +6477,85 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
           onAbort={handleAbort}
         />
       )}
+
+      {/* ─── ASTRELIX (ELLIPSE: ROCKET SIMULATOR) VISUAL & CONTROL HUD SUITE ─── */}
+      <AstrelixFlightHUD
+        mission={mission}
+        telemetry={{
+          altitudeKm: telemetry.altitudeKm,
+          velocityKms: telemetry.velocityKms,
+          throttle: telemetry.throttle,
+          propellantPct: telemetry.propellantPct,
+          pitchDeg: telemetry.pitchDeg,
+          rollDeg: telemetry.rollDeg,
+          stage: telemetry.stage,
+          gForce: telemetry.gForce,
+          apoapsisKm: telemetry.apoapsisKm,
+          periapsisKm: telemetry.periapsisKm,
+          deltaVKms: telemetry.deltaVKms,
+          dynamicPressureQ: telemetry.dynamicPressureQ,
+          vertSpeedMs: telemetry.vertSpeedMs,
+          horizSpeedKms: telemetry.horizSpeedKms,
+          distanceM: telemetry.distanceM,
+          sampleCount: telemetry.sampleCount,
+          telescopeFocus: telemetry.telescopeFocus,
+        }}
+        timeWarp={timeWarp}
+        onChangeTimeWarp={(w) => setTimeWarp(w)}
+        sasMode={sasMode}
+        onChangeSASMode={(m) => {
+          setSasMode(m);
+          if (m === 'AUTOPILOT') {
+            simStateRef.current.statusText = '🤖 ASTRELIX AI AUTOPILOT ENGAGED · EXECUTING OPTIMAL FLIGHT PROFILE';
+            simStateRef.current.statusColor = '#22c55e';
+          }
+        }}
+        orbitMapOpen={orbitMapOpen}
+        onToggleOrbitMap={() => setOrbitMapOpen((prev) => !prev)}
+        boosterSeparated={boosterSeparated}
+        fairingSeparated={fairingSeparated}
+        hasSideBoosters={hasSideBoosters}
+        onSetThrottle={(val) => {
+          audioSynthRef.current.init();
+          simStateRef.current.throttle = val;
+          if (mission.gameType === 'launch' && simStateRef.current.altitudeKm < 0.05 && val > 0.05) {
+            (simStateRef.current as any).realVy = 12.0 * val;
+          } else if (mission.gameType === 'docking' || mission.gameType === 'deep_space') {
+            simStateRef.current.keys['w'] = val > 0.2;
+          } else if (mission.gameType === 'rover') {
+            if (simStateRef.current.roverLandingPhase !== 'landed') handleSkipToDrive();
+            simStateRef.current.keys['w'] = val > 0.2;
+          } else if (mission.gameType === 'telescope') {
+            simStateRef.current.telescopeFocus = Math.round(val * 100);
+          }
+        }}
+        onStageAction={handleTouchStaging}
+        onSteerInput={(pitchDelta, rollDelta) => {
+          const state = simStateRef.current;
+          state.pitchDeg = Math.max(10, Math.min(90, state.pitchDeg + pitchDelta * 0.25));
+          state.rollDeg = Math.max(-25, Math.min(25, state.rollDeg + rollDelta * 0.25));
+          if (playerVehicleRef.current && (mission.gameType === 'lunar_landing' || mission.gameType === 'docking' || mission.gameType === 'deep_space')) {
+            playerVehicleRef.current.position.x += rollDelta * 0.15;
+          }
+        }}
+        onWarpToApoapsis={() => {
+          const state = simStateRef.current;
+          state.altitudeKm = Math.max(state.altitudeKm, Math.min(185, state.apoapsisKm));
+          state.statusText = `⏩ WARPED TO APOAPSIS (${state.altitudeKm.toFixed(1)} KM) · READY FOR CIRCULARIZATION BURN`;
+          state.statusColor = '#38bdf8';
+          setOrbitMapOpen(false);
+        }}
+        onCircularizeOrbit={() => {
+          const state = simStateRef.current;
+          state.altitudeKm = Math.max(185, state.altitudeKm);
+          state.velocityKms = 7.82;
+          state.apoapsisKm = 185;
+          state.periapsisKm = 185;
+          state.statusText = '🔥 ORBIT CIRCULARIZED (185 x 185 KM LEO) · ECCENTRICITY 0.000';
+          state.statusColor = '#22c55e';
+          setOrbitMapOpen(false);
+        }}
+      />
 
       {/* ─── TOP COCKPIT AVIONICS STATUS BAR ────────────────────── */}
       <div
