@@ -181,15 +181,17 @@ export const App: React.FC = () => {
     try {
       if (typeof window !== 'undefined') {
         const p = new URLSearchParams(window.location.search);
-        return p.has('video') || p.has('learn') || p.has('curriculum');
+        return p.has('video') || p.has('learn') || p.has('curriculum') || p.has('briefing') || p.has('debrief');
       }
     } catch {}
     return false;
   });
   const [learningHubInitialTab, setLearningHubInitialTab] = useState<'NOTEBOOK' | 'AUDIO' | 'VIDEO' | 'COMIC' | 'BRIEFINGS' | 'CATALOG'>(() => {
     try {
-      if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('video')) {
-        return 'VIDEO';
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search);
+        if (p.has('video')) return 'VIDEO';
+        if (p.has('briefing') || p.has('debrief')) return 'BRIEFINGS';
       }
     } catch {}
     return 'NOTEBOOK';

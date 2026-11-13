@@ -9,6 +9,7 @@ import { speechEngine } from '../utils/speechEngine';
 import { HandwrittenNotebookView } from './HandwrittenNotebookView';
 import { AudioLessonPlayerView } from './AudioLessonPlayerView';
 import { VideoLessonPlayerView } from './VideoLessonPlayerView';
+import { MissionBriefingDebriefingView } from './MissionBriefingDebriefingView';
 
 interface LearningHubModalProps {
   isOpen: boolean;
@@ -118,7 +119,7 @@ export const LearningHubModal: React.FC<LearningHubModalProps> = ({
     { id: 'AUDIO',     label: 'Audio Lessons',        icon: '🎙️' },
     { id: 'VIDEO',     label: 'Video Modules',        icon: '🎬' },
     { id: 'COMIC',     label: 'Comic Reader',         icon: '📖' },
-    { id: 'BRIEFINGS', label: 'Outpost Briefs',       icon: '🛰️' },
+    { id: 'BRIEFINGS', label: 'Briefing & Debrief',   icon: '📋' },
     { id: 'CATALOG',   label: 'NASA Missions (76)',   icon: '🚀' },
   ];
 
@@ -329,39 +330,12 @@ export const LearningHubModal: React.FC<LearningHubModalProps> = ({
             <VideoLessonPlayerView onLaunchMission={onLaunchMission} />
           )}
 
-          {/* ── MISSION BRIEFINGS ────────────────────────────────────────── */}
+          {/* ── MISSION BRIEFINGS & DEBRIEFINGS ───────────────────────────── */}
           {activeTab === 'BRIEFINGS' && (
-            <div>
-              <div style={{ marginBottom:'16px', fontSize:'0.8rem', color:'#64748b' }}>
-                Audio briefings for all {NASA_MISSIONS.length} NASA mission destinations.
-              </div>
-              <div className="hub-briefing-grid">
-                {NASA_MISSIONS.map((mission) => {
-                  const isActive = mission.id === activeMissionId;
-                  const isPlaying = speakingMissionId === mission.id;
-                  return (
-                    <div key={mission.id} className={`hub-briefing-card ${isActive ? 'hub-briefing-active' : ''}`}>
-                      <div className="hub-briefing-header">
-                        <span className="hub-briefing-patch">{mission.missionPatchEmoji}</span>
-                        <div>
-                          <div className="hub-briefing-name">{mission.name}</div>
-                          <div className="hub-briefing-dest">{mission.destination} · {mission.launchYear}</div>
-                        </div>
-                      </div>
-                      <p className="hub-briefing-summary">{mission.scientificProblem.summary}</p>
-                      <button
-                        className="hub-briefing-play-btn"
-                        onClick={() => handlePlayBriefing(mission.id, mission.scientificProblem.briefingAudio)}
-                      >
-                        {isPlaying
-                          ? <><VolumeX size={12} /> Stop Briefing</>
-                          : <><Radio size={12} /> Play Commander Briefing</>}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <MissionBriefingDebriefingView
+              initialMissionId={activeMissionId}
+              onLaunchMission={onLaunchMission}
+            />
           )}
 
           {/* ── NASA MISSIONS CATALOG (76 MISSIONS) ────────────────────────── */}

@@ -51,5 +51,6 @@ export { HardcoreSurvivalSimulator } from './components/HardcoreSurvivalSimulato
 export { FullMissionLifecycleModal } from './components/FullMissionLifecycleModal';
 export { ThreeCurriculumVideoStage } from './components/ThreeCurriculumVideoStage';
 export { VideoLessonPlayerView } from './components/VideoLessonPlayerView';
+export { MissionBriefingDebriefingView } from './components/MissionBriefingDebriefingView';
 export { CURRICULUM_NASA_VIDEO_SOURCES } from './data/curriculumNasaVideoSources';
 
