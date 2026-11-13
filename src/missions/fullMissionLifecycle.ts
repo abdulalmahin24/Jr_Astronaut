@@ -4,7 +4,15 @@
 // Grounded in Real Rocket Science, Tsiolkovsky Equation, NASA 45th Space Wing Weather Rules
 // ============================================================================
 
-export type ExpeditionDestination = 'SUBORBITAL' | 'ORBITAL' | 'MOON' | 'MARS';
+export type ExpeditionDestination =
+  | 'MOON_APOLLO'   // Moon 1: Apollo 11 Tranquility Base
+  | 'MOON_ARTEMIS'  // Moon 2: Artemis South Pole & Shackleton Ice
+  | 'MARS_JEZERO'   // Mars 1: Jezero Crater Ancient River Delta
+  | 'MARS_VALLES'   // Mars 2: Valles Marineris Canyon & Global Dust Storm
+  | 'MOON'          // Alias for MOON_APOLLO
+  | 'SUBORBITAL'    // Compatibility alias -> MOON_ARTEMIS
+  | 'MARS'          // Alias for MARS_JEZERO
+  | 'ORBITAL';      // Compatibility alias -> MARS_VALLES
 
 export type LifecycleStage =
   | 'VAB_BUILD'         // 1. Vehicle Assembly: Select stages, engines & equipment
@@ -430,57 +438,110 @@ export interface DestinationProfile {
 }
 
 export const DESTINATION_PROFILES: Record<ExpeditionDestination, DestinationProfile> = {
-  SUBORBITAL: {
-    id: 'SUBORBITAL',
-    name: 'Mission 1: Sub-Orbital Pioneer (Kármán 100 km Boundary)',
-    badge: '🚀 100 KM KÁRMÁN FLIGHT',
-    distanceKm: '105 km',
-    transferTimeDays: '25 Minutes',
-    surfaceGravityMs2: 9.81,
-    landingSite: 'Atlantic Ocean Recovery Zone (28.4°N, 78.2°W)',
-    landingCoordinates: '28.4° North, 78.2° West',
-    atmospherePressure: '101.3 kPa -> Microgravity',
-    surfaceTerrainDescription: 'Open ocean retrieval corridor, rapid recovery ship response, inflatable flotation collars deployed.',
-    primaryScienceDirective: 'Execute manual pitch gravity turn, cross the 100 km Kármán line into microgravity space, stage booster, re-orient heat shield, deploy parachutes at 4,000 m, and execute ocean splashdown.',
+  MOON_APOLLO: {
+    id: 'MOON_APOLLO',
+    name: 'Moon 1: Apollo 11 Tranquility Base (Historic 1969 Expedition)',
+    badge: '🌕 MOON 1: APOLLO 11',
+    distanceKm: '384,400 km',
+    transferTimeDays: '3.5 Days',
+    surfaceGravityMs2: 1.62,
+    landingSite: 'Mare Tranquillitatis (0.67°N, 23.47°E)',
+    landingCoordinates: '0.67° North, 23.47° East',
+    atmospherePressure: '0 Pa (Hard Vacuum)',
+    surfaceTerrainDescription: 'Flat dark basalt plain, shallow moonquake acoustic resonance, historic Apollo 11 LM Eagle touchdown zone.',
+    primaryScienceDirective: 'Saturn V liftoff, Trans-Lunar Injection burn, manual LM Eagle powered descent touchdown (< 2.5 m/s), Neil Armstrong Moonwalk EVA (WASD), plant American Flag, collect Apollo 11 contingency basalt sample, deploy ALSEP S11 seismic station, and lunar ascent liftoff.',
   },
-  ORBITAL: {
-    id: 'ORBITAL',
-    name: 'Mission 2: Orbital Pioneer (Low Earth Orbit 200 km Insertion)',
-    badge: '🛰️ 200 KM LEO ORBITAL INSERTION',
-    distanceKm: '200 km',
-    transferTimeDays: '90 Minutes / Orbit',
-    surfaceGravityMs2: 9.81,
-    landingSite: 'Pacific Ocean Splashdown Zone (31.5°N, 121.2°W)',
-    landingCoordinates: '31.5° North, 121.2° West',
-    atmospherePressure: '101.3 kPa -> Vacuum',
-    surfaceTerrainDescription: 'Deep ocean recovery fleet with US Navy retrieval helicopter, carrier recovery taskforce.',
-    primaryScienceDirective: 'Multi-stage manual gravity turn, achieve 7.8 km/s orbital velocity, circularize 200 km LEO orbit, perform de-orbit retrograde burn, survive atmospheric entry, and parachute splashdown.',
-  },
-  MOON: {
-    id: 'MOON',
-    name: 'Mission 3: Lunar Voyager (Full Moon Expedition — YouTube Reference)',
-    badge: '🌕 LUNAR VOYAGER (ELLIPSE REFERENCE)',
+  MOON_ARTEMIS: {
+    id: 'MOON_ARTEMIS',
+    name: 'Moon 2: Artemis South Pole & Shackleton Ice (Malapert Ridge)',
+    badge: '🌕 MOON 2: ARTEMIS SOUTH POLE',
     distanceKm: '384,400 km',
     transferTimeDays: '3.5 Days',
     surfaceGravityMs2: 1.62,
     landingSite: 'Shackleton Crater Connecting Ridge (-89.9°S, 0.0°E)',
     landingCoordinates: '89.9° South, Permanently Shadowed Region',
     atmospherePressure: '0 Pa (Hard Vacuum)',
-    surfaceTerrainDescription: 'Ultra-fine abrasive regolith, deep titanium-rich craters, permanent solar towers, and cryogenic water-ice deposits inside shadows.',
-    primaryScienceDirective: 'Modeled after Ellipse: Lunar Voyager Mission 3 (YouTube: qXYpltxSTK0): Earth liftoff, TLI burn, manual lunar powered descent touchdown (< 3 m/s), plant flag & regolith drill EVA, lunar surface liftoff, trans-Earth return burn, hypersonic atmospheric entry, and parachute ocean splashdown.',
+    surfaceTerrainDescription: 'Deep cryogenic shadowed craters (-230°C), continuous low-angle polar sunlight peaks, rich water-ice regolith deposits.',
+    primaryScienceDirective: 'SLS Heavy launch, polar lunar orbit injection, precision touchdown on Malapert Mountain ridge, drill cryogenic water-ice core in shadowed crater rim, erect 20-meter vertical solar power mast, and evacuate to regolith vault ahead of Class X7.2 solar storm proton flux.',
   },
-  MARS: {
-    id: 'MARS',
-    name: 'Mission 4: Mars Interplanetary Voyager (Earth Launch ➔ Mars EDL ➔ Return)',
-    badge: '🔴 RED PLANET INTERPLANETARY EXPEDITION',
+  MARS_JEZERO: {
+    id: 'MARS_JEZERO',
+    name: 'Mars 1: Jezero Crater Ancient River Delta (MOXIE & Astrobiology)',
+    badge: '🔴 MARS 1: JEZERO CRATER',
     distanceKm: '225,000,000 km',
     transferTimeDays: '6 to 7 Months',
     surfaceGravityMs2: 3.72,
     landingSite: 'Jezero Crater Ancient River Delta (18.38°N, 77.58°E)',
     landingCoordinates: '18.38° North, 77.58° East',
-    atmospherePressure: '610 Pa (~0.6% Earth Atmosphere - 95% CO2)',
-    surfaceTerrainDescription: 'Layered clay mudstones, basalt boulder fields, active dust devils, rusty perchlorate-rich dust dunes, and ancient riverbeds.',
-    primaryScienceDirective: 'Execute Earth multi-stage launch, Trans-Mars Injection burn, supersonic Mars atmospheric entry & powered touchdown, MOXIE O2 extraction and rover drill, surface liftoff, interplanetary return burn, and Pacific recovery.',
+    atmospherePressure: '610 Pa (~0.6% Earth - 95% CO2)',
+    surfaceTerrainDescription: 'Layered clay mudstones, ancient sedimentary delta riverbed, active swirling dust devils, and rusty perchlorate-rich dust dunes.',
+    primaryScienceDirective: 'Trans-Mars Injection cruise, hypersonic atmospheric entry in thin CO2 air, supersonic parachute & sky-crane powered descent, activate MOXIE solid oxide electrolyzer (CO2 -> O2), drill ancient delta mudstones for biosignatures, and deploy REMS weather station.',
+  },
+  MARS_VALLES: {
+    id: 'MARS_VALLES',
+    name: 'Mars 2: Valles Marineris Canyon & Global Dust Storm (Coprates Chasma)',
+    badge: '🔴 MARS 2: VALLES MARINERIS',
+    distanceKm: '225,000,000 km',
+    transferTimeDays: '6 to 7 Months',
+    surfaceGravityMs2: 3.72,
+    landingSite: 'Coprates Chasma Canyon Floor (-14.5°S, 295.0°E, Elev: -6,800m)',
+    landingCoordinates: '14.5° South, 295.0° East (Depth: -6.8 km)',
+    atmospherePressure: '1,150 Pa (Dense Canyon Microclimate)',
+    surfaceTerrainDescription: 'Towering 7-kilometer high vertical canyon rock walls, blinding planet-encircling sandstorm (tau = 3.5), howling supersonic wind gusts.',
+    primaryScienceDirective: 'Execute steep canyon aerocapture through 7,000m sheer bluffs using FLIR terrain sonar in blinding dust, land on canyon floor, activate emergency 2.5 kW RTG nuclear power generator, purge clogged air intakes, and fire Mars Ascent Vehicle vertically out of canyon gorge.',
+  },
+  // Compatibility Aliases
+  MOON: {
+    id: 'MOON',
+    name: 'Moon 1: Apollo 11 Tranquility Base (Historic 1969 Expedition)',
+    badge: '🌕 MOON 1: APOLLO 11',
+    distanceKm: '384,400 km',
+    transferTimeDays: '3.5 Days',
+    surfaceGravityMs2: 1.62,
+    landingSite: 'Mare Tranquillitatis (0.67°N, 23.47°E)',
+    landingCoordinates: '0.67° North, 23.47° East',
+    atmospherePressure: '0 Pa (Hard Vacuum)',
+    surfaceTerrainDescription: 'Flat dark basalt plain, shallow moonquake acoustic resonance, historic Apollo 11 LM Eagle touchdown zone.',
+    primaryScienceDirective: 'Saturn V liftoff, Trans-Lunar Injection burn, manual LM Eagle powered descent touchdown (< 2.5 m/s), Neil Armstrong Moonwalk EVA (WASD), plant American Flag, collect Apollo 11 contingency basalt sample, deploy ALSEP S11 seismic station, and lunar ascent liftoff.',
+  },
+  SUBORBITAL: {
+    id: 'SUBORBITAL',
+    name: 'Moon 2: Artemis South Pole & Shackleton Ice (Malapert Ridge)',
+    badge: '🌕 MOON 2: ARTEMIS SOUTH POLE',
+    distanceKm: '384,400 km',
+    transferTimeDays: '3.5 Days',
+    surfaceGravityMs2: 1.62,
+    landingSite: 'Shackleton Crater Connecting Ridge (-89.9°S, 0.0°E)',
+    landingCoordinates: '89.9° South, Permanently Shadowed Region',
+    atmospherePressure: '0 Pa (Hard Vacuum)',
+    surfaceTerrainDescription: 'Deep cryogenic shadowed craters (-230°C), continuous low-angle polar sunlight peaks, rich water-ice regolith deposits.',
+    primaryScienceDirective: 'SLS Heavy launch, polar lunar orbit injection, precision touchdown on Malapert Mountain ridge, drill cryogenic water-ice core in shadowed crater rim, erect 20-meter vertical solar power mast, and evacuate to regolith vault ahead of Class X7.2 solar storm proton flux.',
+  },
+  MARS: {
+    id: 'MARS',
+    name: 'Mars 1: Jezero Crater Ancient River Delta (MOXIE & Astrobiology)',
+    badge: '🔴 MARS 1: JEZERO CRATER',
+    distanceKm: '225,000,000 km',
+    transferTimeDays: '6 to 7 Months',
+    surfaceGravityMs2: 3.72,
+    landingSite: 'Jezero Crater Ancient River Delta (18.38°N, 77.58°E)',
+    landingCoordinates: '18.38° North, 77.58° East',
+    atmospherePressure: '610 Pa (~0.6% Earth - 95% CO2)',
+    surfaceTerrainDescription: 'Layered clay mudstones, ancient sedimentary delta riverbed, active swirling dust devils, and rusty perchlorate-rich dust dunes.',
+    primaryScienceDirective: 'Trans-Mars Injection cruise, hypersonic atmospheric entry in thin CO2 air, supersonic parachute & sky-crane powered descent, activate MOXIE solid oxide electrolyzer (CO2 -> O2), drill ancient delta mudstones for biosignatures, and deploy REMS weather station.',
+  },
+  ORBITAL: {
+    id: 'ORBITAL',
+    name: 'Mars 2: Valles Marineris Canyon & Global Dust Storm (Coprates Chasma)',
+    badge: '🔴 MARS 2: VALLES MARINERIS',
+    distanceKm: '225,000,000 km',
+    transferTimeDays: '6 to 7 Months',
+    surfaceGravityMs2: 3.72,
+    landingSite: 'Coprates Chasma Canyon Floor (-14.5°S, 295.0°E, Elev: -6,800m)',
+    landingCoordinates: '14.5° South, 295.0° East (Depth: -6.8 km)',
+    atmospherePressure: '1,150 Pa (Dense Canyon Microclimate)',
+    surfaceTerrainDescription: 'Towering 7-kilometer high vertical canyon rock walls, blinding planet-encircling sandstorm (tau = 3.5), howling supersonic wind gusts.',
+    primaryScienceDirective: 'Execute steep canyon aerocapture through 7,000m sheer bluffs using FLIR terrain sonar in blinding dust, land on canyon floor, activate emergency 2.5 kW RTG nuclear power generator, purge clogged air intakes, and fire Mars Ascent Vehicle vertically out of canyon gorge.',
   },
 };
 

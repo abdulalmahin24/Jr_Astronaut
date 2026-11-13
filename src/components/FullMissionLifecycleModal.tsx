@@ -548,9 +548,56 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   const [activeEvaPrompt, setActiveEvaPrompt] = useState<string | null>(null);
   const [obstacleAlert, setObstacleAlert] = useState<string | null>(null);
 
-  // Dynamic Mission Task & Environment Profiles for 4 Distinct Destinations
+  // Dynamic Mission Task & Environment Profiles for 4 Distinct Destinations (2 Moon + 2 Mars)
   const taskInfo = useMemo(() => {
     switch (destination) {
+      case 'MOON_ARTEMIS':
+      case 'SUBORBITAL':
+        return {
+          suitTitle: 'ARTEMIS xEMU SUIT VITALS (NOMINAL)',
+          location: 'SHACKLETON CONNECTING RIDGE (-89.9°S, 0.0°E)',
+          gravity: '1.62 m/s² (1/6g)',
+          atmo: '0 Pa (HARD VACUUM)',
+          temp: '-230°C (PERMANENT SHADOW)',
+          subtitle: '🌕 SHACKLETON CRATER RIDGE · 1/6g · CRYO WATER-ICE & SOLAR STORM',
+          task1: { title: 'Drill Cryo Water-Ice Core', icon: '⛏️', desc: 'Sample 94.6% pure H2O ice in shadow (6.5m, -3.0m)', doneLabel: 'HARVESTED ✓' },
+          task2: { title: 'Erect 20m Solar Power Mast', icon: '🗼', desc: 'Deploy continuous polar sunlight array (-7.0m, 8.0m)', doneLabel: 'ONLINE (48 kW) ✓' },
+          task3: { title: 'Evacuate to Regolith Vault', icon: '🚨', desc: 'Class X7.2 solar storm proton shelter (10.0m, 6.0m)', doneLabel: 'SECURED ✓' },
+          vehicle: { title: 'Board Starship HLS Lander', icon: '🚀', desc: 'Prepare for polar ascent to Orion spacecraft', readyLabel: 'READY [E]' },
+          prompt1: '⛏️ NEAR SHADOW CRATER · PRESS [E] OR CLICK [DRILL CRYO WATER-ICE]',
+          prompt2: '🗼 NEAR PEAK · PRESS [E] OR CLICK [ERECT SOLAR TOWER]',
+          prompt3: '🚨 NEAR STORM VAULT · PRESS [E] OR CLICK [SEAL BUNKER HATCH]',
+          promptBoard: '🚀 NEAR HLS LADDER · PRESS [E] OR CLICK [BOARD HLS & LAUNCH]',
+          callout1: '⛏️ ULTRASONIC CRYO DRILL SUCCESSFUL! 94.6% PURE WATER-ICE EXTRACTED!',
+          callout2: '🗼 20-METER SOLAR TOWER ACTIVE! GENERATING 48 kW CONTINUOUS POWER!',
+          callout3: '🚨 STORM VAULT SEALED! 2.0M REGOLITH ATTENUATES 98.6% OF SOLAR PROTON FLUX!',
+          calloutBoard: '🚀 ARTEMIS ASCENT LIFTOFF! ASCENDING FROM MALAPERT RIDGE TO RENDEZVOUS WITH ORION!',
+        };
+
+      case 'MARS_VALLES':
+      case 'ORBITAL':
+        return {
+          suitTitle: 'HEAVY THERMAL SURVIVAL SUIT (NOMINAL)',
+          location: 'COPRATES CHASMA CANYON FLOOR (-14.5°S, -6.8 KM)',
+          gravity: '3.72 m/s² (3/8g)',
+          atmo: '1,150 Pa (CANYON DUST STORM)',
+          temp: '-78°C',
+          subtitle: '🔴 VALLES MARINERIS CANYON · -6.8 KM DEPTH · GLOBAL DUST STORM',
+          task1: { title: 'Start 2.5 kW RTG Nuclear Unit', icon: '☢️', desc: 'Pu-238 thermal power for choked base (6.5m, -3.0m)', doneLabel: 'ONLINE (2.5 kW) ✓' },
+          task2: { title: 'Purge Clogged Air Intakes', icon: '🌪️', desc: 'Blow out perchlorate dust cakes (-7.0m, 8.0m)', doneLabel: 'PURGED ✓' },
+          task3: { title: 'Ignite MAV Canyon Escape', icon: '🚀', desc: 'Prepare hypergolic punch out of 7km gorge (10.0m, 6.0m)', doneLabel: 'HOT READY ✓' },
+          vehicle: { title: 'Board Mars Ascent Vehicle (MAV)', icon: '🚀', desc: 'Fire hypergolic engines out through 7km gorge', readyLabel: 'READY [E]' },
+          prompt1: '☢️ NEAR RTG GENERATOR · PRESS [E] OR CLICK [FIRE UP NUCLEAR RTG]',
+          prompt2: '🌪️ NEAR INTAKE MANIFOLD · PRESS [E] OR CLICK [PURGE PERCHLORATE DUST]',
+          prompt3: '🚀 NEAR MAV ENGINE · PRESS [E] OR CLICK [ARM ASCENT PROPULSION]',
+          promptBoard: '🚀 NEAR MAV HATCH · PRESS [E] OR CLICK [BOARD MAV & CANYON PUNCH]',
+          callout1: '☢️ 2.5 kW RTG NUCLEAR REACTOR ONLINE! BASE LIFE SUPPORT RESTORED AT 100%!',
+          callout2: '🌪️ COMPRESSED GAS BLAST CLEARS CHOKED AIR INTAKE FILTERS!',
+          callout3: '🚀 MAV PROPULSION SYSTEM AT FULL FLIGHT READINESS!',
+          calloutBoard: '🚀 MAV CANYON PUNCH! ROCKETING VERTICALLY OUT THROUGH 7,000M SHEER ROCK BLUFFS!',
+        };
+
+      case 'MARS_JEZERO':
       case 'MARS':
         return {
           suitTitle: 'xEMU MARS SUIT VITALS (NOMINAL)',
@@ -559,81 +606,41 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           atmo: '610 Pa (95% CO₂ DUST)',
           temp: '-63°C',
           subtitle: '🔴 JEZERO CRATER DELTA · 3/8g · 610 Pa CO₂ ATMOSPHERE',
-          task1: { title: 'Activate MOXIE Oxygen Plant', icon: '⚡', desc: 'Solid oxide CO₂ electrolysis unit (6.5m, -3.0m)', doneLabel: 'ACTIVE ✓' },
+          task1: { title: 'Activate MOXIE Oxygen Plant', icon: '⚡', desc: 'Solid oxide CO₂ electrolysis unit (6.5m, -3.0m)', doneLabel: 'ACTIVE (10g/h) ✓' },
           task2: { title: 'Drill Delta Mudstone Core', icon: '🔬', desc: 'Jezero ancient river biosignature rocks (-7.0m, 8.0m)', doneLabel: 'SECURED ✓' },
-          task3: { title: 'Deploy Ingenuity & REMS', icon: '🛸', desc: 'Scout copter & atmospheric weather station (10.0m, 6.0m)', doneLabel: 'ONLINE ✓' },
+          task3: { title: 'Deploy REMS Weather Station', icon: '🛸', desc: 'Atmospheric pressure & UV weather mast (10.0m, 6.0m)', doneLabel: 'ONLINE ✓' },
           vehicle: { title: 'Board Mars Ascent Vehicle (MAV)', icon: '🚀', desc: 'Prepare for MAV launch into Mars orbit', readyLabel: 'READY [E]' },
           prompt1: '⚡ NEAR MOXIE REACTOR · PRESS [E] OR CLICK [ACTIVATE MOXIE]',
           prompt2: '🔬 NEAR DELTA CLAY · PRESS [E] OR CLICK [DRILL BIOSIGNATURE CORE]',
-          prompt3: '🛸 NEAR SCOUT ZONE · PRESS [E] OR CLICK [DEPLOY INGENUITY]',
+          prompt3: '🛸 NEAR WEATHER SITE · PRESS [E] OR CLICK [DEPLOY REMS STATION]',
           promptBoard: '🚀 NEAR MAV LADDER · PRESS [E] OR CLICK [BOARD MAV & LAUNCH]',
-          callout1: '⚡ MOXIE ELECTROLYSIS ONLINE! PRODUCING PURE OXYGEN FROM MARTIAN CO₂!',
+          callout1: '⚡ MOXIE ELECTROLYSIS ONLINE! PRODUCING 10.2 g/hr PURE OXYGEN FROM MARTIAN CO₂!',
           callout2: '🔬 ANCIENT DELTA RIVERBED MUDSTONE CORE SECURED (BIOSIGNATURE PRESERVED)!',
-          callout3: '🛸 INGENUITY SCOUT DRONE & REMS ATMOSPHERIC STATION OPERATIONAL!',
+          callout3: '🛸 REMS ATMOSPHERIC STATION OPERATIONAL (-63°C, DUST OPACITY 0.85)!',
           calloutBoard: '🚀 MAV LIFTOFF! ASCENDING THROUGH MARTIAN SKY TO RENDEZVOUS WITH ORBITER!',
         };
-      case 'SUBORBITAL':
-        return {
-          suitTitle: 'ACES FLIGHT SUIT VITALS (NOMINAL)',
-          location: 'WHITE SANDS SPACE HARBOR (32.9°N, 106.4°W)',
-          gravity: '9.81 m/s² (1.0g)',
-          atmo: '101.3 kPa (SEA LEVEL)',
-          temp: '24°C',
-          subtitle: '🏜️ WHITE SANDS RECOVERY CORRIDOR · 1.0g · 101.3 kPa',
-          task1: { title: 'Activate GPS Recovery Beacon', icon: '📡', desc: 'Emergency search & rescue transponder (6.5m, -3.0m)', doneLabel: 'TRANSMITTING ✓' },
-          task2: { title: 'Extract Microgravity Crystals', icon: '🧪', desc: 'Kármán boundary science package (-7.0m, 8.0m)', doneLabel: 'RECOVERED ✓' },
-          task3: { title: 'Secure Drogue Parachute Rig', icon: '🪂', desc: 'Main descent parachute canopy (10.0m, 6.0m)', doneLabel: 'SECURED ✓' },
-          vehicle: { title: 'Board Desert Recovery Truck', icon: '🚙', desc: 'Return to White Sands Space Harbor Base', readyLabel: 'READY [E]' },
-          prompt1: '📡 NEAR BEACON · PRESS [E] OR CLICK [ACTIVATE GPS BEACON]',
-          prompt2: '🧪 NEAR PAYLOAD POD · PRESS [E] OR CLICK [EXTRACT CRYSTALS]',
-          prompt3: '🪂 NEAR PARACHUTE · PRESS [E] OR CLICK [SECURE CHUTE LINES]',
-          promptBoard: '🚙 NEAR RECOVERY TRUCK · PRESS [E] OR CLICK [BOARD TRUCK]',
-          callout1: '📡 SEARCH & RESCUE GPS HOMING BEACON TRANSMITTING TO SPACEPORT!',
-          callout2: '🧪 100 KM KÁRMÁN MICROGRAVITY PROTEIN CRYSTALS RECOVERED IN TACT!',
-          callout3: '🪂 MAIN RECOVERY PARACHUTE CANOPY SECURED AND PACKED!',
-          calloutBoard: '🚙 RECOVERY TEAM SECURED! RETURNING TO WHITE SANDS SPACE HARBOR BASE!',
-        };
-      case 'ORBITAL':
-        return {
-          suitTitle: 'SEA SURVIVAL GEAR VITALS (NOMINAL)',
-          location: 'PACIFIC SPLASHDOWN (31.5°N, 121.2°W)',
-          gravity: '9.81 m/s² (1.0g)',
-          atmo: '101.3 kPa (PACIFIC)',
-          temp: '19°C',
-          subtitle: '🌊 PACIFIC OCEAN SPLASHDOWN · 1.0g · 101.3 kPa',
-          task1: { title: 'Inflate Sea Flotation Collar', icon: '🛟', desc: 'Buoyant self-righting flotation ring (6.5m, -3.0m)', doneLabel: 'DEPLOYED ✓' },
-          task2: { title: 'Extract Flight Data Recorder', icon: '💾', desc: 'Hardened titanium black box core (-7.0m, 8.0m)', doneLabel: 'SECURED ✓' },
-          task3: { title: 'Attach Navy Winch Tether', icon: '🚁', desc: 'Helicopter rescue hoist cable (10.0m, 6.0m)', doneLabel: 'LOCKED ✓' },
-          vehicle: { title: 'Board Naval Recovery Raft', icon: '🚢', desc: 'Airlift to aircraft carrier USS Hornet', readyLabel: 'READY [E]' },
-          prompt1: '🛟 NEAR FLOTATION RING · PRESS [E] OR CLICK [INFLATE COLLAR]',
-          prompt2: '💾 NEAR BLACK BOX · PRESS [E] OR CLICK [EXTRACT RECORDER]',
-          prompt3: '🚁 NEAR WINCH CABLE · PRESS [E] OR CLICK [ATTACH HOIST TETHER]',
-          promptBoard: '🚢 NEAR RECOVERY RAFT · PRESS [E] OR CLICK [BOARD RAFT]',
-          callout1: '🛟 BUOYANT HIGH-VISIBILITY OCEAN COLLAR DEPLOYED & SELF-RIGHTING!',
-          callout2: '💾 HARDENED TITANIUM FLIGHT RECORDER & RE-ENTRY TELEMETRY SECURED!',
-          callout3: '🚁 NAVY SEAHAWK HELICOPTER RESCUE HOIST LOCKED & TENSIONED!',
-          calloutBoard: '🚢 PACIFIC RECOVERY SORTIE COMPLETE! AIRLIFTING TO AIRCRAFT CARRIER USS HORNET!',
-        };
+
+      case 'MOON_APOLLO':
       case 'MOON':
       default:
         return {
-          suitTitle: 'A7L SPACESUIT VITALS (NOMINAL)',
-          location: 'MARE TRANQUILLITATIS (-89.9°S, 0.0°E)',
+          suitTitle: 'APOLLO A7L SPACESUIT VITALS (NOMINAL)',
+          location: 'MARE TRANQUILLITATIS (0.67°N, 23.47°E)',
           gravity: '1.62 m/s² (1/6g)',
           atmo: '0 Pa (HARD VACUUM)',
-          temp: '-160°C',
-          subtitle: '🌕 MARE TRANQUILLITATIS · 1/6g · 0 Pa VACUUM',
-          task1: { title: 'Plant American Flag', icon: '🚩', desc: 'Apollo 11 flag planting site (6.5m, -3.0m)', doneLabel: 'PLANTED ✓' },
-          task2: { title: 'Drill Lunar Regolith Core', icon: '⛏️', desc: 'Basalt & highland anorthosite rocks (-7.0m, 8.0m)', doneLabel: 'SECURED ✓' },
-          task3: { title: 'Deploy Apollo PSE Station', icon: '📡', desc: 'Passive seismic experiment network (10.0m, 6.0m)', doneLabel: 'ONLINE ✓' },
+          temp: '-160°C / +120°C',
+          subtitle: '🌕 MARE TRANQUILLITATIS · 1/6g · 0 Pa VACUUM · TRANQUILITY BASE',
+          task1: { title: 'Plant American Flag', icon: '🚩', desc: 'Apollo 11 historic flag site (6.5m, -3.0m)', doneLabel: 'PLANTED ✓' },
+          task2: { title: 'Collect Basalt Core Sample', icon: '⛏️', desc: 'Basalt & highland anorthosite rocks (-7.0m, 8.0m)', doneLabel: 'SECURED ✓' },
+          task3: { title: 'Deploy ALSEP S11 Station', icon: '📡', desc: 'Passive seismic experiment network (10.0m, 6.0m)', doneLabel: 'ONLINE ✓' },
           vehicle: { title: 'Board Lunar Module Eagle', icon: '🦅', desc: 'Launch Eagle ascent stage into lunar orbit', readyLabel: 'READY [E]' },
           prompt1: '🚩 NEAR FLAG SITE · PRESS [E] OR CLICK [PLANT AMERICAN FLAG]',
-          prompt2: '⛏️ NEAR BASALT ROCKS · PRESS [E] OR CLICK [DRILL REGOLITH CORE]',
-          prompt3: '📡 NEAR SEISMIC SITE · PRESS [E] OR CLICK [DEPLOY SEISMIC STATION]',
+          prompt2: '⛏️ NEAR BASALT ROCKS · PRESS [E] OR CLICK [COLLECT BASALT SAMPLE]',
+          prompt3: '📡 NEAR SEISMIC SITE · PRESS [E] OR CLICK [DEPLOY ALSEP STATION]',
           promptBoard: '🚀 NEAR LM LADDER · PRESS [E] OR CLICK [BOARD LM & LAUNCH ASCENT]',
           callout1: '🚩 AMERICAN FLAG PROUDLY PLANTED AT TRANQUILITY BASE!',
-          callout2: '⛏️ LUNAR REGOLITH CORE DRILL SAMPLE EXTRACTED & SECURED IN CONTAINER!',
-          callout3: '📡 APOLLO PSE PASSIVE SEISMIC STATION ONLINE (MONITORING MOONQUAKES)!',
+          callout2: '⛏️ LUNAR REGOLITH BASALT CORE DRILL SAMPLE EXTRACTED & CONTAINERIZED!',
+          callout3: '📡 APOLLO ALSEP S11 PASSIVE SEISMIC STATION ONLINE (MONITORING MOONQUAKES)!',
           calloutBoard: '🚀 ASCENT STAGE LIFTOFF! SEPARATING FROM DESCENT STAGE (FLAG & LM BASE REMAIN ON MOON)',
         };
     }
@@ -1516,16 +1523,21 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     lunarSurfaceScene.visible = false;
     scene.add(lunarSurfaceScene);
 
+    const isMarsJezero = destination === 'MARS' || destination === 'MARS_JEZERO';
+    const isMarsValles = destination === 'ORBITAL' || destination === 'MARS_VALLES';
+    const isMoonArtemis = destination === 'SUBORBITAL' || destination === 'MOON_ARTEMIS';
+    const isMoonApollo = !isMarsJezero && !isMarsValles && !isMoonArtemis;
+
     // Apply destination-specific sky & fog
-    if (destination === 'MARS') {
+    if (isMarsJezero) {
       scene.background = new THREE.Color(0x9a3412);
       scene.fog = new THREE.FogExp2(0x7c2d12, 0.0035);
-    } else if (destination === 'SUBORBITAL') {
-      scene.background = new THREE.Color(0x38bdf8);
-      scene.fog = new THREE.FogExp2(0xfef3c7, 0.002);
-    } else if (destination === 'ORBITAL') {
-      scene.background = new THREE.Color(0x0284c7);
-      scene.fog = new THREE.FogExp2(0x38bdf8, 0.002);
+    } else if (isMarsValles) {
+      scene.background = new THREE.Color(0x451a03);
+      scene.fog = new THREE.FogExp2(0x78350f, 0.0065);
+    } else if (isMoonArtemis) {
+      scene.background = new THREE.Color(0x020617);
+      scene.fog = new THREE.FogExp2(0x082f49, 0.0018);
     } else {
       scene.background = new THREE.Color(0x000000);
       scene.fog = null;
@@ -1533,12 +1545,20 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
     // Ground Plane with Destination-Specific Procedural Texture
     let surfaceGroundMat: THREE.MeshStandardMaterial;
-    if (destination === 'MARS') {
-      surfaceGroundMat = new THREE.MeshStandardMaterial({ map: createProceduralMarsRedPlanetTexture(), roughness: 0.94, metalness: 0.05 });
-    } else if (destination === 'SUBORBITAL') {
-      surfaceGroundMat = new THREE.MeshStandardMaterial({ map: createProceduralDesertSandTexture(), roughness: 0.88, metalness: 0.02 });
-    } else if (destination === 'ORBITAL') {
-      surfaceGroundMat = new THREE.MeshStandardMaterial({ map: createProceduralOceanWaterTexture(), roughness: 0.25, metalness: 0.6 });
+    if (isMarsJezero || isMarsValles) {
+      surfaceGroundMat = new THREE.MeshStandardMaterial({
+        map: createProceduralMarsRedPlanetTexture(),
+        color: isMarsValles ? 0x9a3412 : 0xffffff,
+        roughness: 0.94,
+        metalness: 0.05,
+      });
+    } else if (isMoonArtemis) {
+      surfaceGroundMat = new THREE.MeshStandardMaterial({
+        map: createProceduralLunarRegolithTexture(),
+        color: 0xcbd5e1,
+        roughness: 0.85,
+        metalness: 0.15,
+      });
     } else {
       surfaceGroundMat = new THREE.MeshStandardMaterial({ map: createProceduralLunarRegolithTexture(), roughness: 0.95 });
     }
@@ -1552,7 +1572,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     const activeObstacles: Array<{ x: number; z: number; radius: number; name: string; type: string }> = [];
     const dynamicAnimatedObstacles: Array<{ update: (dt: number, time: number) => void }> = [];
 
-    if (destination === 'MARS') {
+    if (isMarsJezero) {
       // 1. ACTIVE SWIRLING DUST DEVILS
       for (const ddPos of [{ x: -14, z: 12 }, { x: 16, z: -12 }]) {
         const ddGroup = new THREE.Group();
@@ -1613,46 +1633,30 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         activeObstacles.push({ x: fPos.x, z: fPos.z, radius: 2.4, name: 'Cryogenic Permafrost Fissure', type: 'crevasse' });
       }
 
-    } else if (destination === 'SUBORBITAL') {
-      // 1. SANDSTONE CANYON MESAS & HOODOOS
-      for (const mp of [{ x: -14, z: -8, w: 5, h: 6 }, { x: 15, z: -14, w: 6, h: 7 }, { x: -18, z: 16, w: 4.5, h: 5 }, { x: 20, z: 12, w: 5.5, h: 6 }]) {
-        const mesa = new THREE.Mesh(
-          new THREE.CylinderGeometry(mp.w * 0.8, mp.w, mp.h, 8),
-          new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.9 })
+    } else if (isMoonArtemis) {
+      // 1. SHACKLETON CRATER RIM MONOLITHS & PERMANENT SHADOW RIDGES
+      for (const mp of [{ x: -14, z: -8, w: 5, h: 6.5 }, { x: 15, z: -14, w: 6, h: 7.5 }, { x: -18, z: 16, w: 4.5, h: 5.5 }, { x: 20, z: 12, w: 5.5, h: 6.5 }]) {
+        const monolith = new THREE.Mesh(
+          new THREE.CylinderGeometry(mp.w * 0.7, mp.w, mp.h, 7),
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 })
         );
-        mesa.position.set(mp.x, mp.h / 2 - 1.2, mp.z);
-        lunarSurfaceScene.add(mesa);
-        activeObstacles.push({ x: mp.x, z: mp.z, radius: mp.w * 0.9, name: 'Sandstone Canyon Mesa', type: 'mesa' });
+        monolith.position.set(mp.x, mp.h / 2 - 1.2, mp.z);
+        lunarSurfaceScene.add(monolith);
+        activeObstacles.push({ x: mp.x, z: mp.z, radius: mp.w * 0.9, name: 'Shackleton Rim Anorthosite Monolith', type: 'mesa' });
       }
 
-      // 2. CHARRED BOOSTER CRASH DEBRIS
-      for (const bp of [{ x: 8, z: 14 }, { x: -10, z: -18 }]) {
-        const debrisGroup = new THREE.Group();
-        debrisGroup.position.set(bp.x, -1.2, bp.z);
-        const casing = new THREE.Mesh(
-          new THREE.CylinderGeometry(1.4, 1.4, 4.5, 12),
-          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7, metalness: 0.5 })
+      // 2. GLOWING CRYOGENIC WATER-ICE SPIRES (-233 C)
+      for (const ip of [{ x: 8, z: 14, r: 2.2 }, { x: -10, z: -18, r: 2.5 }, { x: -6, z: -10, r: 2.0 }, { x: 14, z: 6, r: 2.3 }]) {
+        const iceSpire = new THREE.Mesh(
+          new THREE.ConeGeometry(ip.r * 0.8, 3.8, 8),
+          new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.35, roughness: 0.2, metalness: 0.7 })
         );
-        casing.rotation.z = Math.PI / 2.3;
-        casing.position.y = 0.7;
-        debrisGroup.add(casing);
-        lunarSurfaceScene.add(debrisGroup);
-        activeObstacles.push({ x: bp.x, z: bp.z, radius: 3.2, name: 'Spent Booster Impact Debris', type: 'debris' });
+        iceSpire.position.set(ip.x, 0.7, ip.z);
+        lunarSurfaceScene.add(iceSpire);
+        activeObstacles.push({ x: ip.x, z: ip.z, radius: ip.r, name: 'Cryogenic Water-Ice Spire (-233°C)', type: 'crevasse' });
       }
 
-      // 3. DESERT SAND DUNES
-      for (const dp of [{ x: -6, z: -10, r: 3.8 }, { x: 14, z: 6, r: 4.0 }, { x: -16, z: -4, r: 3.5 }]) {
-        const dune = new THREE.Mesh(
-          new THREE.ConeGeometry(dp.r, 1.8, 14),
-          new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.92 })
-        );
-        dune.position.set(dp.x, -0.3, dp.z);
-        dune.scale.set(1.5, 0.4, 2.2);
-        lunarSurfaceScene.add(dune);
-        activeObstacles.push({ x: dp.x, z: dp.z, radius: dp.r * 0.8, name: 'Desert Salt Ridge Dune', type: 'dune' });
-      }
-
-      // 4. TELEMETRY RADAR ANTENNA TOWERS
+      // 3. SOLAR RADIATION DOSIMETER BEACON TOWERS
       for (const tp of [{ x: 18, z: 18 }, { x: -14, z: 12 }]) {
         const towerGroup = new THREE.Group();
         towerGroup.position.set(tp.x, -1.2, tp.z);
@@ -1662,48 +1666,58 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         );
         truss.position.y = 3.0;
         towerGroup.add(truss);
-        const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
         beacon.position.y = 6.1;
         towerGroup.add(beacon);
         lunarSurfaceScene.add(towerGroup);
-        activeObstacles.push({ x: tp.x, z: tp.z, radius: 2.2, name: 'Telemetry Tower & Warning Pylon', type: 'tower' });
+        activeObstacles.push({ x: tp.x, z: tp.z, radius: 2.2, name: 'Artemis Solar Storm Warning Pylon', type: 'tower' });
       }
 
-    } else if (destination === 'ORBITAL') {
-      // 1. VOLCANIC SEA STACKS & JAGGED REEFS
-      for (const sp of [{ x: -14, z: -10, w: 3.5, h: 5.5 }, { x: 16, z: -12, w: 4.0, h: 6.0 }, { x: -16, z: 14, w: 3.2, h: 4.8 }, { x: 20, z: 8, w: 3.8, h: 5.2 }]) {
-        const stack = new THREE.Mesh(
-          new THREE.ConeGeometry(sp.w, sp.h, 7),
-          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.95, metalness: 0.2 })
+    } else if (isMarsValles) {
+      // 1. TOWERING VALLES MARINERIS CANYON BLUFFS (COPRATES CHASMA)
+      for (const sp of [{ x: -22, z: -12, w: 6.5, h: 14.0 }, { x: 24, z: -14, w: 7.0, h: 16.0 }, { x: -24, z: 14, w: 6.2, h: 13.5 }, { x: 22, z: 12, w: 6.8, h: 15.0 }]) {
+        const bluff = new THREE.Mesh(
+          new THREE.BoxGeometry(sp.w * 1.6, sp.h, sp.w * 2.2),
+          new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.96, metalness: 0.1 })
         );
-        stack.position.set(sp.x, sp.h / 2 - 1.2, sp.z);
-        lunarSurfaceScene.add(stack);
-        activeObstacles.push({ x: sp.x, z: sp.z, radius: sp.w + 0.5, name: 'Volcanic Sea Stack & Basalt Reef', type: 'reef' });
+        bluff.position.set(sp.x, sp.h / 2 - 1.2, sp.z);
+        lunarSurfaceScene.add(bluff);
+        activeObstacles.push({ x: sp.x, z: sp.z, radius: sp.w, name: 'Coprates Chasma 7km Canyon Bluff Wall', type: 'mesa' });
       }
 
-      // 2. FLOATING HEAT SHIELD DEBRIS
-      for (const fp of [{ x: 10, z: 12 }, { x: -8, z: -16 }]) {
-        const debrisMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(3.5, 0.4, 2.2),
-          new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7, metalness: 0.4 })
+      // 2. VIOLENT CANYON DUST STORM VORTICES (TAU = 3.5)
+      for (const vp of [{ x: -12, z: 8 }, { x: 14, z: -10 }]) {
+        const vortexGroup = new THREE.Group();
+        vortexGroup.position.set(vp.x, -1.2, vp.z);
+        for (let lvl = 0; lvl < 7; lvl++) {
+          const rLvl = 1.2 + lvl * 0.55;
+          const rGeo = new THREE.RingGeometry(rLvl - 0.25, rLvl, 16);
+          const rMat = new THREE.MeshBasicMaterial({ color: 0xd97706, transparent: true, opacity: 0.55 - lvl * 0.06, side: THREE.DoubleSide });
+          const rMesh = new THREE.Mesh(rGeo, rMat);
+          rMesh.rotation.x = -Math.PI / 2;
+          rMesh.position.y = lvl * 1.2 + 0.15;
+          vortexGroup.add(rMesh);
+        }
+        lunarSurfaceScene.add(vortexGroup);
+        activeObstacles.push({ x: vp.x, z: vp.z, radius: 3.8, name: 'Valles Marineris Dust Storm Vortex (110 km/h)', type: 'dust_devil' });
+        dynamicAnimatedObstacles.push({
+          update: (dt, time) => {
+            vortexGroup.rotation.y += dt * 6.0;
+            vortexGroup.position.x = vp.x + Math.sin(time * 0.0014) * 3.5;
+            vortexGroup.position.z = vp.z + Math.cos(time * 0.0014) * 3.5;
+          }
+        });
+      }
+
+      // 3. CANYON FLOOR TALUS BOULDERS & THERMAL VENT FISSURES
+      for (const bp of [{ x: 6, z: -8, s: 2.0 }, { x: -10, z: -6, s: 2.3 }, { x: 14, z: 4, s: 1.9 }]) {
+        const talus = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(bp.s),
+          new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.92 })
         );
-        debrisMesh.position.set(fp.x, -1.0, fp.z);
-        debrisMesh.rotation.y = 0.8;
-        lunarSurfaceScene.add(debrisMesh);
-        activeObstacles.push({ x: fp.x, z: fp.z, radius: 2.6, name: 'Floating Heat Shield Tile Fragment', type: 'debris' });
-      }
-
-      // 3. FLASHING MARINE SONAR PING BUOYS
-      for (const bp of [{ x: 6, z: -8 }, { x: -12, z: 6 }, { x: 14, z: -4 }]) {
-        const buoyGroup = new THREE.Group();
-        buoyGroup.position.set(bp.x, -1.2, bp.z);
-        const buoyBody = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.8, 12), new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 }));
-        buoyBody.position.y = 0.9;
-        const strobe = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
-        strobe.position.y = 2.0;
-        buoyGroup.add(buoyBody, strobe);
-        lunarSurfaceScene.add(buoyGroup);
-        activeObstacles.push({ x: bp.x, z: bp.z, radius: 2.0, name: 'High-Visibility Sonar Ping Buoy', type: 'buoy' });
+        talus.position.set(bp.x, bp.s * 0.75 - 1.2, bp.z);
+        lunarSurfaceScene.add(talus);
+        activeObstacles.push({ x: bp.x, z: bp.z, radius: bp.s + 0.6, name: 'Canyon Rockslide Talus Boulder', type: 'boulder' });
       }
 
     } else {
@@ -1753,10 +1767,10 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       }
     }
 
-    // WAYPOINT 1: American Flag Site / MOXIE / GPS Beacon / Sea Collar (6.5, -3.0)
+    // WAYPOINT 1: American Flag Site / MOXIE / Artemis Solar Array Tower / Valles RTG Core (6.5, -3.0)
     const flagGroup = new THREE.Group();
     flagGroup.position.set(6.5, -1.2, -3.0);
-    if (destination === 'MOON') {
+    if (isMoonApollo) {
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9 }));
       pole.position.y = 1.3;
       flagGroup.add(pole);
@@ -1773,23 +1787,23 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       const flagMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(flagCanvas), side: THREE.DoubleSide }));
       flagMesh.position.set(0.65, 2.1, 0);
       flagGroup.add(flagMesh);
-    } else if (destination === 'MARS') {
+    } else if (isMarsJezero) {
       const moxieBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 1.1), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 }));
       moxieBox.position.y = 0.6;
       const intakePipe = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.8, 12), new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9 }));
       intakePipe.position.set(0, 1.3, 0);
       flagGroup.add(moxieBox, intakePipe);
-    } else if (destination === 'SUBORBITAL') {
-      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e, metalness: 0.8 }));
-      mast.position.y = 1.25;
-      const beaconHead = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), new THREE.MeshBasicMaterial({ color: 0x22c55e }));
-      beaconHead.position.y = 2.6;
-      flagGroup.add(mast, beaconHead);
+    } else if (isMoonArtemis) {
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 4.2, 8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.85 }));
+      mast.position.y = 2.1;
+      const solarWing = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.8, 0.06), new THREE.MeshStandardMaterial({ color: 0x1d4ed8, emissive: 0x0284c7, emissiveIntensity: 0.3, metalness: 0.9 }));
+      solarWing.position.y = 3.2;
+      flagGroup.add(mast, solarWing);
     } else {
-      const collar = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.35, 12, 24), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3 }));
-      collar.rotation.x = -Math.PI / 2;
-      collar.position.y = 0.4;
-      flagGroup.add(collar);
+      // Valles Marineris 2.5 kW RTG Nuclear Power Core
+      const rtgCore = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 1.8, 12), new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 0.4, metalness: 0.8 }));
+      rtgCore.position.y = 0.9;
+      flagGroup.add(rtgCore);
     }
     lunarSurfaceScene.add(flagGroup);
 
@@ -1799,23 +1813,23 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     flagRing.position.set(6.5, -1.18, -3.0);
     lunarSurfaceScene.add(flagRing);
 
-    // WAYPOINT 2: Lunar Core Drill Rocks Site / Delta Clay / Crystal Pod / Black Box (-7.0, 8.0)
+    // WAYPOINT 2: Lunar Core Drill Rocks Site / Delta Clay / Shackleton Ice Core / Valles Hydrothermal Vent (-7.0, 8.0)
     const drillRocksGroup = new THREE.Group();
     drillRocksGroup.position.set(-7.0, -1.2, 8.0);
-    if (destination === 'MARS') {
+    if (isMarsJezero) {
       for (let dr = 0; dr < 4; dr++) {
         const dRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 + dr * 0.2), new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.95 }));
         dRock.position.set((dr % 2) * 1.2 - 0.6, 0.4, Math.floor(dr / 2) * 1.2 - 0.6);
         drillRocksGroup.add(dRock);
       }
-    } else if (destination === 'SUBORBITAL') {
-      const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.4, 12), new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8 }));
-      pod.position.y = 0.7;
-      drillRocksGroup.add(pod);
-    } else if (destination === 'ORBITAL') {
-      const fdr = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12), new THREE.MeshStandardMaterial({ color: 0xf97316, metalness: 0.7 }));
-      fdr.position.y = 0.6;
-      drillRocksGroup.add(fdr);
+    } else if (isMoonArtemis) {
+      const iceDrillPod = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 1.6, 12), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.3, metalness: 0.85 }));
+      iceDrillPod.position.y = 0.8;
+      drillRocksGroup.add(iceDrillPod);
+    } else if (isMarsValles) {
+      const ventCone = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.6, 12), new THREE.MeshStandardMaterial({ color: 0x78350f, emissive: 0xd97706, emissiveIntensity: 0.35, roughness: 0.85 }));
+      ventCone.position.y = 0.8;
+      drillRocksGroup.add(ventCone);
     } else {
       for (let dr = 0; dr < 4; dr++) {
         const dRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 + dr * 0.2), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 }));
@@ -1829,23 +1843,23 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     drillRocksGroup.add(drillRing);
     lunarSurfaceScene.add(drillRocksGroup);
 
-    // WAYPOINT 3: Apollo Passive Seismic Experiment / Ingenuity Copter / Parachute / Winch (10.0, 6.0)
+    // WAYPOINT 3: Apollo Passive Seismic Experiment / Ingenuity Copter / Artemis Storm Vault / MAV Ascent Pylon (10.0, 6.0)
     const pseStationGroup = new THREE.Group();
     pseStationGroup.position.set(10.0, -1.2, 6.0);
-    if (destination === 'MARS') {
+    if (isMarsJezero) {
       const copterBody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 }));
       copterBody.position.y = 0.5;
       const rotor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.15), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
       rotor.position.y = 0.85;
       pseStationGroup.add(copterBody, rotor);
-    } else if (destination === 'SUBORBITAL') {
-      const chute = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.1, 0.6, 12), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.5 }));
-      chute.position.y = 0.3;
-      pseStationGroup.add(chute);
-    } else if (destination === 'ORBITAL') {
-      const hook = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.15, 8, 16), new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.9 }));
-      hook.position.y = 0.7;
-      pseStationGroup.add(hook);
+    } else if (isMoonArtemis) {
+      const vaultDome = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.4 }));
+      vaultDome.position.y = 0.05;
+      pseStationGroup.add(vaultDome);
+    } else if (isMarsValles) {
+      const mavBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.65, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0xeab308, emissive: 0xca8a04, emissiveIntensity: 0.35, metalness: 0.9 }));
+      mavBeacon.position.y = 1.1;
+      pseStationGroup.add(mavBeacon);
     } else {
       const pseCentral = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9 }));
       pseCentral.position.y = 0.35;
@@ -2390,9 +2404,14 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 <span>4-OPS MATRIX</span>
               </button>
             )}
-            {(['SUBORBITAL', 'ORBITAL', 'MOON', 'MARS'] as ExpeditionDestination[]).map((dest, idx) => {
+            {(['MOON_APOLLO', 'MOON_ARTEMIS', 'MARS_JEZERO', 'MARS_VALLES'] as ExpeditionDestination[]).map((dest, idx) => {
               const prof = DESTINATION_PROFILES[dest];
-              const isSelected = destination === dest;
+              const isSelected =
+                destination === dest ||
+                (dest === 'MOON_APOLLO' && destination === 'MOON') ||
+                (dest === 'MOON_ARTEMIS' && destination === 'SUBORBITAL') ||
+                (dest === 'MARS_JEZERO' && destination === 'MARS') ||
+                (dest === 'MARS_VALLES' && destination === 'ORBITAL');
               return (
                 <button
                   key={dest}
