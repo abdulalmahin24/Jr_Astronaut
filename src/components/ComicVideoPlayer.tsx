@@ -11,14 +11,8 @@ import {
   BookOpen, 
   Sparkles, 
   Subtitles, 
-  Film, 
-  Layers, 
   ChevronLeft,
-  Flame,
-  Radio,
-  Share2,
-  Tv,
-  CheckCircle2
+  Tv
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { ComicVisualArtwork } from './ComicVisualArtwork';

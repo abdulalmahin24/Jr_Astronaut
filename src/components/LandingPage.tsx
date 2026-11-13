@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { soundFx } from '../utils/audioEffects';
-import { getCurrentRank, getRankProgress } from '../data/astronautRanks';
+import { getRankProgress } from '../data/astronautRanks';
 import { getCadetProgression } from '../utils/simulationEngine';
-import { MovableCharacter } from './MovableCharacter';
 import { LobbyAstronaut3D } from './LobbyAstronaut3D';
 import { ASTRONAUT_CHARACTERS } from '../data/astronautCharacters';
 import { GuidedCadetJourney } from './GuidedCadetJourney';
@@ -142,15 +141,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onStartMission,
   onContinueMission,
   hasSavedGame = false,
-  savedGameSol = 1,
-  savedGameDest = 'Moon',
   onOpenAcademy,
   onOpenTrainingCenter,
   onOpenRover,
-  onOpenHowToPlay,
   onOpenSettings,
-  onOpenScienceHub,
-  onOpenCredits,
   onOpenComics,
   onOpenLearningHub,
   onOpenDepot,
@@ -160,9 +154,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenJudgePreview,
   onOpenTelemetry,
   onOpenCertificate,
-  isJudgeMode = false,
-
-
   onOpenOrrery,
   onOpenMarsEDL,
   onOpenTeacherGradebook,
@@ -287,9 +278,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   }, []);
 
   const [warping, setWarping] = useState(false);
-  const [hangarAsset, setHangarAsset] = useState<'ASTRONAUT' | 'ROVER' | 'SPACECRAFT' | 'OUTPOST'>('ASTRONAUT');
+  void (useState<'ASTRONAUT' | 'ROVER' | 'SPACECRAFT' | 'OUTPOST'>('ASTRONAUT'));
   const [selectedMatchMode, setSelectedMatchMode] = useState<'FULL_EXPEDITION' | 'SPACE_GAMES' | 'HARDCORE_SURVIVAL' | 'MARS_SURVIVAL' | 'EARTH_TO_MOON' | 'SOL1_SURVIVAL' | 'NEW_CAMPAIGN' | 'MOONBASE_ALPHA' | 'BLACK_HOLE' | 'JUDGE_DEMO' | 'MARS_EDL'>('FULL_EXPEDITION');
-  const [showModeDropdown, setShowModeDropdown] = useState(false);
+  void (useState(false));
   const [showIntelDossier, setShowIntelDossier] = useState(false);
   const [isSimsHubOpen, setIsSimsHubOpen] = useState(false);
   const [isAcademyHubOpen, setIsAcademyHubOpen] = useState(false);

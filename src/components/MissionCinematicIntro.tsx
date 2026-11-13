@@ -1,21 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import {
-  Play,
-  Pause,
-  RotateCcw,
   Volume2,
   VolumeX,
   Rocket,
-  Shield,
   Radio,
-  Target,
-  ChevronRight,
-  Maximize2,
-  Sparkles,
-  Compass,
-  AlertTriangle,
-  Flame,
   CheckCircle2,
   Film,
   FastForward,
@@ -123,7 +112,7 @@ const createHullPlatingTexture = (): THREE.Texture => {
 };
 
 // 4. Realistic Planetary Surface Texture (1024x512 with craters, maria, or clouds)
-const createRealisticPlanetTexture = (terrainType: string, accentColor: string): THREE.Texture => {
+const createRealisticPlanetTexture = (terrainType: string, _accentColor: string): THREE.Texture => {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
   canvas.height = 512;

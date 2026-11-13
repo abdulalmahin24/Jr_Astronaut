@@ -11,7 +11,7 @@ scene.frame_start = 1
 scene.frame_end = 120
 
 # Import EMU_Suit.glb
-emu_path = r"c:\Users\user\OneDrive\Desktop\Jr_AstroCamp-main\public\models\EMU_Suit.glb"
+emu_path = "./public\models\EMU_Suit.glb"
 print(f"Importing {emu_path} into Blender...")
 bpy.ops.import_scene.gltf(filepath=emu_path)
 
@@ -153,7 +153,7 @@ for f in range(1, 121):
 bpy.ops.object.mode_set(mode='OBJECT')
 
 # Export GLTF Binary (.glb)
-export_path = r"c:\Users\user\OneDrive\Desktop\Jr_AstroCamp-main\public\models\Astronaut_Animated.glb"
+export_path = "./public\models\Astronaut_Animated.glb"
 print(f"Exporting rigged and animated EMU suit to {export_path}...")
 
 bpy.ops.export_scene.gltf(

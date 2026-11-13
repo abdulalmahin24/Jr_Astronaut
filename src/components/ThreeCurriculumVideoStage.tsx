@@ -7,7 +7,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Camera, Eye, Zap, Flame, Compass, Maximize2, RotateCcw } from 'lucide-react';
+import { Camera, Zap, Compass } from 'lucide-react';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { soundFx } from '../utils/audioEffects';
 
@@ -26,7 +26,6 @@ interface ThreeCurriculumVideoStageProps {
 export const ThreeCurriculumVideoStage: React.FC<ThreeCurriculumVideoStageProps> = ({
   moduleId,
   stepNumber,
-  stepType,
   themeColor,
   isPlaying,
   playbackSpeed = 1,

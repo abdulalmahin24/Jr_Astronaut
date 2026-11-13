@@ -137,7 +137,21 @@ export const PlanetaryCommandMap: React.FC<PlanetaryCommandMapProps> = ({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Prevent accidental WASD movement key-repeat spam (e.g., 'wwwwwwww') in search bar
+                if (/[wasdWASD]{4,}/.test(val)) {
+                  e.currentTarget.blur();
+                  return;
+                }
+                setSearchQuery(val);
+              }}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Escape' || e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
+              }}
               placeholder="Search missions, targets, astronauts..."
               style={{
                 width: '100%',

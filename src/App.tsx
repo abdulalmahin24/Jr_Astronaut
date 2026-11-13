@@ -23,7 +23,6 @@ import { AstronautBriefingModal } from './components/AstronautBriefingModal';
 import { AudioTeachingFlashcard } from './components/AudioTeachingFlashcard';
 import { MissionNotebookModal } from './components/MissionNotebookModal';
 import { MissionGameModal } from './components/MissionGameModal';
-import { MissionCampaignModal } from './components/MissionCampaignModal';
 import { ComicBookModal } from './components/ComicBookModal';
 import { OutpostConstructionModal } from './components/OutpostConstructionModal';
 import { AstronautAcademyModal } from './components/AstronautAcademyModal';
@@ -219,6 +218,23 @@ export const App: React.FC = () => {
   const [isJudgeMode, setIsJudgeMode] = useState(() => {
     try { return localStorage.getItem('astro_camp_judge_mode') === 'true'; } catch { return false; }
   });
+
+  // Global guard: prevent holding W/A/S/D movement keys from typing 'wwwwwwwwwwww' into any search bar
+  useEffect(() => {
+    const handleGlobalInputGuard = (e: KeyboardEvent) => {
+      const active = document.activeElement as HTMLInputElement | null;
+      if (!active || active.tagName !== 'INPUT') return;
+      if (e.repeat && ['w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        if (/[wasdWASD]{2,}$/.test(active.value || '')) {
+          active.value = active.value.replace(/[wasdWASD]+$/, '');
+        }
+        active.blur();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalInputGuard, true);
+    return () => window.removeEventListener('keydown', handleGlobalInputGuard, true);
+  }, []);
   const [isJudgeModalOpen, setIsJudgeModalOpen] = useState(false);
   const [isTelemetryOpen, setIsTelemetryOpen] = useState(false);
   const [isCertificateOpen, setIsCertificateOpen] = useState(false);

@@ -11,24 +11,14 @@ import React, { useState, useEffect } from 'react';
 import { NASA_MISSIONS, type NasaMission } from '../data/nasaMissions';
 import {
   Radio,
-  Volume2,
-  VolumeX,
   CheckCircle2,
-  AlertTriangle,
   Award,
   FileText,
   Compass,
   Rocket,
   Shield,
   RotateCcw,
-  Sparkles,
-  ExternalLink,
-  ChevronRight,
   HelpCircle,
-  Activity,
-  Layers,
-  Thermometer,
-  Zap,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { speechEngine } from '../utils/speechEngine';

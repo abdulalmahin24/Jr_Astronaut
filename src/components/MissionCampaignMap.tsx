@@ -124,6 +124,7 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
   onLaunchMission,
 }) => {
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'discipline' | 'difficulty' | 'timeline'>('discipline');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isTestOverrideActive, setIsTestOverrideActive] = useState<boolean>(() => {
     try {
@@ -141,7 +142,94 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
 
   const isEndgameUnlocked = completedStandardCount >= 76 || isTestOverrideActive;
 
-  // Group missions into historical eras
+  const isSurvivalEndgame = (m: MissionGameConfig) =>
+    m.programName === 'Mars Planetary Survival' ||
+    m.id === 'NASA-M077' ||
+    m.id === 'NASA-M078' ||
+    m.id === 'NASA-M079' ||
+    m.id === 'NASA-M080';
+
+  // 1. Categorized Flight Discipline Curriculum (Solves 76-mission repetition by grouping by core mechanics & sorting Easy -> Hard)
+  const disciplineCategories = [
+    {
+      id: 'cat-docking',
+      title: '🛸 Category 1: Orbital Rendezvous & Precision Docking',
+      subtitle: 'Progressive 6-DOF RCS Translation, Relative Velocity Braking & Capture (Easy ➔ Hard)',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.gameType === 'docking',
+    },
+    {
+      id: 'cat-landing',
+      title: '🌑 Category 2: Powered Descent & Planetary Landing',
+      subtitle: 'Progressive Retro-Propulsion, Hover Throttle-to-Weight & Crater Avoidance (Easy ➔ Hard)',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.gameType === 'lunar_landing',
+    },
+    {
+      id: 'cat-rover',
+      title: '🤖 Category 3: Planetary Surface Rover & EVA Operations',
+      subtitle: 'Progressive Regolith Traction, Slope Stability, Laser Drilling & Sample Caching (Easy ➔ Hard)',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.gameType === 'rover',
+    },
+    {
+      id: 'cat-launch',
+      title: '🚀 Category 4: Multi-Stage Orbital Ascent & Gravity Turn',
+      subtitle: 'Progressive Tsiolkovsky Rocket Equation, Max-Q Throttle & Orbital Injection (Easy ➔ Hard)',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.gameType === 'launch',
+    },
+    {
+      id: 'cat-telescope',
+      title: '🔭 Category 5: Space Observatories & Deep-Space Optics',
+      subtitle: 'Progressive Reaction Wheel Stabilization, Mirror Phasing & Spectral Calibration (Easy ➔ Hard)',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.gameType === 'telescope',
+    },
+    {
+      id: 'cat-deep-space',
+      title: '☄️ Category 6: Gravity-Assist Slingshots & Outer Planets',
+      subtitle: 'Progressive Keplerian Flybys, Oberth Burns & Interplanetary Navigation (Easy ➔ Hard)',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.gameType === 'deep_space',
+    },
+    {
+      id: 'endgame-mars-survival',
+      title: '🔴 Category 7: Planetary Crisis Survival Operations (Endgame)',
+      subtitle: '4 Extreme Post-76 Survival Missions: Life-Support Triage, Dust Storms & Emergency Ascent',
+      filter: (m: MissionGameConfig) => isSurvivalEndgame(m),
+    },
+  ];
+
+  // 2. Progressive Difficulty Learning Curve Tiers (Tier 1 Cadet -> Tier 5 Commander)
+  const difficultyTiers = [
+    {
+      id: 'tier-1-cadet',
+      title: '🟢 Tier 1: Cadet Flight Fundamentals (★☆☆☆☆ — Difficulty 1–2)',
+      subtitle: 'Wide Fuel & Velocity Margins • Guided SAS Attitude Assist • Ideal Starting Point',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.difficulty <= 2,
+    },
+    {
+      id: 'tier-2-specialist',
+      title: '🔵 Tier 2: Mission Specialist Operations (★★★☆☆ — Difficulty 3)',
+      subtitle: 'Multi-Stage Timing • Orbital Closure Control • Moderate Propellant Budgets',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.difficulty === 3,
+    },
+    {
+      id: 'tier-3-test-pilot',
+      title: '🟠 Tier 3: Senior Test Pilot Challenges (★★★★☆ — Difficulty 4)',
+      subtitle: 'Tight Delta-V Reserves • Precision Crater Touchdowns • Deep-Space Trajectory Windows',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.difficulty === 4,
+    },
+    {
+      id: 'tier-4-commander',
+      title: '🟣 Tier 4: Flight Commander Mastery (★★★★★ — Difficulty 5)',
+      subtitle: 'Zero-Margin Historical NASA Missions • Full Newtonian Inertia & Tight Fuel Envelopes',
+      filter: (m: MissionGameConfig) => !isSurvivalEndgame(m) && m.difficulty >= 5,
+    },
+    {
+      id: 'endgame-mars-survival',
+      title: '🔴 Tier 5: Grand Climax — NASA Planetary Survival Operations',
+      subtitle: '4 Extreme Post-76 Endgame Operations (Hardest Tier 5/5)',
+      filter: (m: MissionGameConfig) => isSurvivalEndgame(m),
+    },
+  ];
+
+  // 3. Group missions into historical eras
   const eras = [
     {
       id: 'mercury-gemini',
@@ -199,11 +287,7 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
       title: 'Next Generation & Artemis Return',
       subtitle: 'Commercial Crew, Moon to Mars (2020–Present)',
       filter: (m: MissionGameConfig) =>
-        m.programName !== 'Mars Planetary Survival' &&
-        !m.id.startsWith('NASA-M077') &&
-        !m.id.startsWith('NASA-M078') &&
-        !m.id.startsWith('NASA-M079') &&
-        !m.id.startsWith('NASA-M080') &&
+        !isSurvivalEndgame(m) &&
         (m.programName.includes('Artemis') ||
           m.programName.includes('Commercial') ||
           parseInt(m.year) >= 2020),
@@ -212,14 +296,24 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
       id: 'endgame-mars-survival',
       title: '🔴 Grand Climax: NASA Mars Planetary Survival',
       subtitle: '4 Extreme Post-76 Endgame Operations (Hardest Tier 5/5)',
-      filter: (m: MissionGameConfig) =>
-        m.programName === 'Mars Planetary Survival' ||
-        m.id === 'NASA-M077' ||
-        m.id === 'NASA-M078' ||
-        m.id === 'NASA-M079' ||
-        m.id === 'NASA-M080',
+      filter: (m: MissionGameConfig) => isSurvivalEndgame(m),
     },
   ];
+
+  const activeSections =
+    viewMode === 'discipline'
+      ? disciplineCategories
+      : viewMode === 'difficulty'
+      ? difficultyTiers
+      : eras;
+
+  const getTierBadgeLabel = (diff: number) => {
+    if (diff <= 1) return { label: 'STAGE 1 • CADET INTRO', color: '#34d399' };
+    if (diff === 2) return { label: 'STAGE 2 • FLIGHT QUALIFIED', color: '#38bdf8' };
+    if (diff === 3) return { label: 'STAGE 3 • SPECIALIST', color: '#fbbf24' };
+    if (diff === 4) return { label: 'STAGE 4 • TEST PILOT', color: '#fb923c' };
+    return { label: 'STAGE 5 • COMMANDER', color: '#f87171' };
+  };
 
   const getGameTypeIcon = (type: GameType) => {
     switch (type) {
@@ -248,9 +342,9 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
     return matchesFilter && matchesSearch;
   });
 
-  const completionPct = Math.round(
+  void (Math.round(
     (completedMissions.length / MISSION_GAME_DATA.length) * 100
-  );
+  ));
 
   return (
     <div className="campaign-map-root">
@@ -297,15 +391,48 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
           />
         </div>
 
+        {/* View Mode Switcher (Solves flat timeline repetition with Categorized & Progressive Difficulty Curves) */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px', padding: '8px 12px', background: 'rgba(2, 6, 23, 0.65)', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 800, color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
+            <span>🧭 CURRICULUM LEARNING MODE:</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {[
+              { id: 'discipline' as const, label: '🎯 Flight Disciplines (Easy ➔ Hard)' },
+              { id: 'difficulty' as const, label: '📈 Skill Progression Tiers (★ ➔ ★★★★★)' },
+              { id: 'timeline' as const, label: '📅 Historical Era Timeline (1961–Present)' },
+            ].map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => setViewMode(mode.id)}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '7px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)',
+                  background: viewMode === mode.id ? 'linear-gradient(135deg, #0284c7, #2563eb)' : 'rgba(15, 23, 42, 0.85)',
+                  border: viewMode === mode.id ? '1px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.25)',
+                  color: viewMode === mode.id ? '#ffffff' : '#cbd5e1',
+                  boxShadow: viewMode === mode.id ? '0 0 12px rgba(56, 189, 248, 0.35)' : 'none',
+                }}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Filter Controls & Search */}
         <div className="campaign-toolbar">
           <div className="campaign-filter-tabs">
             {[
               { id: 'all', label: `All (${MISSION_GAME_DATA.length})` },
-              { id: 'launch', label: '🚀 Launch' },
               { id: 'docking', label: '🛸 Docking' },
               { id: 'lunar_landing', label: '🌑 Landing' },
               { id: 'rover', label: '🤖 Rover' },
+              { id: 'launch', label: '🚀 Launch' },
               { id: 'telescope', label: '🔭 Telescope' },
               { id: 'deep_space', label: '☄️ Deep Space' },
             ].map((tab) => (
@@ -325,17 +452,36 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
               type="text"
               placeholder="Search 80 missions (76 Historical + 4 Mars Survival Endgame)..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Prevent accidental WASD movement key-repeat spam (e.g., 'wwwwwwww') in search bar
+                if (/[wasdWASD]{4,}/.test(val)) {
+                  e.currentTarget.blur();
+                  return;
+                }
+                setSearchQuery(val);
+              }}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Escape' || e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
+              }}
               className="campaign-search-input"
             />
           </div>
         </div>
       </div>
 
-      {/* ─── Eras & Mission Grid ─── */}
+      {/* ─── Categorized & Progressive Difficulty Mission Grid ─── */}
       <div className="campaign-eras-container">
-        {eras.map((era) => {
-          const eraMissions = filteredMissions.filter(era.filter);
+        {activeSections.map((era) => {
+          const rawMissions = filteredMissions.filter(era.filter);
+          // Sort by progressive difficulty (Easy 1 -> Hard 5) in discipline & difficulty modes
+          const eraMissions =
+            viewMode === 'timeline'
+              ? rawMissions
+              : [...rawMissions].sort((a, b) => a.difficulty - b.difficulty || parseInt(a.year) - parseInt(b.year));
           if (eraMissions.length === 0) return null;
 
           return (
@@ -402,6 +548,7 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
                   {eraMissions.map((mission) => {
                     const isDone = completedMissions.includes(mission.id);
                     const isEndgameMission = era.id === 'endgame-mars-survival';
+                    const tierInfo = getTierBadgeLabel(mission.difficulty);
 
                     return (
                       <div
@@ -420,14 +567,15 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
                               <span>{mission.gameType.replace('_', ' ')}</span>
                             </span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {isEndgameMission && (
+                              {isEndgameMission ? (
                                 <span style={{ fontSize: '9px', fontWeight: 900, color: '#ffffff', background: '#ef4444', padding: '1px 6px', borderRadius: '4px' }}>
                                   🔥 HARDEST TIER 5
                                 </span>
+                              ) : (
+                                <span style={{ fontSize: '8.5px', fontWeight: 800, color: tierInfo.color, background: 'rgba(15, 23, 42, 0.85)', border: `1px solid ${tierInfo.color}55`, padding: '1px 5px', borderRadius: '4px' }}>
+                                  {tierInfo.label}
+                                </span>
                               )}
-                              <span style={{ fontSize: '9px', fontWeight: 800, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.35)', padding: '1px 5px', borderRadius: '4px' }}>
-                                🎬 3D TRAILER
-                              </span>
                               <span className="campaign-year-tag">
                                 {mission.year}
                                 {isDone && <CheckCircle2 size={13} color="#34d399" />}
@@ -474,7 +622,7 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
                             }}
                           >
                             <Play size={12} fill="currentColor" />
-                            <span>{isEndgameMission ? '🔥 MANUAL FLIGHT / SURVIVAL' : isDone ? '🎬 REPLAY TRAILER & 3D' : '🎬 LAUNCH (TRAILER ➔ 3D)'}</span>
+                            <span>{isEndgameMission ? '🔥 MANUAL FLIGHT / SURVIVAL' : isDone ? '🚀 REPLAY 3D FLIGHT' : '🚀 LAUNCH 3D FLIGHT'}</span>
                           </button>
                         </div>
                       </div>

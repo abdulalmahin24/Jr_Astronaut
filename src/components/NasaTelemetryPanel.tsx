@@ -1,19 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
-  Radio, 
-  Activity, 
   ExternalLink, 
-  RefreshCw, 
-  CheckCircle2, 
-  Layers, 
-  Database, 
-  Zap, 
-  Globe2, 
-  Clock, 
-  AlertCircle,
-  FileCode,
-  ShieldAlert,
-  Users
+  RefreshCw
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { 

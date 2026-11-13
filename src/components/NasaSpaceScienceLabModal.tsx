@@ -1,27 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  X,
-  Sparkles,
-  Activity,
-  Heart,
   Eye,
-  Shield,
   Zap,
   Radio,
-  Flame,
-  CheckCircle2,
-  AlertTriangle,
   Play,
-  RotateCcw,
-  Sliders,
-  ChevronRight,
-  Layers,
-  Thermometer,
-  Compass,
-  ArrowRight,
   Sun,
-  Globe,
-  Dna,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 

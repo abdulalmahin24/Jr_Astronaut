@@ -57,9 +57,7 @@ export const MovableCharacter: React.FC<MovableCharacterProps> = ({
   onOpenRover,
   onOpenAcademy,
   onOpenOrrery,
-  onOpenComics,
   onOpenCharacterLocker,
-  onOpenDepot,
   initialVehicle = 'ASTRONAUT',
 }) => {
   const [internalMode, setInternalMode] = useState<'ARENA' | 'FREE_ROAM'>('ARENA');
@@ -71,8 +69,8 @@ export const MovableCharacter: React.FC<MovableCharacterProps> = ({
   };
 
   const [vehicle, setVehicle] = useState<'ASTRONAUT' | 'ROVER'>(initialVehicle);
-  const [showControlsGuide, setShowControlsGuide] = useState(true);
-  const [showDPad, setShowDPad] = useState(true);
+  const [showControlsGuide] = useState(true);
+  const [showDPad] = useState(true);
 
   // Equipped astronaut data
   const charId = currentUser?.selectedCharacterId || 'neil_armstrong';

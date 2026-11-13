@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ExternalLink, X, Image as ImageIcon, Sparkles, Check, RefreshCw, Layers } from 'lucide-react';
+import { Search, ExternalLink, X, Sparkles, Check, RefreshCw, Layers } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 
 export interface NasaAssetItem {

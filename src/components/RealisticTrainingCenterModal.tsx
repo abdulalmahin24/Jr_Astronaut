@@ -2,35 +2,16 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
-  Activity,
-  Shield,
-  Wind,
-  Flame,
-  AlertTriangle,
-  Play,
-  RotateCcw,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
-  Info,
-  Layers,
-  Compass,
   X,
   Volume2,
   VolumeX,
-  Sparkles,
-  Droplets,
-  Radio,
-  Cpu,
-  Eye,
-  Thermometer,
-  Zap,
   HelpCircle,
   Trophy,
   Rocket,
-  Award,
   Film,
-  Tv,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
@@ -282,13 +263,12 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
   onClose,
   initialPillar = 'FITNESS_NBL',
   initialMode = 'ANIMATION_VIDEO',
-  onOpenClassroom,
   onOpenAcademy,
 }) => {
   const [activePillar, setActivePillar] = useState<TrainingPillarId>(initialPillar);
   const [viewMode, setViewMode] = useState<'ANIMATION_VIDEO' | 'PRACTICE_3D'>(initialMode);
-  const [subModule, setSubModule] = useState<number>(0);
-  const [audioMuted, setAudioMuted] = useState(false);
+  void (useState<number>(0));
+  void (useState(false));
   const [completedDrills, setCompletedDrills] = useState<string[]>([]);
   const [activeToast, setActiveToast] = useState<string | null>(null);
   const [isSpeakingGuide, setIsSpeakingGuide] = useState<boolean>(false);
@@ -365,47 +345,47 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
   const [nblLeadWeightKg, setNblLeadWeightKg] = useState<number>(0); // -15 to +15 kg
   const [nblBuoyancyState, setNblBuoyancyState] = useState<'FLOAT' | 'NEUTRAL' | 'SINK'>('NEUTRAL');
   const [nblBoltTightenedPct, setNblBoltTightenedPct] = useState<number>(30);
-  const [baranyRpm, setBaranyRpm] = useState<number>(0);
-  const [baranyBlindfolded, setBaranyBlindfolded] = useState<boolean>(false);
-  const [sasMotionNauseaPct, setSasMotionNauseaPct] = useState<number>(10);
-  const [bedTiltDeg, setBedTiltDeg] = useState<number>(-6); // Head-down tilt
-  const [fluidShiftCephalicPressureMmHg, setFluidShiftCephalicPressureMmHg] = useState<number>(24);
-  const [dentalCavityRisk, setDentalCavityRisk] = useState<boolean>(false);
+  const [, setBaranyRpm] = useState<number>(0);
+  const [baranyBlindfolded] = useState<boolean>(false);
+  const [, setSasMotionNauseaPct] = useState<number>(10);
+  void (useState<number>(-6)); // Head-down tilt
+  void (useState<number>(24));
+  void (useState<boolean>(false));
 
   // ── PILLAR 2: SPACESUIT & ECLSS STATE ──
-  const [activeSuitLayer, setActiveSuitLayer] = useState<'LCVG' | 'PRESSURE_BLADDER' | 'HELMET_GOLD_VISOR' | 'TETHER'>('LCVG');
-  const [lcvgFlowRateLpm, setLcvgFlowRateLpm] = useState<number>(1.8); // 0 to 3.0 L/min
+  const [activeSuitLayer] = useState<'LCVG' | 'PRESSURE_BLADDER' | 'HELMET_GOLD_VISOR' | 'TETHER'>('LCVG');
+  void (useState<number>(1.8)); // 0 to 3.0 L/min
   const [suitO2PressureKpa, setSuitO2PressureKpa] = useState<number>(29.6); // 4.3 psi
-  const [preBreatheTimeMinutes, setPreBreatheTimeMinutes] = useState<number>(120);
+  void (useState<number>(120));
   const [bloodNitrogenPct, setBloodNitrogenPct] = useState<number>(12);
-  const [valsalvaPushed, setValsalvaPushed] = useState<boolean>(false);
-  const [goldVisorReflectivityPct, setGoldVisorReflectivityPct] = useState<number>(95);
-  const [waterElectrolysisActive, setWaterElectrolysisActive] = useState<boolean>(true);
-  const [co2ScrubberLiohLifePct, setCo2ScrubberLiohLifePct] = useState<number>(88);
-  const [urineWaterRecycledPct, setUrineWaterRecycledPct] = useState<number>(98.2);
+  const [, setValsalvaPushed] = useState<boolean>(false);
+  void (useState<number>(95));
+  void (useState<boolean>(true));
+  void (useState<number>(88));
+  void (useState<number>(98.2));
 
   // ── PILLAR 3: HABITAT & ZERO-G LIFE STATE ──
   const [sleepFanRunning, setSleepFanRunning] = useState<boolean>(true);
-  const [co2BubbleAroundHeadPpm, setCo2BubbleAroundHeadPpm] = useState<number>(450);
-  const [toiletVacuumAirflowRunning, setToiletVacuumAirflowRunning] = useState<boolean>(false);
+  const [, setCo2BubbleAroundHeadPpm] = useState<number>(450);
+  void (useState<boolean>(false));
   const [spaceFoodType, setSpaceFoodType] = useState<'TORTILLA' | 'CRUMB_BREAD'>('TORTILLA');
-  const [floatingCrumbsInAir, setFloatingCrumbsInAir] = useState<boolean>(false);
+  const [, setFloatingCrumbsInAir] = useState<boolean>(false);
 
   // ── PILLAR 4: SURFACE OPERATIONS & REGOLITH STATE ──
   const [airlockElectrostaticShowerActive, setAirlockElectrostaticShowerActive] = useState<boolean>(false);
   const [regolithDustLevelPct, setRegolithDustLevelPct] = useState<number>(85);
-  const [canadarmJointAngle, setCanadarmJointAngle] = useState<number>(45);
-  const [signalLatencySeconds, setSignalLatencySeconds] = useState<number>(4.2);
+  void (useState<number>(45));
+  void (useState<number>(4.2));
   const [cosmicCatchSuccess, setCosmicCatchSuccess] = useState<boolean>(false);
-  const [coreDrillDepthCm, setCoreDrillDepthCm] = useState<number>(35);
+  const [, setCoreDrillDepthCm] = useState<number>(35);
 
   // ── PILLAR 5: EMERGENCY PROTOCOLS STATE ──
   const [zeroGFireActive, setZeroGFireActive] = useState<boolean>(false);
   const [fireExtinguished, setFireExtinguished] = useState<boolean>(false);
-  const [rapidDecompressionActive, setRapidDecompressionActive] = useState<boolean>(false);
-  const [quickDonMaskEquipped, setQuickDonMaskEquipped] = useState<boolean>(false);
-  const [toxicAmmoniaLeakActive, setToxicAmmoniaLeakActive] = useState<boolean>(false);
-  const [ammoniaHatchIsolated, setAmmoniaHatchIsolated] = useState<boolean>(false);
+  void (useState<boolean>(false));
+  const [, setQuickDonMaskEquipped] = useState<boolean>(false);
+  void (useState<boolean>(false));
+  void (useState<boolean>(false));
   const [saferDriftDistanceMeters, setSaferDriftDistanceMeters] = useState<number>(42);
   const [saferNitrogenFuelPct, setSaferNitrogenFuelPct] = useState<number>(84);
 
@@ -840,7 +820,7 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
   if (!isOpen) return null;
 
   // ── INTERACTIVE HANDLERS FOR EACH DRILL ───────────────────────────────────────
-  const handleTestNblBuoyancy = () => {
+  void (() => {
     soundFx.playHydroPressureSwoosh();
     if (Math.abs(nblLeadWeightKg) <= 2) {
       setNblBuoyancyState('NEUTRAL');
@@ -850,9 +830,9 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
     } else {
       setNblBuoyancyState('FLOAT');
     }
-  };
+  });
 
-  const handleTorqueBolt = () => {
+  void (() => {
     soundFx.playClick(920);
     setNblBoltTightenedPct((prev) => {
       const next = Math.min(100, prev + 25);
@@ -861,9 +841,9 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
       }
       return next;
     });
-  };
+  });
 
-  const handleBaranyChairSpin = (targetRpm: number) => {
+  void ((targetRpm: number) => {
     soundFx.playReactorStart();
     setBaranyRpm(targetRpm);
     const risk = targetRpm * (baranyBlindfolded ? 1.6 : 1.1);
@@ -871,9 +851,9 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
     if (targetRpm >= 30) {
       markDrillCompleted('BARANY_VESTIBULAR_SAS', 'Vestibular Adaptation & SAS Desensitization');
     }
-  };
+  });
 
-  const handleRunPreBreathe = () => {
+  void (() => {
     soundFx.playReactorStart();
     showToast('🌬️ PRE-BREATHE ACTIVE: Washing dissolved Nitrogen gas from bloodstream...');
     let n = bloodNitrogenPct;
@@ -888,9 +868,9 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
         setBloodNitrogenPct(n);
       }
     }, 250);
-  };
+  });
 
-  const handleToggleSleepFan = () => {
+  void (() => {
     const next = !sleepFanRunning;
     setSleepFanRunning(next);
     soundFx.playClick(next ? 880 : 320);
@@ -902,16 +882,16 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
       setCo2BubbleAroundHeadPpm(450);
       markDrillCompleted('CO2_VENTILATION_FAN', 'Microgravity Sleeping Pod Ventilation Configured');
     }
-  };
+  });
 
-  const handleExtinguishZeroGFire = () => {
+  void (() => {
     soundFx.playShieldHum();
     setFireExtinguished(true);
     setZeroGFireActive(false);
     markDrillCompleted('ZERO_G_FIRE_SUPPRESSION', 'Spherical Microgravity Fire Extinguished with CO2');
-  };
+  });
 
-  const handleSaferFlyback = () => {
+  void (() => {
     soundFx.playReactorStart();
     showToast('🚀 SAFER THRUSTERS BURST: Countering angular drift vector back to airlock...');
     let dist = saferDriftDistanceMeters;
@@ -930,7 +910,7 @@ export const RealisticTrainingCenterModal: React.FC<RealisticTrainingCenterModal
         setSaferNitrogenFuelPct(fuel);
       }
     }, 300);
-  };
+  });
 
   return (
     <div

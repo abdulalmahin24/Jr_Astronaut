@@ -13,20 +13,10 @@ import {
   X,
   Rocket,
   Shield,
-  Compass,
   AlertTriangle,
-  Play,
-  Award,
   ChevronRight,
-  Sparkles,
-  Layers,
   MapPin,
-  Clock,
-  Gauge,
-  Flame,
   Footprints,
-  Flag,
-  Radio,
 } from 'lucide-react';
 import type { ExpeditionDestination } from '../missions/fullMissionLifecycle';
 import type { MissionPhase } from './FullMissionLifecycleModal';

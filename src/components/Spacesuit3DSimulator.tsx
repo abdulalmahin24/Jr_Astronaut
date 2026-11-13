@@ -3,21 +3,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
   Shield,
-  Zap,
   Gauge,
   Flame,
   Lightbulb,
   AlertTriangle,
   RotateCcw,
-  CheckCircle2,
-  Info,
-  Maximize2,
-  Volume2,
-  VolumeX,
-  Compass,
   Activity,
-  Play,
-  Crosshair,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
@@ -125,8 +116,8 @@ export const Spacesuit3DSimulator: React.FC<Spacesuit3DSimulatorProps> = ({ onBa
   const [isAutoRotate, setIsAutoRotate] = useState(false);
   const [walkMode, setWalkMode] = useState<'IDLE' | 'FLOAT' | 'WALK'>('FLOAT');
   const [suitPressureKpa, setSuitPressureKpa] = useState(29.6);
-  const [o2PurityPct, setO2PurityPct] = useState(99.8);
-  const [coreTempC, setCoreTempC] = useState(21.4);
+  const [o2PurityPct] = useState(99.8);
+  const [coreTempC] = useState(21.4);
   const [alertActive, setAlertActive] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 

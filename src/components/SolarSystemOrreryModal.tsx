@@ -15,7 +15,6 @@ import {
   Pause,
   Sparkles,
   Info,
-  Radio,
   ExternalLink,
   Clock,
   Zap,
@@ -25,10 +24,8 @@ import {
   Sun,
   Globe,
   Crosshair,
-  ShieldAlert,
   Flame,
   Activity,
-  Maximize2,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
@@ -1004,7 +1001,7 @@ export const SolarSystemOrreryModal: React.FC<SolarSystemOrreryModalProps> = ({
   const [isLiveSynced, setIsLiveSynced] = useState<boolean>(true);
 
   // Layer Visibility Toggles
-  const [showZones, setShowZones] = useState<boolean>(true);
+  const [showZones] = useState<boolean>(true);
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const [showStations, setShowStations] = useState<boolean>(true);
   const [showSolarFleet, setShowSolarFleet] = useState<boolean>(true);

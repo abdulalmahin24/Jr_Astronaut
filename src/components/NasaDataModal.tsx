@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NASA_DATASETS } from '../data/nasaDatasets';
 import { NASA_SURVIVAL_DATA_PLAN } from '../data/nasaSurvivalDataPlan';
-import { Database, ExternalLink, X, Globe, Key, ShieldCheck, Flame, Moon, Compass } from 'lucide-react';
+import { Database, ExternalLink, X, Globe, Key, ShieldCheck } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 
 interface NasaDataModalProps {

@@ -10,20 +10,9 @@ import * as THREE from 'three';
 import confetti from 'canvas-confetti';
 import {
   X,
-  Rocket,
-  Shield,
   Radio,
-  AlertTriangle,
   RotateCcw,
-  CheckCircle2,
-  Flame,
-  Camera,
-  Play,
-  Volume2,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  ChevronDown
+  Flame
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
@@ -46,9 +35,9 @@ export const MarsEDLSimulatorModal: React.FC<MarsEDLSimulatorModalProps> = ({
   const [altitudeKm, setAltitudeKm] = useState<number>(35);
   const [velocityKms, setVelocityKms] = useState<number>(5.4); // ~19,440 km/h
   const [heatShieldTempC, setHeatShieldTempC] = useState<number>(1350);
-  const [throttle, setThrottle] = useState<number>(0.5);
+  const [, setThrottle] = useState<number>(0.5);
   const [descentRateMs, setDescentRateMs] = useState<number>(140);
-  const [trnSafeRating, setTrnSafeRating] = useState<number>(94);
+  const [trnSafeRating] = useState<number>(94);
   const [capcomCallout, setCapcomCallout] = useState<string>('ATMOSPHERIC ENTRY INTERFACE CONFIRMED · PLASMA SHEATH ACTIVE');
 
   const simRef = useRef({

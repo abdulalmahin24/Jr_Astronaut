@@ -22,30 +22,11 @@ import {
   X,
   Volume2,
   VolumeX,
-  Compass,
-  Award,
-  ChevronRight,
-  Flame,
   Radio,
-  Layers,
   Sparkles,
-  Camera,
-  MapPin,
-  Clock,
-  FastForward,
-  Play,
-  RotateCcw,
-  Flag,
-  CheckCircle2,
   AlertTriangle,
-  Shield,
   ShieldCheck,
-  Rocket,
   Wrench,
-  Sun,
-  Eye,
-  Footprints,
-  Activity,
   ArrowUp,
   ArrowDown,
   ArrowLeft,
@@ -389,7 +370,7 @@ const createProceduralMarsRedPlanetTexture = (): THREE.CanvasTexture => {
 };
 
 // ─── PROCEDURAL DESERT SAND TEXTURE (SUB-ORBITAL RECOVERY CORRIDOR) ───
-const createProceduralDesertSandTexture = (): THREE.CanvasTexture => {
+void ((): THREE.CanvasTexture => {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;
@@ -438,10 +419,10 @@ const createProceduralDesertSandTexture = (): THREE.CanvasTexture => {
   tex.repeat.set(4, 4);
   tex.needsUpdate = true;
   return tex;
-};
+});
 
 // ─── PROCEDURAL OCEAN WATER TEXTURE (ORBITAL PACIFIC SPLASHDOWN) ───
-const createProceduralOceanWaterTexture = (): THREE.CanvasTexture => {
+void ((): THREE.CanvasTexture => {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;
@@ -476,7 +457,7 @@ const createProceduralOceanWaterTexture = (): THREE.CanvasTexture => {
   tex.repeat.set(6, 6);
   tex.needsUpdate = true;
   return tex;
-};
+});
 
 // ─── MAIN REACT COMPONENT ───────────────────────────────────────────────────
 export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps> = ({
@@ -498,13 +479,13 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   // VAB Configuration State (Custom Rocket & Equipment Builder)
   const [selectedBooster, setSelectedBooster] = useState<RocketBooster>(VAB_BOOSTERS[0]);
   const [selectedCore, setSelectedCore] = useState<RocketCoreStage>(VAB_CORE_STAGES[0]);
-  const [selectedUpper, setSelectedUpper] = useState<RocketUpperStage>(VAB_UPPER_STAGES[0]);
+  const [selectedUpper] = useState<RocketUpperStage>(VAB_UPPER_STAGES[0]);
   const [selectedEquip, setSelectedEquip] = useState<ScienceEquipment[]>([
     VAB_SCIENCE_EQUIPMENT[0], // Apollo 11 Flag
     VAB_SCIENCE_EQUIPMENT[1], // Core Drill
     VAB_SCIENCE_EQUIPMENT[2], // Seismic Station
   ]);
-  const [selectedReentry, setSelectedReentry] = useState<HeatShieldParachuteConfig>(VAB_REENTRY_CONFIGS[0]);
+  const [selectedReentry] = useState<HeatShieldParachuteConfig>(VAB_REENTRY_CONFIGS[0]);
 
   // Real Rocket Physics Calculation
   const rocketPhysics = useMemo(() => {
@@ -520,7 +501,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   }, [destination, selectedBooster, selectedCore, selectedUpper, selectedEquip, selectedReentry]);
 
   // Launch Pad Weather
-  const weatherReport = useMemo(() => generateLaunchWeather(1), []);
+  void (useMemo(() => generateLaunchWeather(1), []));
 
   // Flight Telemetry States
   const [throttle, setThrottle] = useState<number>(0);
@@ -536,7 +517,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   const [touchdownStatus, setTouchdownStatus] = useState<'FLYING' | 'SAFE' | 'CRASHED'>('FLYING');
 
   // Walkable Astronaut EVA State on Moon Surface
-  const [astroWalkPos, setAstroWalkPos] = useState({ x: 2.2, z: 2.2, rot: 0 });
+  const [, setAstroWalkPos] = useState({ x: 2.2, z: 2.2, rot: 0 });
   const [evaTasks, setEvaTasks] = useState<{ flagPlanted: boolean; sampleDrilled: boolean; seismicDeployed: boolean }>({
     flagPlanted: false,
     sampleDrilled: false,
@@ -715,7 +696,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     }
   }, [throttle]);
 
-  const destProfile = DESTINATION_PROFILES[destination];
+  void (DESTINATION_PROFILES[destination]);
 
   // Direct Phase Jumping for Interactive Cadet Mission Navigation
   const jumpToPhase = useCallback((targetPhase: MissionPhase) => {

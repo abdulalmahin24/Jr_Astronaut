@@ -59,7 +59,7 @@ world_out = nodes.new('ShaderNodeOutputWorld')
 world.node_tree.links.new(bg_node.outputs['Background'], world_out.inputs['Surface'])
 
 # Paths
-base_dir = r"C:\Users\user\OneDrive\Desktop\Jr_AstroCamp-main"
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 models_dir = os.path.join(base_dir, "public", "models")
 assets_dir = os.path.join(base_dir, "public", "assets")
 

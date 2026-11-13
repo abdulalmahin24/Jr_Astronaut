@@ -9,30 +9,8 @@
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
-import {
-  Gauge,
-  Compass,
-  AlertTriangle,
-  Flame,
-  Radio,
-  Footprints,
-  Shield,
-  Zap,
-  Activity,
-  Wind,
-  Layers,
-  Sparkles,
-  ChevronRight,
-  Sun,
-  Eye,
-  Sliders,
-  Battery,
-  CloudRain,
-  Crosshair,
-} from 'lucide-react';
 import type { ExpeditionDestination } from '../missions/fullMissionLifecycle';
 import type { MissionPhase } from './FullMissionLifecycleModal';
-import { soundFx } from '../utils/audioEffects';
 
 export interface MissionSpecificCockpitHUDProps {
   destination: ExpeditionDestination;
@@ -63,24 +41,13 @@ export const MissionSpecificCockpitHUD: React.FC<MissionSpecificCockpitHUDProps>
   flightAltM,
   flightSpeedMs,
   flightVyMs,
-  flightVxMs,
   flightFuelPct,
-  pitchDeg,
-  throttle,
-  onThrottleChange,
-  timeWarp,
-  onTimeWarpChange,
-  touchdownStatus,
   evaTasks,
   onWarpAstroToTask,
-  obstacleAlert,
-  activeEvaPrompt,
-  onExecuteActiveEvaPrompt,
   navballCanvasRef,
-  directorCallout,
 }) => {
   // Live animated sweep angles & sensor feeds
-  const [radarAngle, setRadarAngle] = useState(0);
+  const [, setRadarAngle] = useState(0);
   const [moxieOxygenProduced, setMoxieOxygenProduced] = useState(14.8);
   const [dskyAlarmBlink, setDskyAlarmBlink] = useState(false);
   const [rtgWattage, setRtgWattage] = useState(2480);
@@ -91,8 +58,8 @@ export const MissionSpecificCockpitHUD: React.FC<MissionSpecificCockpitHUDProps>
       setRadarAngle((prev) => (prev + 6) % 360);
       setMoxieOxygenProduced((prev) => +(prev + 0.02).toFixed(2));
       setDskyAlarmBlink((prev) => !prev);
-      setRtgWattage((prev) => Math.round(2450 + Math.random() * 50));
-      setSolarProtonFlux((prev) => +(12.0 + Math.random() * 2.5).toFixed(1));
+      setRtgWattage((_prev) => Math.round(2450 + Math.random() * 50));
+      setSolarProtonFlux((_prev) => +(12.0 + Math.random() * 2.5).toFixed(1));
     }, 120);
     return () => clearInterval(timer);
   }, []);
@@ -100,7 +67,7 @@ export const MissionSpecificCockpitHUD: React.FC<MissionSpecificCockpitHUDProps>
   const isMoon1 = destination === 'MOON_APOLLO' || destination === 'MOON';
   const isMoon2 = destination === 'MOON_ARTEMIS' || destination === 'SUBORBITAL';
   const isMars1 = destination === 'MARS_JEZERO' || destination === 'MARS';
-  const isMars2 = destination === 'MARS_VALLES' || destination === 'ORBITAL';
+  void (destination === 'MARS_VALLES' || destination === 'ORBITAL');
 
   // ───────────────────────────────────────────────────────────────────────────
   // INTERFACE 1: MOON 1 — APOLLO 11 TRANQUILITY BASE (AGC DSKY & LM EAGLE)

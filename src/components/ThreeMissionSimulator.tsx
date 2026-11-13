@@ -10,28 +10,10 @@ import { getSharedGLTFLoader } from '../utils/modelLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import confetti from 'canvas-confetti';
 import {
-  Rocket,
-  Volume2,
-  VolumeX,
-  BookOpen,
   X,
   Info,
-  Compass,
-  Palette,
-  Eye,
-  Award,
-  AlertTriangle,
-  RotateCcw,
-  Zap,
-  Scan,
-  Cpu,
-  ShieldCheck,
-  Flame,
-  Radio,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
-import type { MissionGameConfig, LaunchParams, DockingParams, LunarLandingParams } from '../game/missionGameData';
+import type { MissionGameConfig, LaunchParams, DockingParams } from '../game/missionGameData';
 import { soundFx } from '../utils/audioEffects';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import {
@@ -372,7 +354,6 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   multiplayerActive = false,
   assignedRole = 'CDR',
   onOpenMoonquakeMap,
-  onOpenMarsSurvival,
   onOpenVabLifecycle,
   initialAgeTier,
 }) => {
@@ -382,10 +363,10 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const [cameraMode, setCameraMode] = useState<CameraMode>(mission.gameType === 'launch' || mission.gameType === 'rover' ? 'chase' : 'orbit');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [showBriefing, setShowBriefing] = useState<boolean>(false);
-  const [visualTone, setVisualTone] = useState<VisualToneMode>('REALISTIC_NASA');
+  const [visualTone] = useState<VisualToneMode>('REALISTIC_NASA');
   const [activeRole, setActiveRole] = useState<CrewRole>(assignedRole);
   const [modelLoading, setModelLoading] = useState<boolean>(true);
-  const [moonquakeAlert, setMoonquakeAlert] = useState<{ mag: number; depth: number; site: string } | null>(null);
+  void (useState<{ mag: number; depth: number; site: string } | null>(null));
 
   // Determine Mission Destination Architecture (Earth Orbit vs Moon vs Mars)
   const isLunarMission = useMemo(() => {
@@ -434,7 +415,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     } catch {}
     return 'cadet';
   });
-  const [flightAssist, setFlightAssist] = useState<boolean>(true);
+  const [, setFlightAssist] = useState<boolean>(true);
   const [scannerActive, setScannerActive] = useState<boolean>(false);
   const [scannedLore, setScannedLore] = useState<{
     title: string;
@@ -578,8 +559,8 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const [boosterSeparated, setBoosterSeparated] = useState<boolean>(!hasSideBoosters);
   const [fairingSeparated, setFairingSeparated] = useState<boolean>(false);
   const [tliActive, setTliActive] = useState<boolean>(false);
-  const [tliComplete, setTliComplete] = useState<boolean>(false);
-  const [moonDistDisplay, setMoonDistDisplay] = useState<number>(384400);
+  const [tliComplete] = useState<boolean>(false);
+  void (useState<number>(384400));
 
   // Simulation Refs
   const simStateRef = useRef({
@@ -668,7 +649,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
   const machDiamondGroupRef = useRef<THREE.Group | null>(null);
   const trenchSteamGroupRef = useRef<THREE.Group | null>(null);
   const lunarDustRef = useRef<THREE.Points | null>(null);
-  const roverDustRef = useRef<THREE.Points | null>(null);
+  void (useRef<THREE.Points | null>(null));
   const earthMeshRef = useRef<THREE.Mesh | null>(null);
   const atmoMeshRef = useRef<THREE.Mesh | null>(null);
   const roverWaypointsRef = useRef<Array<{
@@ -1005,7 +986,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     }
   }, [countdownTime, roomState]);
 
-  const handleStartCountdown = () => {
+  void (() => {
     audioSynthRef.current.init();
     setPreflightChecklist({
       internalPower: true,
@@ -1017,9 +998,9 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
     audioSynthRef.current.playCountdownBeep(false);
     simStateRef.current.statusText = '⚡ ALL SYSTEMS VERIFIED GO · COMMENCING TERMINAL COUNTDOWN (T-10s)';
     simStateRef.current.statusColor = '#38bdf8';
-  };
+  });
 
-  const handleTogglePreflight = (item: keyof typeof preflightChecklist) => {
+  void ((item: keyof typeof preflightChecklist) => {
     audioSynthRef.current.init();
     audioSynthRef.current.playSwitchClick();
     const next = { ...preflightChecklist, [item]: true };
@@ -1040,7 +1021,7 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         audioSynthRef.current.playCountdownBeep(false);
       }, 500);
     }
-  };
+  });
 
   const handleBoosterSeparation = () => {
     const state = simStateRef.current;
@@ -5582,19 +5563,24 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
         const netAccel = gravity - state.throttle * maxDecel;
         state.velocityKms = Math.max(-1.8, Math.min(22.0, state.velocityKms + netAccel * dt));
 
-        // Horizontal tilt control with [A]/[D]
+        // Horizontal RCS Thruster & True Newtonian Momentum (Zero-G Lunar Vacuum Inertia)
+        const sAny = state as unknown as { vx?: number; vz?: number };
+        if (typeof sAny.vx !== 'number') sAny.vx = 0;
         if (state.keys['a'] || state.keys['arrowleft']) {
-          playerVehicle.position.x -= 14 * dt;
+          sAny.vx = Math.max(-16, sAny.vx - 22 * dt);
           playerVehicle.rotation.z = THREE.MathUtils.lerp(playerVehicle.rotation.z, 0.16, dt * 6);
           state.rollDeg = -10;
         } else if (state.keys['d'] || state.keys['arrowright']) {
-          playerVehicle.position.x += 14 * dt;
+          sAny.vx = Math.min(16, sAny.vx + 22 * dt);
           playerVehicle.rotation.z = THREE.MathUtils.lerp(playerVehicle.rotation.z, -0.16, dt * 6);
           state.rollDeg = 10;
         } else {
+          // Subtle AGC attitude hold damping while preserving vacuum inertia
+          sAny.vx *= state.agcAuto ? Math.pow(0.25, dt) : Math.pow(0.82, dt);
           playerVehicle.rotation.z = THREE.MathUtils.lerp(playerVehicle.rotation.z, 0, dt * 5);
           state.rollDeg *= 0.9;
         }
+        playerVehicle.position.x += sAny.vx * dt;
 
         // Update lander vertical position
         playerVehicle.position.y = Math.max(2.0, playerVehicle.position.y - state.velocityKms * dt);
@@ -6000,47 +5986,105 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       }
 
       // ─────────────────────────────────────────────────────────
-      // 6.4 DOCKING DYNAMICS
+      // 6.4 DOCKING DYNAMICS (TRUE NEWTONIAN ZERO-G INERTIA & 6-DOF RCS)
       // ─────────────────────────────────────────────────────────
       else if (mission.gameType === 'docking') {
-        if (state.keys['w'] || state.keys['arrowup']) playerVehicle.position.z -= 12 * dt;
-        if (state.keys['s'] || state.keys['arrowdown']) playerVehicle.position.z += 12 * dt;
-        if (state.keys['a'] || state.keys['arrowleft']) playerVehicle.position.x -= 10 * dt;
-        if (state.keys['d'] || state.keys['arrowright']) playerVehicle.position.x += 10 * dt;
+        const sAny = state as unknown as { vx?: number; vz?: number };
+        if (typeof sAny.vx !== 'number') sAny.vx = 0;
+        if (typeof sAny.vz !== 'number') sAny.vz = -3.2; // Initial orbital approach momentum
+
+        let rcsActive = false;
+        if (state.keys['w'] || state.keys['arrowup']) {
+          sAny.vz = Math.max(-15, sAny.vz - 18 * dt);
+          rcsActive = true;
+        }
+        if (state.keys['s'] || state.keys['arrowdown']) {
+          sAny.vz = Math.min(10, sAny.vz + 18 * dt);
+          rcsActive = true;
+        }
+        if (state.keys['a'] || state.keys['arrowleft']) {
+          sAny.vx = Math.max(-12, sAny.vx - 16 * dt);
+          state.rollDeg = THREE.MathUtils.lerp(state.rollDeg, -6, dt * 6);
+          rcsActive = true;
+        } else if (state.keys['d'] || state.keys['arrowright']) {
+          sAny.vx = Math.min(12, sAny.vx + 16 * dt);
+          state.rollDeg = THREE.MathUtils.lerp(state.rollDeg, 6, dt * 6);
+          rcsActive = true;
+        } else {
+          state.rollDeg = THREE.MathUtils.lerp(state.rollDeg, 0, dt * 5);
+        }
+
+        // Gentle SAS station-keeping damping while conserving Newtonian momentum in Zero-G
+        if (!rcsActive) {
+          sAny.vx *= Math.pow(0.65, dt);
+          sAny.vz *= Math.pow(0.88, dt);
+        }
+        state.throttle = rcsActive ? 0.42 : 0;
+        if (rcsActive) state.propellant = Math.max(0, state.propellant - dt * 0.45);
+
+        playerVehicle.position.x += sAny.vx * dt;
+        playerVehicle.position.z += sAny.vz * dt;
+        state.velocityKms = Math.hypot(sAny.vx, sAny.vz) / 1000;
 
         state.distanceM = Math.max(0, playerVehicle.position.z - (targetObject.position.z + 10));
         const alignmentPct = Math.max(0, 100 - Math.abs(playerVehicle.position.x) * 10);
 
         if (state.distanceM <= 12.0) {
-          state.statusText = `🎯 DOCKING CONE ALIGNED (${alignmentPct.toFixed(0)}%) · RANGE: ${state.distanceM.toFixed(1)}m · PRESS [SPACE] OR CLICK [ENGAGE DOCK LATCH]!`;
+          state.statusText = `🎯 DOCKING CONE ALIGNED (${alignmentPct.toFixed(0)}%) · CLOSURE: ${Math.abs(sAny.vz).toFixed(1)} M/S · PRESS [SPACE] TO LATCH!`;
           state.statusColor = '#22c55e';
         } else {
-          state.statusText = `APPROACHING TARGET · RANGE: ${state.distanceM.toFixed(1)}m · ALIGN WITH [A]/[D] & APPROACH WITH [W]`;
+          state.statusText = `ZERO-G INERTIA APPROACH · RANGE: ${state.distanceM.toFixed(1)}m (${Math.abs(sAny.vz).toFixed(1)} m/s) · RCS [W/A/S/D]`;
           state.statusColor = '#38bdf8';
         }
 
         if (state.distanceM <= 3.0) {
           state.isFinished = true;
-          if (alignmentPct > 60) {
+          if (alignmentPct > 60 && Math.abs(sAny.vz) <= 9.5) {
             soundFx.playRadioChirp();
             soundFx.playVictory();
             confetti({ particleCount: 160, spread: 80 });
             onSuccess(1000);
+          } else if (Math.abs(sAny.vz) > 9.5) {
+            soundFx.playAlarm();
+            onFailure(`Hard Docking Impact! Relative closure velocity (${Math.abs(sAny.vz).toFixed(2)} m/s) exceeded NASA IDA soft-capture limit (< 0.50 m/s nominal). Fire Retro RCS [S] earlier.`);
           } else {
             soundFx.playAlarm();
-            onFailure('Docking latch missed: alignment deviation outside IDA capture cone.');
+            onFailure(`Docking latch missed: lateral alignment offset (${Math.abs(playerVehicle.position.x).toFixed(2)} m) outside IDA capture ring.`);
           }
         }
       }
 
       // ─────────────────────────────────────────────────────────
-      // 6.5 DEEP SPACE INTERPLANETARY FLYBY
+      // 6.5 DEEP SPACE INTERPLANETARY FLYBY (NEWTONIAN KEPLERIAN INERTIA)
       // ─────────────────────────────────────────────────────────
       else if (mission.gameType === 'deep_space') {
-        if (state.keys['w'] || state.keys['arrowup']) playerVehicle.position.z -= 35 * dt;
-        if (state.keys['s'] || state.keys['arrowdown']) playerVehicle.position.z += 20 * dt;
-        if (state.keys['a'] || state.keys['arrowleft']) playerVehicle.position.x -= 15 * dt;
-        if (state.keys['d'] || state.keys['arrowright']) playerVehicle.position.x += 15 * dt;
+        const sAny = state as unknown as { vx?: number; vz?: number };
+        if (typeof sAny.vx !== 'number') sAny.vx = 0;
+        if (typeof sAny.vz !== 'number') sAny.vz = -14.0;
+
+        let thrusterActive = false;
+        if (state.keys['w'] || state.keys['arrowup']) {
+          sAny.vz = Math.max(-42, sAny.vz - 28 * dt);
+          thrusterActive = true;
+        }
+        if (state.keys['s'] || state.keys['arrowdown']) {
+          sAny.vz = Math.min(18, sAny.vz + 24 * dt);
+          thrusterActive = true;
+        }
+        if (state.keys['a'] || state.keys['arrowleft']) {
+          sAny.vx = Math.max(-22, sAny.vx - 20 * dt);
+          thrusterActive = true;
+        }
+        if (state.keys['d'] || state.keys['arrowright']) {
+          sAny.vx = Math.min(22, sAny.vx + 20 * dt);
+          thrusterActive = true;
+        }
+        if (!thrusterActive) {
+          sAny.vx *= Math.pow(0.75, dt);
+        }
+        state.throttle = thrusterActive ? 0.55 : 0;
+        playerVehicle.position.x += sAny.vx * dt;
+        playerVehicle.position.z += sAny.vz * dt;
 
         state.distanceM = Math.max(0, playerVehicle.position.z - (targetObject.position.z + 10));
         const alignmentPct = Math.max(0, 100 - Math.abs(playerVehicle.position.x) * 8);
@@ -6088,7 +6132,19 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
       // 7. REALISTIC CAMERA WITH THRUST RUMBLE & 360 ORBIT CONTROLS
       // ─────────────────────────────────────────────────────────
       const targetPos = playerVehicle.position.clone();
-      const shakeAmount = state.throttle > 0 ? state.throttle * 0.14 * (state.pumpPressure || 1.0) : 0;
+      const anyThrusterKey = Boolean(
+        state.keys['w'] ||
+          state.keys['s'] ||
+          state.keys['a'] ||
+          state.keys['d'] ||
+          state.keys['arrowup'] ||
+          state.keys['arrowdown'] ||
+          state.keys['arrowleft'] ||
+          state.keys['arrowright']
+      );
+      const effectiveThrust = Math.max(state.throttle, anyThrusterKey ? 0.35 : 0);
+      const shakeAmount =
+        effectiveThrust > 0 ? effectiveThrust * 0.18 * (state.pumpPressure || 1.0) : 0;
       const shakeX = (Math.random() - 0.5) * shakeAmount;
       const shakeY = (Math.random() - 0.5) * shakeAmount;
       const shakeZ = (Math.random() - 0.5) * shakeAmount;
@@ -6097,27 +6153,33 @@ export const ThreeMissionSimulator: React.FC<ThreeMissionSimulatorProps> = ({
 
       if (cameraModeRef.current === 'orbit') {
         controls.enabled = true;
-        // Shift camera along with the vehicle displacement so camera maintains chosen distance/angle during flight
+        // Shift camera along with the vehicle displacement + thruster vibration so camera feels physically coupled
         const delta = lookTarget.clone().sub(prevLookTarget);
         camera.position.add(delta);
+        camera.position.x += shakeX * 0.4;
+        camera.position.y += shakeY * 0.4;
         controls.target.copy(lookTarget);
         controls.update();
       } else if (cameraModeRef.current === 'chase') {
         if (mission.gameType === 'docking') {
           controls.enabled = false;
-          const chaseCamPos = new THREE.Vector3(playerVehicle.position.x, playerVehicle.position.y + 4.0, playerVehicle.position.z + 18);
-          camera.position.lerp(chaseCamPos, 0.2);
+          const chaseCamPos = new THREE.Vector3(
+            playerVehicle.position.x + shakeX,
+            playerVehicle.position.y + 4.0 + shakeY,
+            playerVehicle.position.z + 18 + shakeZ
+          );
+          camera.position.lerp(chaseCamPos, 0.25);
           if (targetObject) {
             camera.lookAt(targetObject.position.x, targetObject.position.y, targetObject.position.z);
           }
         } else if (mission.gameType === 'lunar_landing') {
           controls.enabled = false;
-          // Smooth third-person chase camera trailing behind and slightly above the lander
-          const chaseOffset = new THREE.Vector3(0, 5.5, 16.0);
+          // Smooth third-person chase camera trailing behind and slightly above the lander with retro-rocket shake
+          const chaseOffset = new THREE.Vector3(shakeX * 1.4, 5.5 + shakeY * 1.4, 16.0 + shakeZ * 1.4);
           chaseOffset.applyQuaternion(playerVehicle.quaternion);
           const chaseCamPos = playerVehicle.position.clone().add(chaseOffset);
           camera.position.lerp(chaseCamPos, dt * 6.0);
-          const lookAtTarget = playerVehicle.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+          const lookAtTarget = playerVehicle.position.clone().add(new THREE.Vector3(shakeX * 0.5, 1.2 + shakeY * 0.5, 0));
           camera.lookAt(lookAtTarget);
         } else if (mission.gameType === 'launch') {
           controls.enabled = false;

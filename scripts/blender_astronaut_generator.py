@@ -311,7 +311,7 @@ for f in range(1, 121):
 bpy.ops.object.mode_set(mode='OBJECT')
 
 # 6. Export to GLTF Binary (.glb)
-export_path = r"c:\Users\user\OneDrive\Desktop\Jr_AstroCamp-main\public\models\Astronaut_Animated.glb"
+export_path = "./public\models\Astronaut_Animated.glb"
 print(f"Exporting animated 3D astronaut to {export_path}...")
 
 bpy.ops.export_scene.gltf(

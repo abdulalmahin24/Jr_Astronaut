@@ -2,23 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import {
   X,
-  Shield,
   Activity,
-  Wind,
-  Flame,
-  Zap,
   ExternalLink,
   RotateCcw,
-  CheckCircle2,
-  AlertTriangle,
-  Play,
   Volume2,
   VolumeX,
-  Compass,
-  Layers,
-  Thermometer,
-  Radio,
-  Award,
 } from 'lucide-react';
 import {
   MARS_SURVIVAL_MISSIONS,

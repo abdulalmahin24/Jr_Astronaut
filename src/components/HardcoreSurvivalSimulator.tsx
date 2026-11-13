@@ -10,22 +10,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import confetti from 'canvas-confetti';
 import {
-  X,
-  Play,
   RotateCcw,
   Volume2,
   VolumeX,
-  ShieldAlert,
   ShieldCheck,
-  Flame,
-  Radio,
   ExternalLink,
   Camera,
-  CheckCircle2,
-  AlertTriangle,
-  Award,
-  Zap,
-  Gauge,
   Compass,
 } from 'lucide-react';
 import {
@@ -35,14 +25,12 @@ import {
   CELESTIAL_BODIES,
   computeKeplerianElements,
   calculateSuicideBurnAltitude,
-  generateOrbitalDebrisField,
   generateMissionHazardField,
   createInitialTelemetry,
   evaluateMissionRules,
   type HardcoreMissionId,
   type HardcoreMissionConfig,
   type HardcoreTelemetryState,
-  type DebrisObject,
   type MissionHazardObject,
 } from '../missions/survivalMissions';
 import { soundFx } from '../utils/audioEffects';
@@ -1581,7 +1569,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       // 12. Update Predicted Orbit Trajectory Line (if not blinded)
       if (!activeMission.hideTrajectoryLine) {
         const positions = trajGeo.attributes.position.array as Float32Array;
-        const trajMu = bodyConfig.mu;
+        void (bodyConfig.mu);
         const trajR = p.rKm;
         const trajV = p.vKms;
         const trajKepler = computeKeplerianElements(trajR, trajV, p.vyKms, bodyConfig);

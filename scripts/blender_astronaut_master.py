@@ -353,7 +353,7 @@ for mat in bpy.data.materials:
         mat.shadow_method = 'OPAQUE'
 
 # --- 6. Export to GLTF Binary (.glb) ---
-export_path = r"c:\Users\user\OneDrive\Desktop\Jr_AstroCamp-main\public\models\Astronaut_Animated.glb"
+export_path = "./public\models\Astronaut_Animated.glb"
 print(f"Exporting to {export_path}...")
 
 bpy.ops.export_scene.gltf(

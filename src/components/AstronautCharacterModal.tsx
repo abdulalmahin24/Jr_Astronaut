@@ -6,15 +6,9 @@
 import React, { useState } from 'react';
 import {
   X,
-  Lock,
   Unlock,
   CheckCircle2,
-  Sparkles,
   Coins,
-  Shield,
-  Award,
-  Globe2,
-  Rocket,
   UserCheck,
   Zap,
 } from 'lucide-react';

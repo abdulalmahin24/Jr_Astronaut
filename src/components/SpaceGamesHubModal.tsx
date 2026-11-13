@@ -1,38 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import {
-  X,
   Play,
   RotateCcw,
   Sparkles,
   Rocket,
   Compass,
   Zap,
-  Shield,
-  Activity,
-  Layers,
-  Award,
-  Radio,
-  Sliders,
-  ChevronRight,
   Maximize2,
   Minimize2,
-  Info,
   CheckCircle2,
   Volume2,
   VolumeX,
-  Bot,
   Crosshair,
   Eye,
   Flame,
-  Globe,
-  Radar,
-  FastForward,
-  Gauge,
-  Cpu,
   Target,
-  BatteryCharging,
-  ExternalLink,
   Film,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -128,7 +111,7 @@ export const SpaceGamesHubModal: React.FC<SpaceGamesHubModalProps> = ({
   const [activeGame, setActiveGame] = useState<GameSuiteMode>(initialGame);
   const [selectedMission, setSelectedMission] = useState<NasaLevelMission>(NASA_30_MISSIONS[0]);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleConfig>(NASA_VEHICLES[0]);
-  const [isHangarOpen, setIsHangarOpen] = useState(false);
+  void (useState(false));
 
   const handleSelectMission = (mission: NasaLevelMission, directLaunch: boolean = false) => {
     setSelectedMission(mission);
@@ -531,13 +514,12 @@ const GameHubMenu: React.FC<GameHubMenuProps> = ({
   onSelectMission,
   selectedVehicle,
   onSelectVehicle,
-  scores,
 }) => {
   const [activeTier, setActiveTier] = useState<
     'ALL' | 'RANK_1' | 'RANK_2' | 'RANK_3' | 'RANK_4' | 'RANK_5' | 'RANK_6' | 'CADET' | 'OFFICER' | 'COMMANDER'
   >('ALL');
   const [selectedMapFilter, setSelectedMapFilter] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [isHangarOpen, setIsHangarOpen] = useState(false);
   const [hangarCategory, setHangarCategory] = useState<'ROVER' | 'ROCKET' | 'STARSHIP'>('ROVER');
 
@@ -1268,10 +1250,10 @@ const JuniorCadetNmsGame: React.FC<CadetGameProps> = ({ isMuted, onBack, onUpdat
   const mountRef = useRef<HTMLDivElement>(null);
   const [crystalCount, setCrystalCount] = useState(0);
   const [scannedArtifacts, setScannedArtifacts] = useState<string[]>([]);
-  const [laserActive, setLaserActive] = useState(false);
+  const [, setLaserActive] = useState(false);
   const [laserHeat, setLaserHeat] = useState(0);
   const [jetpackFuel, setJetpackFuel] = useState(100);
-  const [hazardShield, setHazardShield] = useState(100);
+  void (useState(100));
   const [discoveryPopup, setDiscoveryPopup] = useState<string | null>(null);
   const [speedKmh, setSpeedKmh] = useState(0);
   const [evaMode, setEvaMode] = useState(false);
@@ -1281,7 +1263,7 @@ const JuniorCadetNmsGame: React.FC<CadetGameProps> = ({ isMuted, onBack, onUpdat
   const [isVisorScanning, setIsVisorScanning] = useState(false);
   const [flagPlanted, setFlagPlanted] = useState(false);
   const [showSpectrometer, setShowSpectrometer] = useState(false);
-  const [analyzedMinerals, setAnalyzedMinerals] = useState<string[]>([]);
+  const [, setAnalyzedMinerals] = useState<string[]>([]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -1290,7 +1272,7 @@ const JuniorCadetNmsGame: React.FC<CadetGameProps> = ({ isMuted, onBack, onUpdat
     const height = container.clientHeight || 500;
 
     const activeMap = map || NASA_MAPS['map-moon-aitken'];
-    const activeVehicle = vehicle || NASA_VEHICLES[0];
+    void (vehicle || NASA_VEHICLES[0]);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(activeMap.skyColor);
@@ -2007,7 +1989,7 @@ const JuniorCadetNmsGame: React.FC<CadetGameProps> = ({ isMuted, onBack, onUpdat
     let isEva = false;
     let astroPos = new THREE.Vector3(0, initGroundY, 0);
     let astroYaw = 0;
-    let astroSpeed = 0;
+    void (0);
     let astroWalkTime = 0;
     let astroJumpVel = 0;
     let isAstroJumping = false;
@@ -3128,11 +3110,11 @@ interface OfficerGameProps {
   map?: PlanetMapConfig;
 }
 
-const FlightOfficerKspGame: React.FC<OfficerGameProps> = ({ isMuted, onBack, onUpdateScores, mission, vehicle, map }) => {
+const FlightOfficerKspGame: React.FC<OfficerGameProps> = ({ isMuted, onBack, onUpdateScores }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [altitudeKm, setAltitudeKm] = useState(0);
   const [velocityKms, setVelocityKms] = useState(0);
-  const [throttle, setThrottle] = useState(0);
+  const [, setThrottle] = useState(0);
   const [deltaV, setDeltaV] = useState(4850);
   const [apoapsisKm, setApoapsisKm] = useState(0);
   const [periapsisKm, setPeriapsisKm] = useState(0);
@@ -3785,7 +3767,7 @@ const FlightOfficerKspGame: React.FC<OfficerGameProps> = ({ isMuted, onBack, onU
         currentDeltaV = Math.max(0, currentDeltaV - thrustAcc * dt * 7.5);
 
         const vz = Math.sin(pitch * (Math.PI / 180)) * currentVel;
-        const vx = Math.cos(pitch * (Math.PI / 180)) * currentVel;
+        void (Math.cos(pitch * (Math.PI / 180)) * currentVel);
 
         currentAlt += (vz * dt * 0.22);
         currentAp = Math.max(currentAp, currentAlt * 1.6 + currentVel * 0.4);
@@ -4288,13 +4270,13 @@ interface CommanderGameProps {
   map?: PlanetMapConfig;
 }
 
-const MasterCommanderScGame: React.FC<CommanderGameProps> = ({ isMuted, onBack, onUpdateScores, mission, vehicle, map }) => {
+const MasterCommanderScGame: React.FC<CommanderGameProps> = ({ isMuted, onBack, onUpdateScores }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [faOff, setFaOff] = useState(true);
   const [speedKms, setSpeedKms] = useState(4.2);
   const [kills, setKills] = useState(0);
   const [pwrPips, setPwrPips] = useState<'SYS' | 'ENG' | 'WEP'>('WEP');
-  const [radarPingCount, setRadarPingCount] = useState(0);
+  const [, setRadarPingCount] = useState(0);
   const [viewMode, setViewMode] = useState<'CHASE' | 'COCKPIT'>('CHASE');
   const [nearestTargetDist, setNearestTargetDist] = useState<number>(145);
   const [shield, setShield] = useState<number>(100);

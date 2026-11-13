@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import type { TeachingFlashcard } from '../data/teachingFlashcards';
 import { MISSION_EVENTS } from '../data/events';
 import type { MissionEvent } from '../types/game';
-import { NASA_MISSIONS } from '../data/nasaMissions';
 import { NASA_MISSIONS_CATALOG, type NasaCatalogMission } from '../data/nasaMissionCatalog';
-import { X, Volume2, VolumeX, Radio, Search, Play, BookOpen, Sparkles } from 'lucide-react';
+import { X, Volume2, VolumeX, Search, Play, BookOpen, Sparkles } from 'lucide-react';
 import { speechEngine } from '../utils/speechEngine';
 import { HandwrittenNotebookView } from './HandwrittenNotebookView';
 import { AudioLessonPlayerView } from './AudioLessonPlayerView';
@@ -76,7 +75,7 @@ export const LearningHubModal: React.FC<LearningHubModalProps> = ({
 
 
 
-  const handlePlayBriefing = (missionId: string, audio: string) => {
+  void ((missionId: string, audio: string) => {
     if (speakingMissionId === missionId) {
       stopSpeech();
       return;
@@ -84,7 +83,7 @@ export const LearningHubModal: React.FC<LearningHubModalProps> = ({
     stopSpeech();
     setSpeakingMissionId(missionId);
     speechEngine.speak(audio, 'COMMANDER_DADU', () => setSpeakingMissionId(null), () => setSpeakingMissionId(null));
-  };
+  });
 
   const handlePlayCatalog = (m: NasaCatalogMission) => {
     if (speakingCatalogId === m.id) {

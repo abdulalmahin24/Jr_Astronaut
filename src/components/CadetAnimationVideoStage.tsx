@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { TrainingPillarId } from './RealisticTrainingCenterModal';
 import { 
   Play, 
@@ -8,10 +8,7 @@ import {
   Volume2, 
   VolumeX, 
   Film, 
-  Tv, 
-  Sparkles, 
-  CheckCircle2, 
-  RotateCcw 
+  Tv 
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { speechEngine } from '../utils/speechEngine';

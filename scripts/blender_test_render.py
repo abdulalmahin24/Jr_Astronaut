@@ -8,7 +8,7 @@ scene.render.resolution_x = 800
 scene.render.resolution_y = 1000
 
 # Import Astronaut.glb
-bpy.ops.import_scene.gltf(filepath=r"c:\Users\user\OneDrive\Desktop\Jr_AstroCamp-main\public\models\Astronaut.glb")
+bpy.ops.import_scene.gltf(filepath="./public\models\Astronaut.glb")
 
 # Camera
 cam_data = bpy.data.cameras.new("Cam")
@@ -32,7 +32,7 @@ world.use_nodes = True
 world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.05, 0.05, 0.08, 1)
 
 # Render
-render_path = r"C:\Users\user\.gemini\antigravity-ide\brain\f32f3914-f53b-4e5d-8152-0c32e556920a\blender_render_astronaut_glb.png"
+render_path = "./scratch/blender_render_astronaut_glb.png"
 scene.render.filepath = render_path
 bpy.ops.render.render(write_still=True)
 print("Saved render to:", render_path)

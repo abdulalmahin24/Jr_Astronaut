@@ -20,7 +20,7 @@ export const ResourceHUD: React.FC<ResourceHUDProps> = ({
   difficultyMode,
   onSelectDifficulty,
 }) => {
-  const currentTier = TIER_PROFILES[difficultyMode] || TIER_PROFILES.CADET;
+  void (TIER_PROFILES[difficultyMode] || TIER_PROFILES.CADET);
   const isDefaultKidMode = difficultyMode === 'EXPLORER' || difficultyMode === 'CADET';
   const [kidFriendlyView, setKidFriendlyView] = useState<boolean>(isDefaultKidMode);
 

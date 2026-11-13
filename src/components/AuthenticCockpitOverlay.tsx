@@ -67,8 +67,6 @@ export const AuthenticCockpitOverlay: React.FC<AuthenticCockpitOverlayProps> = (
   cockpitLookYaw,
   cockpitLookPitch,
   onSetCockpitLook,
-  onThrottleChange,
-  onStageTrigger,
   onAbort,
 }) => {
   const era = useMemo(() => getMissionCockpitEra(mission), [mission]);
@@ -640,7 +638,7 @@ const SpaceShuttleCockpit: React.FC<{
   lookY: number;
   onButtonBeep: (f: number) => void;
   onAbort?: () => void;
-}> = ({ telemetry, lookX, lookY, onButtonBeep, onAbort }) => {
+}> = ({ telemetry, lookX, lookY }) => {
   return (
     <div
       style={{
@@ -794,7 +792,7 @@ const ArtemisOrionGlassCockpit: React.FC<{
   lookY: number;
   onButtonBeep: (f: number) => void;
   onAbort?: () => void;
-}> = ({ telemetry, lookX, lookY, onButtonBeep, onAbort }) => {
+}> = ({ telemetry, lookX, lookY }) => {
   return (
     <div
       style={{
@@ -937,7 +935,7 @@ const RoverDriverStationCockpit: React.FC<{
   lookX: number;
   lookY: number;
   onButtonBeep: (f: number) => void;
-}> = ({ telemetry, lookX, lookY }) => {
+}> = ({ lookX, lookY }) => {
   return (
     <div
       style={{
@@ -995,7 +993,7 @@ const RoundDialGauge: React.FC<{
   angle: number;
   min: string;
   max: string;
-}> = ({ label, value, sub, angle, min, max }) => (
+}> = ({ label, value, sub, angle }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
     <span style={{ fontSize: '8.5px', fontWeight: 800, color: '#94a3b8' }}>{label}</span>
     <div

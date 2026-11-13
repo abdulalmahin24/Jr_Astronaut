@@ -84,7 +84,6 @@ export const AstrelixFlightHUD: React.FC<AstrelixFlightHUDProps> = ({
   hasSideBoosters,
   isMercury = false,
   isLunarMission = false,
-  tliActive = false,
   tliComplete = false,
   stageActionLabel,
   onSetThrottle,
@@ -110,6 +109,15 @@ export const AstrelixFlightHUD: React.FC<AstrelixFlightHUDProps> = ({
   const [draggingThrottle, setDraggingThrottle] = useState(false);
   const [gimbalPos, setGimbalPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [draggingGimbal, setDraggingGimbal] = useState(false);
+  const [activeTouchKey, setActiveTouchKey] = useState<string | null>(null);
+
+  const isThrusterFiring = telemetry.throttle > 0.05 || activeTouchKey !== null || draggingGimbal;
+  const isZeroGVacuum =
+    mission.gameType === 'docking' ||
+    mission.gameType === 'deep_space' ||
+    mission.gameType === 'telescope' ||
+    mission.gameType === 'lunar_landing' ||
+    telemetry.altitudeKm > 75;
 
   const isLunar =
     mission.gameType === 'lunar_landing' ||
@@ -320,6 +328,71 @@ export const AstrelixFlightHUD: React.FC<AstrelixFlightHUDProps> = ({
 
   return (
     <>
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* 0. REALISTIC SPACECRAFT COCKPIT HUD OVERLAY & THRUSTER FIRING VIGNETTE */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 22,
+          pointerEvents: 'none',
+          boxShadow: isThrusterFiring
+            ? 'inset 0 0 65px rgba(249, 115, 22, 0.26), inset 0 0 120px rgba(2, 6, 23, 0.55)'
+            : 'inset 0 0 90px rgba(2, 6, 23, 0.5)',
+          border:
+            cameraMode === 'cockpit'
+              ? '14px solid rgba(15, 23, 42, 0.85)'
+              : '1.5px solid rgba(56, 189, 248, 0.16)',
+          transition: 'box-shadow 0.12s ease-out',
+        }}
+      >
+        {/* Top/Bottom Cockpit Visor Strut Frame Lines */}
+        <svg width="100%" height="100%" viewBox="0 0 1000 600" preserveAspectRatio="none" style={{ opacity: cameraMode === 'cockpit' ? 0.55 : 0.22 }}>
+          <path d="M 0,48 Q 500,8 1000,48" fill="none" stroke="#38bdf8" strokeWidth="1.2" strokeDasharray="8 6" />
+          <path d="M 0,552 Q 500,592 1000,552" fill="none" stroke="#38bdf8" strokeWidth="1.2" strokeDasharray="8 6" />
+          {/* Center Boresight Velocity Vector Crosshair */}
+          <circle cx="500" cy="300" r="18" fill="none" stroke="rgba(56, 189, 248, 0.45)" strokeWidth="1.2" />
+          <line x1="474" y1="300" x2="488" y2="300" stroke="rgba(56, 189, 248, 0.55)" strokeWidth="1.4" />
+          <line x1="512" y1="300" x2="526" y2="300" stroke="rgba(56, 189, 248, 0.55)" strokeWidth="1.4" />
+          <line x1="500" y1="274" x2="500" y2="288" stroke="rgba(56, 189, 248, 0.55)" strokeWidth="1.4" />
+        </svg>
+
+        {/* Live Newtonian Zero-G Inertia & Thruster Plume Telemetry Pill */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '158px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '3px 12px',
+            borderRadius: '14px',
+            background: 'rgba(2, 6, 23, 0.78)',
+            border: `1px solid ${isThrusterFiring ? 'rgba(249, 115, 22, 0.7)' : 'rgba(56, 189, 248, 0.3)'}`,
+            fontFamily: 'var(--font-mono)',
+            fontSize: '8.5px',
+            fontWeight: 900,
+            color: isThrusterFiring ? '#fdba74' : '#7dd3fc',
+            boxShadow: isThrusterFiring ? '0 0 16px rgba(249, 115, 22, 0.4)' : 'none',
+          }}
+        >
+          <span>
+            {isThrusterFiring
+              ? `🔥 THRUSTER IMPULSE ACTIVE (${Math.max(15, Math.round(telemetry.throttle * 100))}% Δp)`
+              : '🛰️ THRUSTERS STANDBY'}
+          </span>
+          <span style={{ color: '#475569' }}>|</span>
+          <span style={{ color: isZeroGVacuum ? '#34d399' : '#38bdf8' }}>
+            {isZeroGVacuum
+              ? `🌌 ZERO-G NEWTONIAN INERTIA (DRIFT: ${Math.abs(telemetry.vertSpeedMs).toFixed(1)} m/s)`
+              : `🌍 ATMO DRAG: ${telemetry.dynamicPressureQ} kPa`}
+          </span>
+        </div>
+      </div>
+
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {/* 1. TOP-LEFT: @ASTRELIX (ELLIPSE) DIGITAL TELEMETRY & MISSION READOUT    */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
@@ -1303,59 +1376,185 @@ export const AstrelixFlightHUD: React.FC<AstrelixFlightHUDProps> = ({
           </span>
         </div>
 
-        {/* Primary Steering + Big @Astrelix Stage/Action Button */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '154px' }}>
-          {/* Directional Pitch / RCS / Drive Buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+        {/* Primary Tablet / Touchscreen 4-Way Multi-Touch Thruster D-Pad + Big @Astrelix Stage/Action Button */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '176px' }}>
+          {/* 4-Way On-Screen Touch Thruster & Rover D-Pad (▲ W, ▼ S, ◀ A, ▶ D) */}
+          <div
+            style={{
+              background: 'rgba(3, 8, 20, 0.92)',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              borderRadius: '12px',
+              padding: '6px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              touchAction: 'none',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '7.5px', color: '#94a3b8', fontWeight: 900 }}>
+              <span>📱 TOUCH THRUSTER PAD</span>
+              <span style={{ color: '#38bdf8' }}>WASD / MULTI-TOUCH</span>
+            </div>
+
+            {/* Top Row: ▲ FWD / UP / THRUST [W] */}
             <button
-              onMouseDown={() => onKeyHold('a', true)}
-              onMouseUp={() => onKeyHold('a', false)}
-              onMouseLeave={() => onKeyHold('a', false)}
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setActiveTouchKey('w');
+                onKeyHold('w', true);
+              }}
+              onPointerUp={() => {
+                setActiveTouchKey(null);
+                onKeyHold('w', false);
+              }}
+              onPointerCancel={() => {
+                setActiveTouchKey(null);
+                onKeyHold('w', false);
+              }}
               onClick={() => {
-                if (mission.gameType === 'launch') onSteerInput(10, 0);
-                else if (mission.gameType === 'lunar_landing') onSimAction('lunar_left');
-                else if (mission.gameType === 'rover') onSimAction('rover_left');
-                else if (mission.gameType === 'docking') onSimAction('dock_port');
-                else if (mission.gameType === 'deep_space') onSimAction('deep_rcs_left');
+                if (mission.gameType === 'launch') onSetThrottle(Math.min(1, telemetry.throttle + 0.15));
+                else if (mission.gameType === 'lunar_landing') onSimAction('lunar_thrust');
+                else if (mission.gameType === 'rover') onSimAction('rover_forward');
+                else if (mission.gameType === 'docking') onSimAction('dock_forward');
+                else if (mission.gameType === 'deep_space') onSimAction('deep_prograde');
                 else onSimAction('focus_in');
               }}
               style={{
+                width: '100%',
                 padding: '6px 0',
-                background: 'rgba(3, 8, 20, 0.92)',
-                border: '1px solid rgba(56, 189, 248, 0.45)',
-                borderRadius: '8px',
-                color: '#38bdf8',
+                background: activeTouchKey === 'w' ? 'rgba(34, 197, 94, 0.35)' : 'rgba(15, 23, 42, 0.92)',
+                border: `1px solid ${activeTouchKey === 'w' ? '#4ade80' : 'rgba(34, 197, 94, 0.5)'}`,
+                borderRadius: '7px',
+                color: '#4ade80',
                 fontSize: '9px',
                 fontWeight: 900,
                 cursor: 'pointer',
+                touchAction: 'none',
               }}
             >
-              {mission.gameType === 'telescope' ? '🔍 FOCUS+ [W]' : '◀ LEFT [A]'}
+              {mission.gameType === 'rover'
+                ? '▲ DRIVE FWD [W]'
+                : mission.gameType === 'telescope'
+                ? '▲ FOCUS + [W]'
+                : '▲ THRUST / FWD [W]'}
             </button>
+
+            {/* Middle Row: ◀ LEFT [A] and ▶ RIGHT [D] */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+              <button
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  setActiveTouchKey('a');
+                  onKeyHold('a', true);
+                }}
+                onPointerUp={() => {
+                  setActiveTouchKey(null);
+                  onKeyHold('a', false);
+                }}
+                onPointerCancel={() => {
+                  setActiveTouchKey(null);
+                  onKeyHold('a', false);
+                }}
+                onClick={() => {
+                  if (mission.gameType === 'launch') onSteerInput(10, 0);
+                  else if (mission.gameType === 'lunar_landing') onSimAction('lunar_left');
+                  else if (mission.gameType === 'rover') onSimAction('rover_left');
+                  else if (mission.gameType === 'docking') onSimAction('dock_port');
+                  else if (mission.gameType === 'deep_space') onSimAction('deep_rcs_left');
+                  else onSimAction('focus_in');
+                }}
+                style={{
+                  padding: '6px 0',
+                  background: activeTouchKey === 'a' ? 'rgba(56, 189, 248, 0.35)' : 'rgba(15, 23, 42, 0.92)',
+                  border: `1px solid ${activeTouchKey === 'a' ? '#38bdf8' : 'rgba(56, 189, 248, 0.45)'}`,
+                  borderRadius: '7px',
+                  color: '#38bdf8',
+                  fontSize: '8.5px',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  touchAction: 'none',
+                }}
+              >
+                ◀ LEFT [A]
+              </button>
+              <button
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  setActiveTouchKey('d');
+                  onKeyHold('d', true);
+                }}
+                onPointerUp={() => {
+                  setActiveTouchKey(null);
+                  onKeyHold('d', false);
+                }}
+                onPointerCancel={() => {
+                  setActiveTouchKey(null);
+                  onKeyHold('d', false);
+                }}
+                onClick={() => {
+                  if (mission.gameType === 'launch') onSteerInput(-10, 0);
+                  else if (mission.gameType === 'lunar_landing') onSimAction('lunar_right');
+                  else if (mission.gameType === 'rover') onSimAction('rover_right');
+                  else if (mission.gameType === 'docking') onSimAction('dock_starboard');
+                  else if (mission.gameType === 'deep_space') onSimAction('deep_rcs_right');
+                  else onSimAction('focus_out');
+                }}
+                style={{
+                  padding: '6px 0',
+                  background: activeTouchKey === 'd' ? 'rgba(245, 158, 11, 0.35)' : 'rgba(15, 23, 42, 0.92)',
+                  border: `1px solid ${activeTouchKey === 'd' ? '#fbbf24' : 'rgba(245, 158, 11, 0.45)'}`,
+                  borderRadius: '7px',
+                  color: '#fbbf24',
+                  fontSize: '8.5px',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  touchAction: 'none',
+                }}
+              >
+                RIGHT [D] ▶
+              </button>
+            </div>
+
+            {/* Bottom Row: ▼ RETRO / BRAKE / REVERSE [S] */}
             <button
-              onMouseDown={() => onKeyHold('d', true)}
-              onMouseUp={() => onKeyHold('d', false)}
-              onMouseLeave={() => onKeyHold('d', false)}
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setActiveTouchKey('s');
+                onKeyHold('s', true);
+              }}
+              onPointerUp={() => {
+                setActiveTouchKey(null);
+                onKeyHold('s', false);
+              }}
+              onPointerCancel={() => {
+                setActiveTouchKey(null);
+                onKeyHold('s', false);
+              }}
               onClick={() => {
-                if (mission.gameType === 'launch') onSteerInput(-10, 0);
-                else if (mission.gameType === 'lunar_landing') onSimAction('lunar_right');
-                else if (mission.gameType === 'rover') onSimAction('rover_right');
-                else if (mission.gameType === 'docking') onSimAction('dock_starboard');
-                else if (mission.gameType === 'deep_space') onSimAction('deep_rcs_right');
+                if (mission.gameType === 'launch') onSetThrottle(Math.max(0, telemetry.throttle - 0.15));
+                else if (mission.gameType === 'rover') onSimAction('rover_reverse');
+                else if (mission.gameType === 'docking') onSimAction('dock_brake');
+                else if (mission.gameType === 'deep_space') onSimAction('deep_retrograde');
                 else onSimAction('focus_out');
               }}
               style={{
+                width: '100%',
                 padding: '6px 0',
-                background: 'rgba(3, 8, 20, 0.92)',
-                border: '1px solid rgba(245, 158, 11, 0.45)',
-                borderRadius: '8px',
-                color: '#fbbf24',
+                background: activeTouchKey === 's' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(15, 23, 42, 0.92)',
+                border: `1px solid ${activeTouchKey === 's' ? '#f87171' : 'rgba(239, 68, 68, 0.45)'}`,
+                borderRadius: '7px',
+                color: '#fca5a5',
                 fontSize: '9px',
                 fontWeight: 900,
                 cursor: 'pointer',
+                touchAction: 'none',
               }}
             >
-              {mission.gameType === 'telescope' ? '🔎 FOCUS- [S]' : 'RIGHT [D] ▶'}
+              {mission.gameType === 'rover'
+                ? '▼ REVERSE / BRAKE [S]'
+                : mission.gameType === 'telescope'
+                ? '▼ FOCUS - [S]'
+                : '▼ RETRO / BRAKE [S]'}
             </button>
           </div>
 

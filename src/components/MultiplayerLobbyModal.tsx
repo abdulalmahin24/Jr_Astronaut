@@ -12,7 +12,6 @@ import {
   Check,
   Play,
   Radio,
-  Sparkles,
   Compass,
   Activity,
   Send,
@@ -118,7 +117,7 @@ export const MultiplayerLobbyModal: React.FC<MultiplayerLobbyModalProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [inputRoomCode, setInputRoomCode] = useState('');
   const [chatInput, setChatInput] = useState('');
-  const [selectedRole, setSelectedRole] = useState<CrewRole>('CDR');
+  const [, setSelectedRole] = useState<CrewRole>('CDR');
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(5);
 

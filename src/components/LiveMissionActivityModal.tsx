@@ -6,19 +6,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Radio,
   Clock,
   Timer,
-  CheckCircle2,
-  Sparkles,
   Coins,
   Search,
-  Filter,
-  User,
-  Zap,
-  Globe2,
-  RefreshCw,
-  Trophy,
 } from 'lucide-react';
 import {
   studentActivityService,

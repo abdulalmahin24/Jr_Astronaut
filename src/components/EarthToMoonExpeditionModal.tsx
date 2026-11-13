@@ -18,13 +18,7 @@ import {
   Compass,
   Rocket,
   Flame,
-  CheckCircle2,
-  AlertTriangle,
   RotateCcw,
-  Eye,
-  Activity,
-  Layers,
-  ChevronRight,
   Radio,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
@@ -1952,7 +1946,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
         controls.update();
       } else if (cameraMode === 'chase') {
         controls.enabled = true;
-        const delta = vehicleTarget.clone().sub(prevExpeditionTarget);
+        void (vehicleTarget.clone().sub(prevExpeditionTarget));
         controls.target.copy(vehicleTarget);
         camera.position.lerp(spacecraftGroup.position.clone().add(new THREE.Vector3(0, 16, 54)), 0.12);
         controls.update();
@@ -2031,7 +2025,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     };
   }, [isOpen, selectedProfileId]);
 
-  const getPhaseLabels = (profId: AdvancedMissionProfile): { id: ExpeditionPhase; label: string }[] => {
+  const getPhaseLabels = (_profId: AdvancedMissionProfile): { id: ExpeditionPhase; label: string }[] => {
     return [
       { id: 'PAD_LAUNCH', label: '1. PAD LIFTOFF' },
       { id: 'TLI_INJECTION', label: '2. BOOSTERS SEP' },
@@ -2041,7 +2035,7 @@ export const EarthToMoonExpeditionModal: React.FC<EarthToMoonExpeditionModalProp
     ];
   };
 
-  const getActionLabel = (profId: AdvancedMissionProfile, ph: ExpeditionPhase, thr: number): string => {
+  const getActionLabel = (profId: AdvancedMissionProfile, _ph: ExpeditionPhase, thr: number): string => {
     const state = flightStateRef.current;
     if (thr === 0) {
       if (profId === 'NEW_SHEPARD') return 'BE-3PM IGNITION & LIFTOFF [SPACE]';

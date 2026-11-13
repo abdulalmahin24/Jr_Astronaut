@@ -10,19 +10,7 @@ import { getSharedGLTFLoader } from '../utils/modelLoader';
 import confetti from 'canvas-confetti';
 import {
   X,
-  Volume2,
-  VolumeX,
-  Wrench,
-  Flame,
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
   Radio,
-  Eye,
-  Shield,
-  Zap,
-  Play,
-  RotateCcw,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { disposeThreeScene } from '../utils/threeDisposeHelper';
@@ -52,7 +40,7 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
   onComplete,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled] = useState(true);
   const [selectedTool, setSelectedTool] = useState<ToolType>('WELDER');
   const [headlightOn, setHeadlightOn] = useState(true);
   const [cameraView, setCameraView] = useState<'3RD_PERSON' | '1ST_PERSON'>('3RD_PERSON');
@@ -62,7 +50,7 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
   const [baseIntegrity, setBaseIntegrity] = useState(24);
   const [solarPowerKw, setSolarPowerKw] = useState(4.2);
   const [activeBreachNear, setActiveBreachNear] = useState<BreachPoint | null>(null);
-  const [isRepairing, setIsRepairing] = useState(false);
+  const [, setIsRepairing] = useState(false);
   const [repairProgress, setRepairProgress] = useState(0);
   const [missionOutcome, setMissionOutcome] = useState<'PLAYING' | 'SUCCESS' | 'FAILURE'>('PLAYING');
   const [radioLog, setRadioLog] = useState<string[]>([
@@ -513,7 +501,7 @@ export const MoonbaseAlphaSimulator: React.FC<MoonbaseAlphaSimulatorProps> = ({
       const moveSpeed = 6.5;
       const turnSpeed = 2.4;
       let moveZ = 0;
-      let moveX = 0;
+      void (0);
 
       if (keys['w'] || keys['arrowup']) moveZ -= 1;
       if (keys['s'] || keys['arrowdown']) moveZ += 1;

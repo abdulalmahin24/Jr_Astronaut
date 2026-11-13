@@ -8,23 +8,11 @@ import {
   Sparkles,
   ChevronRight,
   BookOpen,
-  Globe,
   Rocket,
-  Shield,
-  Wrench,
   Search,
-  ExternalLink,
-  Check,
   Building2,
   Target,
-  Radio,
-  Layers,
-  Flame,
   Film,
-  Compass,
-  Trophy,
-  Gauge,
-  Info,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { getCadetProgression, recordLessonCompletion } from '../utils/simulationEngine';
@@ -473,11 +461,11 @@ export const AstronautAcademyModal: React.FC<AstronautAcademyModalProps> = ({
 
   // Unified Top Navigation Tab: Ground School, Ranks, Exam, Spacesuit, 30 Progressive Missions, 76 Campaign, Hangar
   const [activeTab, setActiveTab] = useState<AcademyUnifiedTab>(initialTab);
-  const [selectedRankForDetail, setSelectedRankForDetail] = useState<AstronautRank | null>(null);
+  void (useState<AstronautRank | null>(null));
 
   // 30 Progressive Missions Filter States
   const [missionLevelFilter, setMissionLevelFilter] = useState<'ALL' | 'CADET' | 'OFFICER' | 'SENIOR' | 'COMMANDER' | 'MASTER'>('ALL');
-  const [missionDestFilter, setMissionDestFilter] = useState<string>('ALL');
+  void (useState<string>('ALL'));
   const [missionSearchQuery, setMissionSearchQuery] = useState('');
   const [selectedTrailerMission, setSelectedTrailerMission] = useState<NasaLevelMission | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleConfig>(NASA_VEHICLES[0]);

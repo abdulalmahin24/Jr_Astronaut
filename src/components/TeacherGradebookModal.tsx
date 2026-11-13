@@ -1,23 +1,8 @@
 import React, { useState } from 'react';
 import {
   X,
-  GraduationCap,
-  Users,
-  Award,
-  CheckCircle2,
-  AlertTriangle,
-  TrendingUp,
-  BookOpen,
-  Send,
   Printer,
-  Sparkles,
   Search,
-  Filter,
-  PlusCircle,
-  Clock,
-  ShieldAlert,
-  Droplet,
-  Zap,
 } from 'lucide-react';
 import type { User } from '../types/auth';
 import {

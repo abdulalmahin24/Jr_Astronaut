@@ -7,7 +7,7 @@ scene = bpy.context.scene
 scene.render.resolution_x = 800
 scene.render.resolution_y = 1000
 
-bpy.ops.import_scene.gltf(filepath=r"c:\Users\user\OneDrive\Desktop\Jr_AstroCamp-main\public\models\EMU_Suit.glb")
+bpy.ops.import_scene.gltf(filepath="./public\models\EMU_Suit.glb")
 
 # Fix materials to 100% OPAQUE
 for mat in bpy.data.materials:
@@ -38,7 +38,7 @@ fill = bpy.data.objects.new("Fill", fill_data)
 scene.collection.objects.link(fill)
 fill.rotation_euler = (math.radians(120), math.radians(-30), 0)
 
-out_path = r"C:\Users\user\.gemini\antigravity-ide\brain\f32f3914-f53b-4e5d-8152-0c32e556920a\render_emu_real.png"
+out_path = "./scratch/render_emu_real.png"
 scene.render.filepath = out_path
 bpy.ops.render.render(write_still=True)
 print("Rendered EMU to:", out_path)

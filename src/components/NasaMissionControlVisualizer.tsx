@@ -1,24 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  Globe2,
-  Radio,
-  Activity,
-  Gauge,
-  Zap,
-  Wind,
-  Droplets,
-  Thermometer,
-  ShieldCheck,
-  AlertTriangle,
-  Users,
-  ExternalLink,
-  RotateCcw,
-  Compass,
-  Flame,
-  CheckCircle2,
-  ChevronRight,
-  TrendingUp,
-  Cpu
+  RotateCcw
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 
@@ -122,7 +104,7 @@ export const NasaMissionControlVisualizer: React.FC<NasaMissionControlProps> = (
   const [selectedStation, setSelectedStation] = useState<typeof NASA_GROUND_STATIONS[0] | null>(NASA_GROUND_STATIONS[0]);
   const [gmtClock, setGmtClock] = useState<string>('');
   const [metClock, setMetClock] = useState<string>('');
-  const [animTime, setAnimTime] = useState<number>(0);
+  const [, setAnimTime] = useState<number>(0);
 
   // Strip chart historical telemetry buffers
   const [historyVelocity, setHistoryVelocity] = useState<number[]>([27560, 27561, 27562, 27561, 27560]);

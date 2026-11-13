@@ -14,7 +14,7 @@ import { disposeThreeScene } from '../utils/threeDisposeHelper';
 import { NasaSpaceScienceLabModal } from './NasaSpaceScienceLabModal';
 import { ComicVideoPlayer } from './ComicVideoPlayer';
 import { ComicBookModal } from './ComicBookModal';
-import { COMIC_BOOK_ISSUES, type ComicIssue } from '../data/comicBooks';
+import { COMIC_BOOK_ISSUES } from '../data/comicBooks';
 
 interface AstronautClassroomModalProps {
   isOpen: boolean;

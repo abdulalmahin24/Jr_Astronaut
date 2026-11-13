@@ -4,7 +4,7 @@
 // Modeled After Real NASA Flight Dynamics & Ellipse Simulator Heritage (qXYpltxSTK0)
 // ============================================================================
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CURRICULUM_MODULES,
   type CurriculumModulePackage,
@@ -28,10 +28,6 @@ import {
   VolumeX,
   ExternalLink,
   Zap,
-  RotateCcw,
-  Maximize2,
-  Gauge,
-  Radio,
 } from 'lucide-react';
 import { soundFx } from '../utils/audioEffects';
 import { speechEngine } from '../utils/speechEngine';

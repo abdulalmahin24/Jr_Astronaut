@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
@@ -183,32 +183,6 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
 
     scene.add(pedestalGroup);
 
-    // 6. Gold Visor Specular Sparkle Sprite
-    const glintCanvas = document.createElement('canvas');
-    glintCanvas.width = 64;
-    glintCanvas.height = 64;
-    const gCtx = glintCanvas.getContext('2d');
-    if (gCtx) {
-      const grad = gCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grad.addColorStop(0, 'rgba(255, 230, 140, 1)');
-      grad.addColorStop(0.3, 'rgba(255, 170, 40, 0.7)');
-      grad.addColorStop(0.7, 'rgba(0, 210, 255, 0.2)');
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      gCtx.fillStyle = grad;
-      gCtx.fillRect(0, 0, 64, 64);
-    }
-    const glintTex = new THREE.CanvasTexture(glintCanvas);
-    const glintMat = new THREE.SpriteMaterial({
-      map: glintTex,
-      blending: THREE.AdditiveBlending,
-      transparent: true,
-      opacity: 0.85,
-    });
-    const glintSprite = new THREE.Sprite(glintMat);
-    glintSprite.position.set(0.08, 1.48, 0.45);
-    glintSprite.scale.set(0.24, 0.24, 0.24);
-    scene.add(glintSprite);
-
     // 7. Floating Dust Motes
     const particleCount = 100;
     const particleGeo = new THREE.BufferGeometry();
@@ -266,27 +240,31 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
           root.position.z = -(box.min.z + box.max.z) / 2;
           root.position.y = -box.min.y + 0.04;
 
-          // Material enhancement: Visor 24K gold mirror + PBR suit fabric
+          // Material enhancement: Visor 24K gold mirror + PBR suit fabric + normal & double-sided safety
           root.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
               mesh.castShadow = true;
               mesh.receiveShadow = true;
+              if (mesh.geometry && !mesh.geometry.attributes.normal) {
+                mesh.geometry.computeVertexNormals();
+              }
 
               const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
               mats.forEach((mat) => {
                 if (mat && (mat as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
                   const stdMat = mat as THREE.MeshStandardMaterial;
+                  stdMat.side = THREE.DoubleSide;
                   const nameLower = (stdMat.name || '').toLowerCase();
                   if (nameLower.includes('visor') || nameLower.includes('glass')) {
-                    stdMat.color.setHex(0xffd700);
-                    stdMat.metalness = 0.98;
-                    stdMat.roughness = 0.05;
-                    stdMat.emissive.setHex(0xb45309);
-                    stdMat.emissiveIntensity = 0.2;
+                    stdMat.color.setHex(0xd99b26);
+                    stdMat.metalness = 0.88;
+                    stdMat.roughness = 0.22;
+                    stdMat.emissive.setHex(0x78350f);
+                    stdMat.emissiveIntensity = 0.12;
                   } else {
                     stdMat.roughness = 0.55;
-                    stdMat.metalness = 0.15;
+                    stdMat.metalness = 0.12;
                   }
                 }
               });
@@ -355,11 +333,6 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
       ring1.rotation.z = elapsedTime * 0.15;
       ring2.rotation.z = -elapsedTime * 0.25;
 
-      // Visor sparkle pulse
-      const pulse = Math.sin(elapsedTime * 2.2) * 0.5 + 0.5;
-      glintSprite.scale.setScalar(0.20 + pulse * 0.10);
-      glintMat.opacity = 0.45 + pulse * 0.45;
-
       // Camera dolly lerp between standard view and inspection zoom
       const targetY = isInspectionModeRef.current ? 1.35 : 0.95;
       const targetZ = isInspectionModeRef.current ? 2.35 : 3.4;
@@ -406,7 +379,7 @@ export const LobbyAstronaut3D: React.FC<LobbyAstronaut3DProps> = ({
     if (onSuitChange) onSuitChange(suit);
   };
 
-  const handleContainerClick = (e: React.MouseEvent) => {
+  const handleContainerClick = (_e: React.MouseEvent) => {
     // Only trigger inspect modal if user didn't perform a 360° drag
     if (onInteract) {
       soundFx.playHydroPressureSwoosh();
