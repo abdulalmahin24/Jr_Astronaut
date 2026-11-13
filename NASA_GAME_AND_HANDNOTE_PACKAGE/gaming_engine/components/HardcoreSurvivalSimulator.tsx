@@ -632,6 +632,13 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [cameraMode, setCameraMode] = useState<'orbit' | 'chase' | 'cockpit'>('chase');
   const [isNasaModalOpen, setIsNasaModalOpen] = useState(false);
+  const [autopilotMode, setAutopilotMode] = useState<'OFF' | 'PROGRADE' | 'RETROGRADE' | 'CIRCULARIZE'>('OFF');
+  const [timeWarp, setTimeWarp] = useState<number>(1);
+
+  const autopilotModeRef = useRef<'OFF' | 'PROGRADE' | 'RETROGRADE' | 'CIRCULARIZE'>('OFF');
+  autopilotModeRef.current = autopilotMode;
+  const timeWarpRef = useRef<number>(1);
+  timeWarpRef.current = timeWarp;
 
   const mountRef = useRef<HTMLDivElement>(null);
   const debrisFieldRef = useRef<DebrisObject[]>([]);
@@ -707,6 +714,9 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       debrisFieldRef.current = [];
     }
 
+    setAutopilotMode('OFF');
+    setTimeWarp(1);
+
     if (soundEnabled) soundFx.playReactorStart();
   }, [soundEnabled]);
 
@@ -738,10 +748,14 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       } else if (key === 'a') {
         physStateRef.current.pitchRad += 0.05;
         physStateRef.current.rcsTimer = 0.3;
+        setAutopilotMode('OFF');
+        if (physStateRef.current.pitchRad > Math.PI) physStateRef.current.pitchRad -= Math.PI * 2;
         setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
       } else if (key === 'd') {
         physStateRef.current.pitchRad -= 0.05;
         physStateRef.current.rcsTimer = 0.3;
+        setAutopilotMode('OFF');
+        if (physStateRef.current.pitchRad < -Math.PI) physStateRef.current.pitchRad += Math.PI * 2;
         setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
       } else if (key === ' ' || e.code === 'Space') {
         // RCS Translation Pulse
@@ -895,6 +909,28 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     threatReticle.visible = false;
     scene.add(threatReticle);
 
+    // 7.5 Cosmic Motion Streaks / Space Dust Particle Field (High-Velocity Orbital Warp)
+    const speedParticleCount = 650;
+    const speedParticleGeo = new THREE.BufferGeometry();
+    const speedParticlePos = new Float32Array(speedParticleCount * 3);
+    const speedParticleVels = new Float32Array(speedParticleCount);
+    for (let i = 0; i < speedParticleCount; i++) {
+      speedParticlePos[i * 3] = (Math.random() - 0.5) * 60;
+      speedParticlePos[i * 3 + 1] = (Math.random() - 0.5) * 40;
+      speedParticlePos[i * 3 + 2] = (Math.random() - 0.5) * 110;
+      speedParticleVels[i] = 0.6 + Math.random() * 1.6;
+    }
+    speedParticleGeo.setAttribute('position', new THREE.BufferAttribute(speedParticlePos, 3));
+    const speedParticleMat = new THREE.PointsMaterial({
+      color: 0x93c5fd,
+      size: 1.5,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+    });
+    const speedParticles = new THREE.Points(speedParticleGeo, speedParticleMat);
+    scene.add(speedParticles);
+
     // 8. 60FPS Physics Simulation & Render Loop
     let animId: number;
     let lastTime = performance.now();
@@ -903,11 +939,37 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
     const renderLoop = () => {
       animId = requestAnimationFrame(renderLoop);
       const now = performance.now();
-      const dt = Math.min((now - lastTime) / 1000, 0.05); // cap delta-time
+      const rawDt = Math.min((now - lastTime) / 1000, 0.05); // cap delta-time
       lastTime = now;
+      const warp = timeWarpRef.current || 1;
+      const dt = rawDt * warp;
 
       const p = physStateRef.current;
       let nearestDebrisList: Array<{ x: number; y: number; z: number; distanceKm: number }> = [];
+
+      // Autopilot / Flight Computer Steering
+      if (autopilotModeRef.current === 'PROGRADE') {
+        p.pitchRad = THREE.MathUtils.lerp(p.pitchRad, 0, dt * 5);
+      } else if (autopilotModeRef.current === 'RETROGRADE') {
+        p.pitchRad = THREE.MathUtils.lerp(p.pitchRad, Math.PI, dt * 5);
+      } else if (autopilotModeRef.current === 'CIRCULARIZE') {
+        p.pitchRad = THREE.MathUtils.lerp(p.pitchRad, 0, dt * 5);
+        if (p.altKm < 535) {
+          if (p.rKm < bodyConfig.radiusKm + 540) {
+            p.throttle = 100;
+          } else {
+            p.throttle = 0;
+          }
+        } else {
+          // Circularization burn
+          if (p.vxKms < 7.58) {
+            p.throttle = 80;
+          } else {
+            p.throttle = 0;
+            setAutopilotMode('OFF');
+          }
+        }
+      }
 
       if (!isPaused && p.outcome === 'IN_PROGRESS') {
         p.time += dt;
@@ -1148,9 +1210,15 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       craft.update(thr, p.time, p.rcsTimer > 0, Math.max(heatAblation, reEntryHeat));
 
       // Update 3D Spacecraft orientation & visual response
-      craft.shipGroup.rotation.z = -p.pitchRad;
+      // Align 0 rad = Prograde (horizontal +X with engine blasting backwards -X)
+      craft.shipGroup.rotation.z = -Math.PI / 2 + p.pitchRad;
       craft.shipGroup.rotation.x = Math.sin(p.time * 2.5) * 0.02;
       craft.shipGroup.rotation.y = (p.yawRad || 0) + Math.cos(p.time * 1.5) * 0.015;
+
+      // Dynamic Spacecraft Recoil & G-Force Drift
+      const recoilZ = -(p.throttle / 100) * 0.8;
+      craft.shipGroup.position.z = THREE.MathUtils.lerp(craft.shipGroup.position.z, recoilZ, rawDt * 6);
+      craft.shipGroup.position.y = THREE.MathUtils.lerp(craft.shipGroup.position.y, Math.sin(p.time * 2.5) * 0.05, rawDt * 4);
 
       // 10. Update Central Celestial Body Placement & Rotation
       const R = activeMission.targetBody === 'GAS_GIANT' ? 48 : (activeMission.targetBody === 'MOON' ? 24 : 36);
@@ -1158,10 +1226,26 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       const planetDist = R + 4.5 + altRatio * (R * 2.2);
       planet.planetGroup.position.set(0, -planetDist, -8);
 
-      // Rotate planet surface & drifting cloud layer independently
-      planet.surfaceMesh.rotation.y += 0.0006;
-      if (planet.cloudsMesh) planet.cloudsMesh.rotation.y += 0.00095;
+      // Visibly roll planet surface & drifting cloud layer beneath spacecraft at orbital velocity!
+      const orbitalRollRate = (Math.abs(p.vxKms) / 7.8) * 0.008 * (timeWarpRef.current || 1) * rawDt * 60;
+      planet.surfaceMesh.rotation.z += orbitalRollRate;
+      if (planet.cloudsMesh) planet.cloudsMesh.rotation.z += orbitalRollRate * 1.15;
+      planet.surfaceMesh.rotation.y += 0.0004;
       starField.rotation.y += 0.0001;
+
+      // Stream cosmic speed particles past spacecraft
+      const orbitalSpeedMult = Math.max(1.2, (p.vKms / 7.8) * 3.5 + (p.throttle / 100) * 16.0);
+      const posArr = speedParticleGeo.attributes.position.array as Float32Array;
+      for (let i = 0; i < speedParticleCount; i++) {
+        posArr[i * 3 + 2] += orbitalSpeedMult * speedParticleVels[i] * rawDt * 28;
+        if (posArr[i * 3 + 2] > 40) {
+          posArr[i * 3 + 2] = -70;
+          posArr[i * 3] = (Math.random() - 0.5) * 60;
+          posArr[i * 3 + 1] = (Math.random() - 0.5) * 40;
+        }
+      }
+      speedParticleGeo.attributes.position.needsUpdate = true;
+      speedParticleMat.size = 1.3 + (p.throttle / 100) * 1.6;
 
       // 11. Update 3D Space Debris Meshes & Threat Reticle (Kessler Syndrome)
       if (activeMission.hasDebrisField && debrisFieldRef.current.length > 0) {
@@ -1561,6 +1645,85 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             ))}
           </div>
         )}
+
+        {/* ── REAL-TIME FLIGHT DIRECTOR GUIDANCE BANNER (TOP CENTER) ── */}
+        <div
+          style={{
+            position: 'absolute',
+            top: telemetry.warningAlerts.length > 0 ? '66px' : '18px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 58, 138, 0.92))',
+            border: '1.5px solid #38bdf8',
+            borderRadius: '10px',
+            padding: '8px 18px',
+            boxShadow: '0 4px 20px rgba(56, 189, 248, 0.35)',
+            zIndex: 28,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            maxWidth: '750px',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 900, color: '#38bdf8' }}>
+            <span>🧭 GUIDANCE:</span>
+            <span style={{ color: '#ffffff', fontWeight: 800 }}>
+              {activeMission.id === 'kessler-syndrome' ? (
+                telemetry.apoapsisKm < 530 ? (
+                  `🔥 PHASE 1: BURN PROGRADE [0°] AT 100% THROTTLE TO RAISE APOAPSIS TO 550 KM (CURRENT AP: ${telemetry.apoapsisKm.toFixed(0)} KM)`
+                ) : telemetry.periapsisKm < 515 ? (
+                  `🚀 PHASE 2: CIRCULARIZE! BURN PROGRADE [0°] TO RAISE PERIAPSIS TO 550 KM (CURRENT PE: ${telemetry.periapsisKm.toFixed(0)} KM)`
+                ) : (
+                  `🎉 ORBIT STABILIZED AT 550 KM! MISSION SUCCESS ACHIEVED!`
+                )
+              ) : activeMission.id === 'solar-storm' ? (
+                telemetry.periapsisKm < 120 ? (
+                  `☀️ BLIND NAVIGATION: MAINTAIN THROTTLE 65-75% TO ACHIEVE PERIAPSIS > 120 KM WITHOUT OVERHEATING ENGINE!`
+                ) : (
+                  `🎉 STABLE ORBIT ACHIEVED VIA NUMERICAL TELEMETRY!`
+                )
+              ) : activeMission.id === 'apollo-13' ? (
+                `⏱️ MANUAL RCS BURNS: STEER ENTRY ANGLE TO EXACTLY 5.5° - 7.5° (CURRENT: ${Math.abs(telemetry.flightPathAngleDeg).toFixed(2)}°)`
+              ) : activeMission.id === 'oberth-slingshot' ? (
+                telemetry.verticalSpeedKms < 0 ? (
+                  `⚡ GRAVITY WELL PLUNGE: COASTING TO PERIAPSIS... WAIT FOR CLOSEST APPROACH BEFORE FIRING!`
+                ) : (
+                  `🔥 EXECUTE FULL THROTTLE NOW! OBERTH EFFECT SLINGSHOT TO ESCAPE VELOCITY (>= 52 KM/S)!`
+                )
+              ) : (
+                telemetry.suicideBurnIgnitionRequired ? (
+                  `💥 FULL THROTTLE RETROGRADE NOW! HOVERSLAM TOUCHDOWN < 3.0 M/S!`
+                ) : (
+                  `DECELERATION RADAR: WAIT FOR IGNITION ALTITUDE (${telemetry.suicideBurnDistanceM.toFixed(0)}m)...`
+                )
+              )}
+            </span>
+          </div>
+
+          {activeMission.id === 'kessler-syndrome' && (
+            <button
+              onClick={() => {
+                setAutopilotMode((prev) => (prev === 'CIRCULARIZE' ? 'OFF' : 'CIRCULARIZE'));
+                if (soundEnabled) soundFx.playClick(1200);
+              }}
+              style={{
+                background: autopilotMode === 'CIRCULARIZE' ? '#16a34a' : 'linear-gradient(135deg, #0284c7, #2563eb)',
+                border: '1px solid #38bdf8',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                color: '#ffffff',
+                fontSize: '10px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 0 10px rgba(56, 189, 248, 0.4)',
+              }}
+            >
+              {autopilotMode === 'CIRCULARIZE' ? '⚡ AUTO-PILOT RUNNING' : '🚀 AUTO-CIRCULARIZE (550 KM)'}
+            </button>
+          )}
+        </div>
 
         {/* ── LEFT HUD: NUMERICAL TELEMETRY INSTRUMENTS ── */}
         <div
@@ -1992,6 +2155,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             <button
               onClick={() => {
                 physStateRef.current.pitchRad += 0.08;
+                if (physStateRef.current.pitchRad > Math.PI) physStateRef.current.pitchRad -= Math.PI * 2;
                 setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
               }}
               style={{
@@ -2011,6 +2175,7 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
             <button
               onClick={() => {
                 physStateRef.current.pitchRad -= 0.08;
+                if (physStateRef.current.pitchRad < -Math.PI) physStateRef.current.pitchRad += Math.PI * 2;
                 setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
               }}
               style={{
@@ -2025,6 +2190,72 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
               }}
             >
               PITCH [D] ▶
+            </button>
+
+            {/* Quick SAS Flight Computer Orientations */}
+            <button
+              onClick={() => {
+                physStateRef.current.pitchRad = 0;
+                setAutopilotMode('PROGRADE');
+                setTelemetry((prev) => ({ ...prev, pitchDeg: 0 }));
+                if (soundEnabled) soundFx.playClick(1100);
+              }}
+              style={{
+                background: autopilotMode === 'PROGRADE' ? 'rgba(34, 197, 94, 0.35)' : 'rgba(255, 255, 255, 0.08)',
+                border: autopilotMode === 'PROGRADE' ? '1.5px solid #22c55e' : '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                color: autopilotMode === 'PROGRADE' ? '#4ade80' : '#cbd5e1',
+                fontWeight: 900,
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+              title="Align nose horizontally forward in orbital direction (Raise Orbit / Accelerate)"
+            >
+              🎯 PROGRADE [0°]
+            </button>
+
+            <button
+              onClick={() => {
+                physStateRef.current.pitchRad = Math.PI;
+                setAutopilotMode('RETROGRADE');
+                setTelemetry((prev) => ({ ...prev, pitchDeg: 180 }));
+                if (soundEnabled) soundFx.playClick(900);
+              }}
+              style={{
+                background: autopilotMode === 'RETROGRADE' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(255, 255, 255, 0.08)',
+                border: autopilotMode === 'RETROGRADE' ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                color: autopilotMode === 'RETROGRADE' ? '#f87171' : '#cbd5e1',
+                fontWeight: 900,
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+              title="Align nose backward (Brake / Lower Orbit)"
+            >
+              🔄 RETROGRADE [180°]
+            </button>
+
+            {/* Time Warp Button */}
+            <button
+              onClick={() => {
+                setTimeWarp((prev) => (prev === 1 ? 3 : prev === 3 ? 5 : 1));
+                if (soundEnabled) soundFx.playClick(1000);
+              }}
+              style={{
+                background: timeWarp > 1 ? 'linear-gradient(135deg, #d97706, #b45309)' : 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                color: timeWarp > 1 ? '#ffffff' : '#94a3b8',
+                fontWeight: 900,
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+              title="Fast-forward orbital propagation time (1X / 3X / 5X)"
+            >
+              ⏩ WARP {timeWarp}X
             </button>
 
             {activeMission.rcsOnly && (

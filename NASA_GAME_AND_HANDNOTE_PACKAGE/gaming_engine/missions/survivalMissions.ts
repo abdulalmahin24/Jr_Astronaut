@@ -669,7 +669,8 @@ export function evaluateMissionRules(
     }
     const apDist = Math.abs(kepler.apoapsisAltitudeKm - 550);
     const peDist = Math.abs(kepler.periapsisAltitudeKm - 550);
-    if (apDist <= 35 && peDist <= 35 && kepler.eccentricity < 0.05 && state.hull > 0) {
+    const avgAlt = (kepler.apoapsisAltitudeKm + kepler.periapsisAltitudeKm) / 2;
+    if (((apDist <= 45 && peDist <= 45) || (Math.abs(avgAlt - 550) <= 40 && kepler.eccentricity < 0.08)) && state.hull > 0) {
       return {
         isGameOver: true,
         outcome: 'SUCCESS',
