@@ -177,3 +177,4 @@ The package is designed to operate on standard React + Three.js stacks:
 - `canvas-confetti` (for victory celebrations)
 
 *Crafted for NASA Space Apps & Jr_AstroCamp.*
+
