@@ -1,6 +1,9 @@
-# NASA Jr_AstroCamp — Game Engine & Handwritten Notebook Package 🚀📓
+# NASA Jr_AstroCamp — Game Engine, Handwritten Notebook & 3D Curriculum Video Package 🚀📓🎬
 
-A standalone, modular package containing the **complete gaming engine** (2D Phaser + 3D Three.js + Resource Survival + Real-time Multiplayer) and the **authentic handwritten STEM notebook** extracted from Jr_AstroCamp.
+A comprehensive, standalone, and modular package containing:
+1. **Complete Space Gaming Engine** (2D Phaser arcade + 3D Three.js flight physics + Sol 1–30 survival outpost simulation + real-time multiplayer co-op).
+2. **Authentic Handwritten STEM Notebook** (realistic lined binder paper, vector SVG pencil sketches, interactive fill-in prompts, and print stylesheet).
+3. **3D Curriculum Video Engine & NASA Video Player** (dual-mode 3D WebGL animation stage + official NASA YouTube archive integration, interactive scrub bar, and Houston CapCom speech synthesis).
 
 ---
 
@@ -42,6 +45,7 @@ NASA_GAME_AND_HANDNOTE_PACKAGE/
 │   │
 │   ├── utils/                              # Standalone Gaming Engine Utilities
 │   │   ├── audioEffects.ts                 # Procedural Web Audio space sound synthesizer
+│   │   ├── speechEngine.ts                 # Web Speech synthesis with Quindar beeps
 │   │   ├── threeDisposeHelper.ts           # Zero-leak WebGL memory & geometry cleanup
 │   │   └── modelLoader.ts                  # Shared DRACO/GLTF 3D model asset loader
 │   │
@@ -49,10 +53,18 @@ NASA_GAME_AND_HANDNOTE_PACKAGE/
 │       ├── astronautTiers.ts               # Cadet, Specialist, Commander age tier parameters
 │       └── nasaInteractiveMissions.ts      # 30 Curated level blueprints & vehicle configurations
 │
-└── handwritten_notebook/                   # Authentic STEM Handwritten Notebook
-    ├── HandwrittenNotebookView.tsx         # Interactive lined paper notebook component
-    ├── HandwrittenNotebookView.css         # Authentic paper lines, binder holes & margins
-    └── curriculumNotesAudioVideo.ts        # 6 Curated curriculum modules with SVG sketches & prompts
+├── handwritten_notebook/                   # Authentic STEM Handwritten Notebook
+│   ├── HandwrittenNotebookView.tsx         # Interactive lined paper notebook component
+│   ├── HandwrittenNotebookView.css         # Authentic paper lines, binder holes & margins
+│   └── curriculumNotesAudioVideo.ts        # 6 Curated curriculum modules with SVG sketches & prompts
+│
+└── video_curriculum/                       # 3D Video Curriculum Engine & NASA Archives
+    ├── ThreeCurriculumVideoStage.tsx       # 3D WebGL flight animation engine (4 camera angles)
+    ├── VideoLessonPlayerView.tsx           # Dual-mode interactive video player (3D + YouTube)
+    ├── VideoLessonPlayerView.css           # Video player deck styles, scrub timeline & badges
+    ├── curriculumNasaVideoSources.ts       # Curated NASA YouTube IDs, timestamps & transcripts
+    ├── CadetAnimationVideoStage.tsx        # Astronaut training pillar video stage
+    └── speechEngine.ts                     # Houston CapCom voice narration & radio comms
 ```
 
 ---
@@ -82,11 +94,37 @@ NASA_GAME_AND_HANDNOTE_PACKAGE/
   - Pre-flight prediction and post-flight debrief reflection text areas that persist in `localStorage`.
   - One-click clean print stylesheet (`@media print`) for offline physical classroom worksheets.
 
+### 3. 3D Curriculum Video Engine & NASA Archive Player
+- **Dual-Mode Video Switching**:
+  - **3D Animation Stage (`ThreeCurriculumVideoStage`)**: Interactive Three.js WebGL simulation with dynamic orbital rendering, staging particles, Mars EDL heat shields, and 4 camera modes (`CINEMATIC`, `CHASE`, `COCKPIT`, `GROUND`).
+  - **NASA YouTube Documentary Mode**: Direct integration with verified NASA video archives (Apollo, Artemis, Perseverance, JWST) with precise chapter timestamps.
+- **Interactive Quizzes & Mission Decisions**:
+  - In-video checkpoints where students must calculate orbital burns or make critical mission decisions before continuing.
+- **Houston Voice Narration**:
+  - Automated voice guidance via `speechEngine.ts` featuring Apollo Quindar radio comms chirps.
+
 ---
 
 ## 💻 Quickstart & Integration
 
-### A. Rendering the Handwritten Notebook
+### A. Rendering the Video Lesson Player
+```tsx
+import React from 'react';
+import { VideoLessonPlayerView } from './NASA_GAME_AND_HANDNOTE_PACKAGE';
+
+export const VideoLessonDemo: React.FC = () => {
+  return (
+    <div style={{ padding: '24px', background: '#070c18', minHeight: '100vh' }}>
+      <VideoLessonPlayerView
+        initialModuleId={1}
+        onLaunchMission={(missionId) => console.log('Launch mission clicked:', missionId)}
+      />
+    </div>
+  );
+};
+```
+
+### B. Rendering the Handwritten Notebook
 ```tsx
 import React from 'react';
 import { HandwrittenNotebookView } from './NASA_GAME_AND_HANDNOTE_PACKAGE';
@@ -96,16 +134,14 @@ export const NotebookPage: React.FC = () => {
     <div style={{ padding: '24px', background: '#090d16', minHeight: '100vh' }}>
       <HandwrittenNotebookView
         initialModuleId={1}
-        onLaunchMission={(missionId) => {
-          console.log('Launch mission clicked from notebook:', missionId);
-        }}
+        onLaunchMission={(missionId) => console.log('Launch mission clicked:', missionId)}
       />
     </div>
   );
 };
 ```
 
-### B. Launching the 3D Space Flight Simulator
+### C. Launching the 3D Space Flight Simulator
 ```tsx
 import React, { useState } from 'react';
 import { ThreeMissionSimulator, MISSION_GAME_DATA } from './NASA_GAME_AND_HANDNOTE_PACKAGE';
@@ -123,47 +159,11 @@ export const SimulatorView: React.FC = () => {
           console.log('Mission finished! Score:', score);
           setMissionComplete(true);
         }}
-        onAbort={() => console.log('Mission aborted by user')}
+        onAbort={() => console.log('Mission aborted')}
       />
     </div>
   );
 };
-```
-
-### C. Launching the Space Arcade Hub
-```tsx
-import React, { useState } from 'react';
-import { SpaceGamesHubModal } from './NASA_GAME_AND_HANDNOTE_PACKAGE';
-
-export const ArcadeLauncher: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(true);
-
-  return (
-    <SpaceGamesHubModal
-      isOpen={isOpen}
-      onClose={() => setIsOpen(false)}
-      initialGame="HUB"
-    />
-  );
-};
-```
-
-### D. Running Sol 1–30 Survival Outpost Simulation
-```ts
-import { SimulationEngine } from './NASA_GAME_AND_HANDNOTE_PACKAGE';
-
-const engine = new SimulationEngine();
-
-// Tick Sol simulation
-const result = engine.simulateDay({
-  powerAllocation: 85,
-  oxygenScrubbingRate: 95,
-  waterRecyclingEfficiency: 90,
-  foodRationLevel: 100,
-});
-
-console.log('Sol Status:', result.outpostState);
-console.log('Daily Log:', result.dailyLog);
 ```
 
 ---
@@ -177,4 +177,3 @@ The package is designed to operate on standard React + Three.js stacks:
 - `canvas-confetti` (for victory celebrations)
 
 *Crafted for NASA Space Apps & Jr_AstroCamp.*
-
