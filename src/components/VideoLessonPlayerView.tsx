@@ -12,6 +12,7 @@ import {
 } from '../data/curriculumNotesAudioVideo';
 import { CURRICULUM_NASA_VIDEO_SOURCES } from '../data/curriculumNasaVideoSources';
 import { ThreeCurriculumVideoStage } from './ThreeCurriculumVideoStage';
+import { CadetAnimationVideoStage } from './CadetAnimationVideoStage';
 import {
   Play,
   Pause,
@@ -40,7 +41,7 @@ interface VideoLessonPlayerViewProps {
   onLaunchMission?: (missionId: string) => void;
 }
 
-export type VideoDisplayMode = 'THREE_3D_ANIMATION' | 'NASA_YOUTUBE_DOCUMENTARY';
+export type VideoDisplayMode = 'THREE_3D_ANIMATION' | 'CADET_2D_ANIMATION' | 'NASA_YOUTUBE_DOCUMENTARY';
 
 export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
   initialModuleId = 1,
@@ -177,7 +178,34 @@ export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
             }}
           >
             <Box size={14} />
-            <span>3D INTERACTIVE FLIGHT ANIMATION</span>
+            <span>🚀 3D FLIGHT ANIMATION VIDEO</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setDisplayMode('CADET_2D_ANIMATION');
+              soundFx.playClick(900);
+            }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background:
+                displayMode === 'CADET_2D_ANIMATION'
+                  ? 'linear-gradient(135deg, #10b981, #047857)'
+                  : 'rgba(255, 255, 255, 0.05)',
+              border: `1.5px solid ${displayMode === 'CADET_2D_ANIMATION' ? '#10b981' : 'rgba(255,255,255,0.1)'}`,
+              color: '#ffffff',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: displayMode === 'CADET_2D_ANIMATION' ? '0 0 14px rgba(16, 185, 129, 0.45)' : 'none',
+            }}
+          >
+            <Sparkles size={14} />
+            <span>👨‍🚀 2D CADET DRILL ANIMATION</span>
           </button>
 
           <button
@@ -205,7 +233,7 @@ export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
             }}
           >
             <Video size={14} />
-            <span>OFFICIAL NASA ARCHIVE & YOUTUBE</span>
+            <span>OFFICIAL NASA ARCHIVE</span>
           </button>
         </div>
 
@@ -305,8 +333,25 @@ export const VideoLessonPlayerView: React.FC<VideoLessonPlayerViewProps> = ({
               playbackSpeed={playbackSpeed}
               onActionTriggered={handleActionTriggered}
             />
+          ) : displayMode === 'CADET_2D_ANIMATION' ? (
+            /* ── MODE 2: GENERATED 2D CADET DRILL ANIMATION LESSON ── */
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+              <CadetAnimationVideoStage
+                pillarId={
+                  selectedModuleId === 1
+                    ? 'EMERGENCY_DRILLS'
+                    : selectedModuleId === 2
+                    ? 'SPACESUIT_ECLSS'
+                    : selectedModuleId === 3
+                    ? 'SURFACE_REGOLITH'
+                    : selectedModuleId === 4
+                    ? 'HABITAT_NUTRITION'
+                    : 'FITNESS_NBL'
+                }
+              />
+            </div>
           ) : (
-            /* ── MODE 2: CURATED OFFICIAL NASA YOUTUBE VIDEO ARCHIVE ── */
+            /* ── MODE 3: CURATED OFFICIAL NASA YOUTUBE VIDEO ARCHIVE ── */
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
               <iframe
                 title={nasaVideoSource.documentaryTitle}

@@ -177,25 +177,8 @@ export const App: React.FC = () => {
   const [isClassroomOpen, setIsClassroomOpen] = useState(false);
   const [savedGameInfo, setSavedGameInfo] = useState<GameState | null>(loadGameStateFromStorage);
 
-  const [isLearningHubOpen, setIsLearningHubOpen] = useState(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const p = new URLSearchParams(window.location.search);
-        return p.has('video') || p.has('learn') || p.has('curriculum') || p.has('briefing') || p.has('debrief');
-      }
-    } catch {}
-    return false;
-  });
-  const [learningHubInitialTab, setLearningHubInitialTab] = useState<'NOTEBOOK' | 'AUDIO' | 'VIDEO' | 'COMIC' | 'BRIEFINGS' | 'CATALOG'>(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const p = new URLSearchParams(window.location.search);
-        if (p.has('video')) return 'VIDEO';
-        if (p.has('briefing') || p.has('debrief')) return 'BRIEFINGS';
-      }
-    } catch {}
-    return 'NOTEBOOK';
-  });
+  const [isLearningHubOpen, setIsLearningHubOpen] = useState(true);
+  const [learningHubInitialTab, setLearningHubInitialTab] = useState<'NOTEBOOK' | 'AUDIO' | 'VIDEO' | 'COMIC' | 'BRIEFINGS' | 'CATALOG'>('VIDEO');
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isComicBookOpen, setIsComicBookOpen] = useState(false);
   const [selectedComicIssueId, setSelectedComicIssueId] = useState<string | undefined>(undefined);
