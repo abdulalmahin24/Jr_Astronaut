@@ -300,17 +300,17 @@ const createProceduralLunarRegolithTexture = (): THREE.CanvasTexture => {
   canvas.height = 512;
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = '#475569';
   ctx.fillRect(0, 0, 512, 512);
 
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 90; i++) {
     const cx = (i * 73) % 512;
     const cy = (i * 127) % 512;
-    const r = 8 + (i % 24);
+    const r = 6 + (i % 26);
 
-    const grad = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, r * 0.1, cx, cy, r);
-    grad.addColorStop(0, '#334155');
-    grad.addColorStop(0.7, '#475569');
+    const grad = ctx.createRadialGradient(cx - r * 0.25, cy - r * 0.25, r * 0.08, cx, cy, r);
+    grad.addColorStop(0, '#1e293b');
+    grad.addColorStop(0.65, '#334155');
     grad.addColorStop(1, '#94a3b8');
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -318,10 +318,159 @@ const createProceduralLunarRegolithTexture = (): THREE.CanvasTexture => {
     ctx.fill();
   }
 
+  // Titanium basalt dark specks
+  ctx.fillStyle = '#0f172a';
+  for (let s = 0; s < 180; s++) {
+    const sx = (s * 37) % 512;
+    const sy = (s * 83) % 512;
+    ctx.fillRect(sx, sy, 2, 2);
+  }
+
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(4, 4);
+  tex.needsUpdate = true;
+  return tex;
+};
+
+// ─── PROCEDURAL MARS RED PLANET TEXTURE (JEZERO DELTA RUST) ───
+const createProceduralMarsRedPlanetTexture = (): THREE.CanvasTexture => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  // Oxidized terracotta & iron-oxide base
+  ctx.fillStyle = '#991b1b';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Aeolian ripple sand dunes
+  ctx.strokeStyle = '#7c2d12';
+  ctx.lineWidth = 3;
+  for (let y = 0; y < 512; y += 14) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x < 512; x += 32) {
+      const wave = Math.sin((x + y * 2) * 0.04) * 6;
+      ctx.lineTo(x, y + wave);
+    }
+    ctx.stroke();
+  }
+
+  // Dark basalt sand patches & volcanic granules
+  ctx.fillStyle = '#450a0a';
+  for (let i = 0; i < 70; i++) {
+    const bx = (i * 97) % 512;
+    const by = (i * 131) % 512;
+    const br = 8 + (i % 22);
+    ctx.beginPath();
+    ctx.ellipse(bx, by, br * 1.6, br * 0.7, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Dust streaks (atmospheric drift)
+  ctx.fillStyle = 'rgba(234, 88, 12, 0.25)';
+  for (let d = 0; d < 40; d++) {
+    const dx = (d * 83) % 512;
+    const dy = (d * 59) % 512;
+    ctx.fillRect(dx, dy, 45, 3);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  tex.needsUpdate = true;
+  return tex;
+};
+
+// ─── PROCEDURAL DESERT SAND TEXTURE (SUB-ORBITAL RECOVERY CORRIDOR) ───
+const createProceduralDesertSandTexture = (): THREE.CanvasTexture => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  // Golden desert sand
+  ctx.fillStyle = '#d97706';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Dry lakebed clay polygon cracks
+  ctx.strokeStyle = '#b45309';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 60; i++) {
+    const cx = (i * 61) % 512;
+    const cy = (i * 109) % 512;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + ((i % 5) - 2) * 20, cy + 25);
+    ctx.lineTo(cx + 30, cy + 15);
+    ctx.stroke();
+  }
+
+  // Desert wind dunes
+  ctx.fillStyle = '#f59e0b';
+  for (let d = 0; d < 35; d++) {
+    const dx = (d * 79) % 512;
+    const dy = (d * 113) % 512;
+    ctx.beginPath();
+    ctx.ellipse(dx, dy, 55, 12, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Runway tire tracks / recovery corridors
+  ctx.strokeStyle = 'rgba(120, 53, 15, 0.35)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(120, 0);
+  ctx.lineTo(120, 512);
+  ctx.moveTo(136, 0);
+  ctx.lineTo(136, 512);
+  ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  tex.needsUpdate = true;
+  return tex;
+};
+
+// ─── PROCEDURAL OCEAN WATER TEXTURE (ORBITAL PACIFIC SPLASHDOWN) ───
+const createProceduralOceanWaterTexture = (): THREE.CanvasTexture => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  // Deep Pacific azure / navy base
+  ctx.fillStyle = '#0369a1';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Swell ripples
+  ctx.fillStyle = '#0284c7';
+  for (let r = 0; r < 50; r++) {
+    const rx = (r * 67) % 512;
+    const ry = (r * 103) % 512;
+    ctx.beginPath();
+    ctx.ellipse(rx, ry, 60 + (r % 30), 16, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // White foam crests and sea spray
+  ctx.fillStyle = 'rgba(224, 242, 254, 0.75)';
+  for (let f = 0; f < 80; f++) {
+    const fx = (f * 97) % 512;
+    const fy = (f * 43) % 512;
+    ctx.fillRect(fx, fy, 12 + (f % 16), 2);
+    ctx.fillRect(fx + 2, fy - 1, 6, 1);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(6, 6);
   tex.needsUpdate = true;
   return tex;
 };
@@ -392,6 +541,98 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
   useEffect(() => { evaTasksRef.current = evaTasks; }, [evaTasks]);
 
   const [activeEvaPrompt, setActiveEvaPrompt] = useState<string | null>(null);
+  const [obstacleAlert, setObstacleAlert] = useState<string | null>(null);
+
+  // Dynamic Mission Task & Environment Profiles for 4 Distinct Destinations
+  const taskInfo = useMemo(() => {
+    switch (destination) {
+      case 'MARS':
+        return {
+          suitTitle: 'xEMU MARS SUIT VITALS (NOMINAL)',
+          location: 'JEZERO CRATER DELTA (18.38°N, 77.58°E)',
+          gravity: '3.72 m/s² (3/8g)',
+          atmo: '610 Pa (95% CO₂ DUST)',
+          temp: '-63°C',
+          subtitle: '🔴 JEZERO CRATER DELTA · 3/8g · 610 Pa CO₂ ATMOSPHERE',
+          task1: { title: 'Activate MOXIE Oxygen Plant', icon: '⚡', desc: 'Solid oxide CO₂ electrolysis unit (6.5m, -3.0m)', doneLabel: 'ACTIVE ✓' },
+          task2: { title: 'Drill Delta Mudstone Core', icon: '🔬', desc: 'Jezero ancient river biosignature rocks (-7.0m, 8.0m)', doneLabel: 'SECURED ✓' },
+          task3: { title: 'Deploy Ingenuity & REMS', icon: '🛸', desc: 'Scout copter & atmospheric weather station (10.0m, 6.0m)', doneLabel: 'ONLINE ✓' },
+          vehicle: { title: 'Board Mars Ascent Vehicle (MAV)', icon: '🚀', desc: 'Prepare for MAV launch into Mars orbit', readyLabel: 'READY [E]' },
+          prompt1: '⚡ NEAR MOXIE REACTOR · PRESS [E] OR CLICK [ACTIVATE MOXIE]',
+          prompt2: '🔬 NEAR DELTA CLAY · PRESS [E] OR CLICK [DRILL BIOSIGNATURE CORE]',
+          prompt3: '🛸 NEAR SCOUT ZONE · PRESS [E] OR CLICK [DEPLOY INGENUITY]',
+          promptBoard: '🚀 NEAR MAV LADDER · PRESS [E] OR CLICK [BOARD MAV & LAUNCH]',
+          callout1: '⚡ MOXIE ELECTROLYSIS ONLINE! PRODUCING PURE OXYGEN FROM MARTIAN CO₂!',
+          callout2: '🔬 ANCIENT DELTA RIVERBED MUDSTONE CORE SECURED (BIOSIGNATURE PRESERVED)!',
+          callout3: '🛸 INGENUITY SCOUT DRONE & REMS ATMOSPHERIC STATION OPERATIONAL!',
+          calloutBoard: '🚀 MAV LIFTOFF! ASCENDING THROUGH MARTIAN SKY TO RENDEZVOUS WITH ORBITER!',
+        };
+      case 'SUBORBITAL':
+        return {
+          suitTitle: 'ACES FLIGHT SUIT VITALS (NOMINAL)',
+          location: 'WHITE SANDS SPACE HARBOR (32.9°N, 106.4°W)',
+          gravity: '9.81 m/s² (1.0g)',
+          atmo: '101.3 kPa (SEA LEVEL)',
+          temp: '24°C',
+          subtitle: '🏜️ WHITE SANDS RECOVERY CORRIDOR · 1.0g · 101.3 kPa',
+          task1: { title: 'Activate GPS Recovery Beacon', icon: '📡', desc: 'Emergency search & rescue transponder (6.5m, -3.0m)', doneLabel: 'TRANSMITTING ✓' },
+          task2: { title: 'Extract Microgravity Crystals', icon: '🧪', desc: 'Kármán boundary science package (-7.0m, 8.0m)', doneLabel: 'RECOVERED ✓' },
+          task3: { title: 'Secure Drogue Parachute Rig', icon: '🪂', desc: 'Main descent parachute canopy (10.0m, 6.0m)', doneLabel: 'SECURED ✓' },
+          vehicle: { title: 'Board Desert Recovery Truck', icon: '🚙', desc: 'Return to White Sands Space Harbor Base', readyLabel: 'READY [E]' },
+          prompt1: '📡 NEAR BEACON · PRESS [E] OR CLICK [ACTIVATE GPS BEACON]',
+          prompt2: '🧪 NEAR PAYLOAD POD · PRESS [E] OR CLICK [EXTRACT CRYSTALS]',
+          prompt3: '🪂 NEAR PARACHUTE · PRESS [E] OR CLICK [SECURE CHUTE LINES]',
+          promptBoard: '🚙 NEAR RECOVERY TRUCK · PRESS [E] OR CLICK [BOARD TRUCK]',
+          callout1: '📡 SEARCH & RESCUE GPS HOMING BEACON TRANSMITTING TO SPACEPORT!',
+          callout2: '🧪 100 KM KÁRMÁN MICROGRAVITY PROTEIN CRYSTALS RECOVERED IN TACT!',
+          callout3: '🪂 MAIN RECOVERY PARACHUTE CANOPY SECURED AND PACKED!',
+          calloutBoard: '🚙 RECOVERY TEAM SECURED! RETURNING TO WHITE SANDS SPACE HARBOR BASE!',
+        };
+      case 'ORBITAL':
+        return {
+          suitTitle: 'SEA SURVIVAL GEAR VITALS (NOMINAL)',
+          location: 'PACIFIC SPLASHDOWN (31.5°N, 121.2°W)',
+          gravity: '9.81 m/s² (1.0g)',
+          atmo: '101.3 kPa (PACIFIC)',
+          temp: '19°C',
+          subtitle: '🌊 PACIFIC OCEAN SPLASHDOWN · 1.0g · 101.3 kPa',
+          task1: { title: 'Inflate Sea Flotation Collar', icon: '🛟', desc: 'Buoyant self-righting flotation ring (6.5m, -3.0m)', doneLabel: 'DEPLOYED ✓' },
+          task2: { title: 'Extract Flight Data Recorder', icon: '💾', desc: 'Hardened titanium black box core (-7.0m, 8.0m)', doneLabel: 'SECURED ✓' },
+          task3: { title: 'Attach Navy Winch Tether', icon: '🚁', desc: 'Helicopter rescue hoist cable (10.0m, 6.0m)', doneLabel: 'LOCKED ✓' },
+          vehicle: { title: 'Board Naval Recovery Raft', icon: '🚢', desc: 'Airlift to aircraft carrier USS Hornet', readyLabel: 'READY [E]' },
+          prompt1: '🛟 NEAR FLOTATION RING · PRESS [E] OR CLICK [INFLATE COLLAR]',
+          prompt2: '💾 NEAR BLACK BOX · PRESS [E] OR CLICK [EXTRACT RECORDER]',
+          prompt3: '🚁 NEAR WINCH CABLE · PRESS [E] OR CLICK [ATTACH HOIST TETHER]',
+          promptBoard: '🚢 NEAR RECOVERY RAFT · PRESS [E] OR CLICK [BOARD RAFT]',
+          callout1: '🛟 BUOYANT HIGH-VISIBILITY OCEAN COLLAR DEPLOYED & SELF-RIGHTING!',
+          callout2: '💾 HARDENED TITANIUM FLIGHT RECORDER & RE-ENTRY TELEMETRY SECURED!',
+          callout3: '🚁 NAVY SEAHAWK HELICOPTER RESCUE HOIST LOCKED & TENSIONED!',
+          calloutBoard: '🚢 PACIFIC RECOVERY SORTIE COMPLETE! AIRLIFTING TO AIRCRAFT CARRIER USS HORNET!',
+        };
+      case 'MOON':
+      default:
+        return {
+          suitTitle: 'A7L SPACESUIT VITALS (NOMINAL)',
+          location: 'MARE TRANQUILLITATIS (-89.9°S, 0.0°E)',
+          gravity: '1.62 m/s² (1/6g)',
+          atmo: '0 Pa (HARD VACUUM)',
+          temp: '-160°C',
+          subtitle: '🌕 MARE TRANQUILLITATIS · 1/6g · 0 Pa VACUUM',
+          task1: { title: 'Plant American Flag', icon: '🚩', desc: 'Apollo 11 flag planting site (6.5m, -3.0m)', doneLabel: 'PLANTED ✓' },
+          task2: { title: 'Drill Lunar Regolith Core', icon: '⛏️', desc: 'Basalt & highland anorthosite rocks (-7.0m, 8.0m)', doneLabel: 'SECURED ✓' },
+          task3: { title: 'Deploy Apollo PSE Station', icon: '📡', desc: 'Passive seismic experiment network (10.0m, 6.0m)', doneLabel: 'ONLINE ✓' },
+          vehicle: { title: 'Board Lunar Module Eagle', icon: '🦅', desc: 'Launch Eagle ascent stage into lunar orbit', readyLabel: 'READY [E]' },
+          prompt1: '🚩 NEAR FLAG SITE · PRESS [E] OR CLICK [PLANT AMERICAN FLAG]',
+          prompt2: '⛏️ NEAR BASALT ROCKS · PRESS [E] OR CLICK [DRILL REGOLITH CORE]',
+          prompt3: '📡 NEAR SEISMIC SITE · PRESS [E] OR CLICK [DEPLOY SEISMIC STATION]',
+          promptBoard: '🚀 NEAR LM LADDER · PRESS [E] OR CLICK [BOARD LM & LAUNCH ASCENT]',
+          callout1: '🚩 AMERICAN FLAG PROUDLY PLANTED AT TRANQUILITY BASE!',
+          callout2: '⛏️ LUNAR REGOLITH CORE DRILL SAMPLE EXTRACTED & SECURED IN CONTAINER!',
+          callout3: '📡 APOLLO PSE PASSIVE SEISMIC STATION ONLINE (MONITORING MOONQUAKES)!',
+          calloutBoard: '🚀 ASCENT STAGE LIFTOFF! SEPARATING FROM DESCENT STAGE (FLAG & LM BASE REMAIN ON MOON)',
+        };
+    }
+  }, [destination]);
 
   const [directorCallout, setDirectorCallout] = useState<string>(
     '🌍 LAUNCH COMPLEX 39A (EARTH): APOLLO 11 ON LAUNCHPAD · PRESS [SPACE] OR CLICK [🔥 T-0 IGNITE & LIFTOFF] TO LAUNCH FOR THE MOON!'
@@ -813,21 +1054,21 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       const next = { ...currentTasks, flagPlanted: true };
       setEvaTasks(next);
       evaTasksRef.current = next;
-      setDirectorCallout('🚩 AMERICAN FLAG PROUDLY PLANTED AT TRANQUILITY BASE!');
+      setDirectorCallout(taskInfo.callout1);
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playVictory();
     } else if (distDrill < 3.2 && !currentTasks.sampleDrilled) {
       const next = { ...currentTasks, sampleDrilled: true };
       setEvaTasks(next);
       evaTasksRef.current = next;
-      setDirectorCallout('⛏️ LUNAR REGOLITH CORE DRILL SAMPLE EXTRACTED & SECURED IN CONTAINER!');
+      setDirectorCallout(taskInfo.callout2);
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playReactorStart();
     } else if (distSeismic < 3.2 && !currentTasks.seismicDeployed) {
       const next = { ...currentTasks, seismicDeployed: true };
       setEvaTasks(next);
       evaTasksRef.current = next;
-      setDirectorCallout('📡 APOLLO PSE PASSIVE SEISMIC STATION ONLINE (MONITORING MOONQUAKES)!');
+      setDirectorCallout(taskInfo.callout3);
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playTelemetryChirp();
     } else if (distLm < 3.5 && currentTasks.flagPlanted && currentTasks.sampleDrilled && currentTasks.seismicDeployed) {
@@ -837,7 +1078,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       setFlightAltM(100);
       setFlightVyMs(85);
       setThrottle(100);
-      setDirectorCallout('🚀 ASCENT STAGE LIFTOFF! SEPARATING FROM DESCENT STAGE (FLAG & LM BASE REMAIN ON MOON)');
+      setDirectorCallout(taskInfo.calloutBoard);
       if (soundEnabled) soundFx.playReactorStart();
     }
   };
@@ -1213,59 +1454,317 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       () => {}
     );
 
-    // 9. LUNAR SURFACE SCENE & INTERACTIVE MISSION WAYPOINTS
+    // 9. DEDICATED PLANETARY / SURFACE SCENE & DIVERSE OBSTACLE COURSES
     const lunarSurfaceScene = new THREE.Group();
     lunarSurfaceScene.visible = false;
     scene.add(lunarSurfaceScene);
 
-    const lunarGroundMesh = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200, 48, 48), new THREE.MeshStandardMaterial({ map: moonRegolithTex, roughness: 0.95 }));
-    lunarGroundMesh.rotation.x = -Math.PI / 2;
-    lunarGroundMesh.position.y = -1.2;
-    lunarGroundMesh.receiveShadow = true;
-    lunarSurfaceScene.add(lunarGroundMesh);
-
-    // Basalt Boulders
-    for (let b = 0; b < 25; b++) {
-      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.6 + (b % 4) * 0.4), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 }));
-      rock.position.set((b * 19) % 180 - 90, -0.6, (b * 31) % 180 - 90);
-      lunarSurfaceScene.add(rock);
+    // Apply destination-specific sky & fog
+    if (destination === 'MARS') {
+      scene.background = new THREE.Color(0x9a3412);
+      scene.fog = new THREE.FogExp2(0x7c2d12, 0.0035);
+    } else if (destination === 'SUBORBITAL') {
+      scene.background = new THREE.Color(0x38bdf8);
+      scene.fog = new THREE.FogExp2(0xfef3c7, 0.002);
+    } else if (destination === 'ORBITAL') {
+      scene.background = new THREE.Color(0x0284c7);
+      scene.fog = new THREE.FogExp2(0x38bdf8, 0.002);
+    } else {
+      scene.background = new THREE.Color(0x000000);
+      scene.fog = null;
     }
 
-    // WAYPOINT 1: American Flag Site
+    // Ground Plane with Destination-Specific Procedural Texture
+    let surfaceGroundMat: THREE.MeshStandardMaterial;
+    if (destination === 'MARS') {
+      surfaceGroundMat = new THREE.MeshStandardMaterial({ map: createProceduralMarsRedPlanetTexture(), roughness: 0.94, metalness: 0.05 });
+    } else if (destination === 'SUBORBITAL') {
+      surfaceGroundMat = new THREE.MeshStandardMaterial({ map: createProceduralDesertSandTexture(), roughness: 0.88, metalness: 0.02 });
+    } else if (destination === 'ORBITAL') {
+      surfaceGroundMat = new THREE.MeshStandardMaterial({ map: createProceduralOceanWaterTexture(), roughness: 0.25, metalness: 0.6 });
+    } else {
+      surfaceGroundMat = new THREE.MeshStandardMaterial({ map: createProceduralLunarRegolithTexture(), roughness: 0.95 });
+    }
+    const surfaceGroundMesh = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200, 48, 48), surfaceGroundMat);
+    surfaceGroundMesh.rotation.x = -Math.PI / 2;
+    surfaceGroundMesh.position.y = -1.2;
+    surfaceGroundMesh.receiveShadow = true;
+    lunarSurfaceScene.add(surfaceGroundMesh);
+
+    // Active Obstacle Registry & Animated Objects
+    const activeObstacles: Array<{ x: number; z: number; radius: number; name: string; type: string }> = [];
+    const dynamicAnimatedObstacles: Array<{ update: (dt: number, time: number) => void }> = [];
+
+    if (destination === 'MARS') {
+      // 1. ACTIVE SWIRLING DUST DEVILS
+      for (const ddPos of [{ x: -14, z: 12 }, { x: 16, z: -12 }]) {
+        const ddGroup = new THREE.Group();
+        ddGroup.position.set(ddPos.x, -1.2, ddPos.z);
+        for (let lvl = 0; lvl < 6; lvl++) {
+          const rLvl = 0.9 + lvl * 0.45;
+          const rGeo = new THREE.RingGeometry(rLvl - 0.2, rLvl, 16);
+          const rMat = new THREE.MeshBasicMaterial({ color: 0xea580c, transparent: true, opacity: 0.5 - lvl * 0.06, side: THREE.DoubleSide });
+          const rMesh = new THREE.Mesh(rGeo, rMat);
+          rMesh.rotation.x = -Math.PI / 2;
+          rMesh.position.y = lvl * 1.1 + 0.1;
+          ddGroup.add(rMesh);
+        }
+        lunarSurfaceScene.add(ddGroup);
+        activeObstacles.push({ x: ddPos.x, z: ddPos.z, radius: 3.4, name: 'Active Mars Dust Devil (Wind Shear)', type: 'dust_devil' });
+        dynamicAnimatedObstacles.push({
+          update: (dt, time) => {
+            ddGroup.rotation.y += dt * 4.5;
+            ddGroup.position.x = ddPos.x + Math.sin(time * 0.001) * 3.0;
+            ddGroup.position.z = ddPos.z + Math.cos(time * 0.001) * 3.0;
+          }
+        });
+      }
+
+      // 2. BASALT SAND RIDGES / TRANSVERSE AEOLIAN RIDGES (TARs)
+      for (const d of [{ x: 12, z: 14, r: 4.2 }, { x: -16, z: -10, r: 4.5 }, { x: 8, z: -16, r: 3.8 }]) {
+        const duneMesh = new THREE.Mesh(
+          new THREE.ConeGeometry(d.r, 2.2, 16),
+          new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.95 })
+        );
+        duneMesh.position.set(d.x, -0.1, d.z);
+        duneMesh.scale.set(1.4, 0.4, 2.4);
+        duneMesh.rotation.y = 0.6;
+        lunarSurfaceScene.add(duneMesh);
+        activeObstacles.push({ x: d.x, z: d.z, radius: d.r * 0.8, name: 'Martian Basalt Sand Ridge (TAR)', type: 'dune' });
+      }
+
+      // 3. JAGGED VOLCANIC LAVA ROCKS & HEMATITE SPIRES
+      for (const lp of [{ x: -9, z: 6, s: 1.8 }, { x: 18, z: 6, s: 2.2 }, { x: -8, z: -14, s: 1.6 }, { x: 14, z: -4, s: 1.5 }, { x: -14, z: 4, s: 2.0 }]) {
+        const spireMesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.2, lp.s, lp.s * 2.8, 7),
+          new THREE.MeshStandardMaterial({ color: 0x450a0a, roughness: 0.92, metalness: 0.3 })
+        );
+        spireMesh.position.set(lp.x, lp.s * 1.4 - 1.2, lp.z);
+        lunarSurfaceScene.add(spireMesh);
+        activeObstacles.push({ x: lp.x, z: lp.z, radius: lp.s + 0.5, name: 'Volcanic Basalt Lava Spire', type: 'lava' });
+      }
+
+      // 4. SUBSURFACE CRYOGENIC PERMAFROST FISSURES
+      for (const fPos of [{ x: 4, z: 12 }, { x: -12, z: -4 }]) {
+        const fissureMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(7, 0.1, 1.2),
+          new THREE.MeshStandardMaterial({ color: 0x262626, roughness: 0.9 })
+        );
+        fissureMesh.position.set(fPos.x, -1.18, fPos.z);
+        fissureMesh.rotation.y = 0.45;
+        lunarSurfaceScene.add(fissureMesh);
+        activeObstacles.push({ x: fPos.x, z: fPos.z, radius: 2.4, name: 'Cryogenic Permafrost Fissure', type: 'crevasse' });
+      }
+
+    } else if (destination === 'SUBORBITAL') {
+      // 1. SANDSTONE CANYON MESAS & HOODOOS
+      for (const mp of [{ x: -14, z: -8, w: 5, h: 6 }, { x: 15, z: -14, w: 6, h: 7 }, { x: -18, z: 16, w: 4.5, h: 5 }, { x: 20, z: 12, w: 5.5, h: 6 }]) {
+        const mesa = new THREE.Mesh(
+          new THREE.CylinderGeometry(mp.w * 0.8, mp.w, mp.h, 8),
+          new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.9 })
+        );
+        mesa.position.set(mp.x, mp.h / 2 - 1.2, mp.z);
+        lunarSurfaceScene.add(mesa);
+        activeObstacles.push({ x: mp.x, z: mp.z, radius: mp.w * 0.9, name: 'Sandstone Canyon Mesa', type: 'mesa' });
+      }
+
+      // 2. CHARRED BOOSTER CRASH DEBRIS
+      for (const bp of [{ x: 8, z: 14 }, { x: -10, z: -18 }]) {
+        const debrisGroup = new THREE.Group();
+        debrisGroup.position.set(bp.x, -1.2, bp.z);
+        const casing = new THREE.Mesh(
+          new THREE.CylinderGeometry(1.4, 1.4, 4.5, 12),
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7, metalness: 0.5 })
+        );
+        casing.rotation.z = Math.PI / 2.3;
+        casing.position.y = 0.7;
+        debrisGroup.add(casing);
+        lunarSurfaceScene.add(debrisGroup);
+        activeObstacles.push({ x: bp.x, z: bp.z, radius: 3.2, name: 'Spent Booster Impact Debris', type: 'debris' });
+      }
+
+      // 3. DESERT SAND DUNES
+      for (const dp of [{ x: -6, z: -10, r: 3.8 }, { x: 14, z: 6, r: 4.0 }, { x: -16, z: -4, r: 3.5 }]) {
+        const dune = new THREE.Mesh(
+          new THREE.ConeGeometry(dp.r, 1.8, 14),
+          new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.92 })
+        );
+        dune.position.set(dp.x, -0.3, dp.z);
+        dune.scale.set(1.5, 0.4, 2.2);
+        lunarSurfaceScene.add(dune);
+        activeObstacles.push({ x: dp.x, z: dp.z, radius: dp.r * 0.8, name: 'Desert Salt Ridge Dune', type: 'dune' });
+      }
+
+      // 4. TELEMETRY RADAR ANTENNA TOWERS
+      for (const tp of [{ x: 18, z: 18 }, { x: -14, z: 12 }]) {
+        const towerGroup = new THREE.Group();
+        towerGroup.position.set(tp.x, -1.2, tp.z);
+        const truss = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.3, 0.9, 6.0, 4),
+          new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 })
+        );
+        truss.position.y = 3.0;
+        towerGroup.add(truss);
+        const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        beacon.position.y = 6.1;
+        towerGroup.add(beacon);
+        lunarSurfaceScene.add(towerGroup);
+        activeObstacles.push({ x: tp.x, z: tp.z, radius: 2.2, name: 'Telemetry Tower & Warning Pylon', type: 'tower' });
+      }
+
+    } else if (destination === 'ORBITAL') {
+      // 1. VOLCANIC SEA STACKS & JAGGED REEFS
+      for (const sp of [{ x: -14, z: -10, w: 3.5, h: 5.5 }, { x: 16, z: -12, w: 4.0, h: 6.0 }, { x: -16, z: 14, w: 3.2, h: 4.8 }, { x: 20, z: 8, w: 3.8, h: 5.2 }]) {
+        const stack = new THREE.Mesh(
+          new THREE.ConeGeometry(sp.w, sp.h, 7),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.95, metalness: 0.2 })
+        );
+        stack.position.set(sp.x, sp.h / 2 - 1.2, sp.z);
+        lunarSurfaceScene.add(stack);
+        activeObstacles.push({ x: sp.x, z: sp.z, radius: sp.w + 0.5, name: 'Volcanic Sea Stack & Basalt Reef', type: 'reef' });
+      }
+
+      // 2. FLOATING HEAT SHIELD DEBRIS
+      for (const fp of [{ x: 10, z: 12 }, { x: -8, z: -16 }]) {
+        const debrisMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(3.5, 0.4, 2.2),
+          new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7, metalness: 0.4 })
+        );
+        debrisMesh.position.set(fp.x, -1.0, fp.z);
+        debrisMesh.rotation.y = 0.8;
+        lunarSurfaceScene.add(debrisMesh);
+        activeObstacles.push({ x: fp.x, z: fp.z, radius: 2.6, name: 'Floating Heat Shield Tile Fragment', type: 'debris' });
+      }
+
+      // 3. FLASHING MARINE SONAR PING BUOYS
+      for (const bp of [{ x: 6, z: -8 }, { x: -12, z: 6 }, { x: 14, z: -4 }]) {
+        const buoyGroup = new THREE.Group();
+        buoyGroup.position.set(bp.x, -1.2, bp.z);
+        const buoyBody = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.8, 12), new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 }));
+        buoyBody.position.y = 0.9;
+        const strobe = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        strobe.position.y = 2.0;
+        buoyGroup.add(buoyBody, strobe);
+        lunarSurfaceScene.add(buoyGroup);
+        activeObstacles.push({ x: bp.x, z: bp.z, radius: 2.0, name: 'High-Visibility Sonar Ping Buoy', type: 'buoy' });
+      }
+
+    } else {
+      // 1. DEEP LUNAR IMPACT CRATERS
+      for (const cp of [{ x: -15, z: -12, r: 4.8 }, { x: 18, z: -10, r: 5.2 }, { x: -14, z: 16, r: 4.5 }, { x: 20, z: 14, r: 5.0 }]) {
+        const craterRim = new THREE.Mesh(
+          new THREE.TorusGeometry(cp.r, 0.7, 8, 24),
+          new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 })
+        );
+        craterRim.rotation.x = -Math.PI / 2;
+        craterRim.position.set(cp.x, -1.15, cp.z);
+        lunarSurfaceScene.add(craterRim);
+        activeObstacles.push({ x: cp.x, z: cp.z, radius: cp.r, name: 'Deep Lunar Impact Crater', type: 'crater' });
+      }
+
+      // 2. SHARP BASALT BOULDERS
+      for (const mr of [{ x: 8, z: -12, s: 1.8 }, { x: -10, z: -6, s: 2.2 }, { x: 12, z: 10, s: 1.6 }, { x: -8, z: 14, s: 1.9 }, { x: 16, z: 4, s: 1.7 }, { x: -18, z: 4, s: 2.0 }]) {
+        const boulder = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(mr.s),
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 })
+        );
+        boulder.position.set(mr.x, mr.s * 0.8 - 1.2, mr.z);
+        lunarSurfaceScene.add(boulder);
+        activeObstacles.push({ x: mr.x, z: mr.z, radius: mr.s + 0.6, name: 'Basalt Highland Boulder', type: 'boulder' });
+      }
+
+      // 3. ELECTROSTATIC DUST PLUMES
+      for (const ep of [{ x: 14, z: -16 }, { x: -16, z: -14 }, { x: 6, z: 18 }]) {
+        const dustCol = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.8, 1.4, 3.5, 12),
+          new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.35, wireframe: true })
+        );
+        dustCol.position.set(ep.x, 0.6, ep.z);
+        lunarSurfaceScene.add(dustCol);
+        activeObstacles.push({ x: ep.x, z: ep.z, radius: 2.2, name: 'Electrostatic Dust Plume', type: 'dust' });
+      }
+
+      // 4. SHADOWED COLD-TRAP ICE CREVASSES
+      for (const ip of [{ x: -6, z: 12 }, { x: 10, z: -6 }]) {
+        const fissure = new THREE.Mesh(
+          new THREE.BoxGeometry(6.5, 0.1, 1.4),
+          new THREE.MeshBasicMaterial({ color: 0x0284c7, transparent: true, opacity: 0.7 })
+        );
+        fissure.position.set(ip.x, -1.18, ip.z);
+        lunarSurfaceScene.add(fissure);
+        activeObstacles.push({ x: ip.x, z: ip.z, radius: 2.5, name: 'Shadowed Cold-Trap Ice Crevasse', type: 'crevasse' });
+      }
+    }
+
+    // WAYPOINT 1: American Flag Site / MOXIE / GPS Beacon / Sea Collar (6.5, -3.0)
     const flagGroup = new THREE.Group();
     flagGroup.position.set(6.5, -1.2, -3.0);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9 }));
-    pole.position.y = 1.3;
-    flagGroup.add(pole);
-
-    const flagCanvas = document.createElement('canvas');
-    flagCanvas.width = 256;
-    flagCanvas.height = 160;
-    const fctx = flagCanvas.getContext('2d')!;
-    fctx.fillStyle = '#b91c1c';
-    fctx.fillRect(0, 0, 256, 160);
-    fctx.fillStyle = '#ffffff';
-    for (let s = 1; s < 7; s += 2) fctx.fillRect(0, (s * 160) / 7, 256, 160 / 14);
-    fctx.fillStyle = '#1e3a8a';
-    fctx.fillRect(0, 0, 100, 80);
-    const flagMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(flagCanvas), side: THREE.DoubleSide }));
-    flagMesh.position.set(0.65, 2.1, 0);
-    flagGroup.add(flagMesh);
+    if (destination === 'MOON') {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9 }));
+      pole.position.y = 1.3;
+      flagGroup.add(pole);
+      const flagCanvas = document.createElement('canvas');
+      flagCanvas.width = 256;
+      flagCanvas.height = 160;
+      const fctx = flagCanvas.getContext('2d')!;
+      fctx.fillStyle = '#b91c1c';
+      fctx.fillRect(0, 0, 256, 160);
+      fctx.fillStyle = '#ffffff';
+      for (let s = 1; s < 7; s += 2) fctx.fillRect(0, (s * 160) / 7, 256, 160 / 14);
+      fctx.fillStyle = '#1e3a8a';
+      fctx.fillRect(0, 0, 100, 80);
+      const flagMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(flagCanvas), side: THREE.DoubleSide }));
+      flagMesh.position.set(0.65, 2.1, 0);
+      flagGroup.add(flagMesh);
+    } else if (destination === 'MARS') {
+      const moxieBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 1.1), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 }));
+      moxieBox.position.y = 0.6;
+      const intakePipe = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.8, 12), new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9 }));
+      intakePipe.position.set(0, 1.3, 0);
+      flagGroup.add(moxieBox, intakePipe);
+    } else if (destination === 'SUBORBITAL') {
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e, metalness: 0.8 }));
+      mast.position.y = 1.25;
+      const beaconHead = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), new THREE.MeshBasicMaterial({ color: 0x22c55e }));
+      beaconHead.position.y = 2.6;
+      flagGroup.add(mast, beaconHead);
+    } else {
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.35, 12, 24), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3 }));
+      collar.rotation.x = -Math.PI / 2;
+      collar.position.y = 0.4;
+      flagGroup.add(collar);
+    }
     lunarSurfaceScene.add(flagGroup);
 
-    // Glowing Waypoint Ring for Flag
+    // Glowing Waypoint Ring for Flag / WP1
     const flagRing = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.8, 32), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide }));
     flagRing.rotation.x = -Math.PI / 2;
     flagRing.position.set(6.5, -1.18, -3.0);
     lunarSurfaceScene.add(flagRing);
 
-    // WAYPOINT 2: Lunar Core Drill Rocks Site
+    // WAYPOINT 2: Lunar Core Drill Rocks Site / Delta Clay / Crystal Pod / Black Box (-7.0, 8.0)
     const drillRocksGroup = new THREE.Group();
     drillRocksGroup.position.set(-7.0, -1.2, 8.0);
-    for (let dr = 0; dr < 4; dr++) {
-      const dRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 + dr * 0.2), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 }));
-      dRock.position.set((dr % 2) * 1.2 - 0.6, 0.4, Math.floor(dr / 2) * 1.2 - 0.6);
-      drillRocksGroup.add(dRock);
+    if (destination === 'MARS') {
+      for (let dr = 0; dr < 4; dr++) {
+        const dRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 + dr * 0.2), new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.95 }));
+        dRock.position.set((dr % 2) * 1.2 - 0.6, 0.4, Math.floor(dr / 2) * 1.2 - 0.6);
+        drillRocksGroup.add(dRock);
+      }
+    } else if (destination === 'SUBORBITAL') {
+      const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.4, 12), new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8 }));
+      pod.position.y = 0.7;
+      drillRocksGroup.add(pod);
+    } else if (destination === 'ORBITAL') {
+      const fdr = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12), new THREE.MeshStandardMaterial({ color: 0xf97316, metalness: 0.7 }));
+      fdr.position.y = 0.6;
+      drillRocksGroup.add(fdr);
+    } else {
+      for (let dr = 0; dr < 4; dr++) {
+        const dRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 + dr * 0.2), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 }));
+        dRock.position.set((dr % 2) * 1.2 - 0.6, 0.4, Math.floor(dr / 2) * 1.2 - 0.6);
+        drillRocksGroup.add(dRock);
+      }
     }
     const drillRing = new THREE.Mesh(new THREE.RingGeometry(1.6, 1.9, 32), new THREE.MeshBasicMaterial({ color: 0x22c55e, side: THREE.DoubleSide }));
     drillRing.rotation.x = -Math.PI / 2;
@@ -1273,16 +1772,32 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
     drillRocksGroup.add(drillRing);
     lunarSurfaceScene.add(drillRocksGroup);
 
-    // WAYPOINT 3: Apollo Passive Seismic Experiment (PSE) Site
+    // WAYPOINT 3: Apollo Passive Seismic Experiment / Ingenuity Copter / Parachute / Winch (10.0, 6.0)
     const pseStationGroup = new THREE.Group();
     pseStationGroup.position.set(10.0, -1.2, 6.0);
-    const pseCentral = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9 }));
-    pseCentral.position.y = 0.35;
-    pseStationGroup.add(pseCentral);
-    for (let s = -1; s <= 1; s += 2) {
-      const pseWing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.8), new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.9 }));
-      pseWing.position.set(s * 1.1, 0.35, 0);
-      pseStationGroup.add(pseWing);
+    if (destination === 'MARS') {
+      const copterBody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 }));
+      copterBody.position.y = 0.5;
+      const rotor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.15), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+      rotor.position.y = 0.85;
+      pseStationGroup.add(copterBody, rotor);
+    } else if (destination === 'SUBORBITAL') {
+      const chute = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.1, 0.6, 12), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.5 }));
+      chute.position.y = 0.3;
+      pseStationGroup.add(chute);
+    } else if (destination === 'ORBITAL') {
+      const hook = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.15, 8, 16), new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.9 }));
+      hook.position.y = 0.7;
+      pseStationGroup.add(hook);
+    } else {
+      const pseCentral = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9 }));
+      pseCentral.position.y = 0.35;
+      pseStationGroup.add(pseCentral);
+      for (let s = -1; s <= 1; s += 2) {
+        const pseWing = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.8), new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.9 }));
+        pseWing.position.set(s * 1.1, 0.35, 0);
+        pseStationGroup.add(pseWing);
+      }
     }
     const pseRing = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.8, 32), new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide }));
     pseRing.rotation.x = -Math.PI / 2;
@@ -1368,7 +1883,10 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       moonMesh.position.x = 680 * Math.cos(p.orbitTheta * 0.2 + 0.5);
       moonMesh.position.z = -680 * Math.sin(p.orbitTheta * 0.2 + 0.5);
 
-      // ─── ACTIVE MOON WALKING CONTROLS (WASD / ARROWS) ───
+      // Animate active obstacles (e.g. Swirling Mars Dust Devils)
+      dynamicAnimatedObstacles.forEach((obs) => obs.update(dt, time));
+
+      // ─── ACTIVE SURFACE WALKING CONTROLS & OBSTACLE COLLISION ───
       if (p.missionPhase === 'SURFACE_EVA') {
         const keys = keysDownRef.current;
         let moveX = 0;
@@ -1382,12 +1900,33 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           const len = Math.hypot(moveX, moveZ);
           const normX = moveX / len;
           const normZ = moveZ / len;
-          const walkSpeed = 3.6 * dt; // Lunar walk speed
-          p.astroX += normX * walkSpeed;
-          p.astroZ += normZ * walkSpeed;
+          const walkSpeed = (destination === 'ORBITAL' ? 2.8 : destination === 'MARS' ? 3.4 : 3.6) * dt;
+          const testX = p.astroX + normX * walkSpeed;
+          const testZ = p.astroZ + normZ * walkSpeed;
+
+          // Check collisions with active surface obstacles!
+          let collidedObs: typeof activeObstacles[0] | null = null;
+          for (const obs of activeObstacles) {
+            const dist = Math.hypot(testX - obs.x, testZ - obs.z);
+            if (dist < obs.radius + 0.6) {
+              collidedObs = obs;
+              break;
+            }
+          }
+
+          if (!collidedObs) {
+            p.astroX = testX;
+            p.astroZ = testZ;
+            setObstacleAlert(null);
+          } else {
+            // Collision physically blocks movement and displays alert
+            setObstacleAlert(`⚠️ OBSTACLE: ${collidedObs.name.toUpperCase()} · NAVIGATE AROUND WITH [A]/[D]`);
+          }
+
           p.astroRot = Math.atan2(normX, normZ);
           walkStepTimer += dt * 7;
-          p.astroBounceY = Math.abs(Math.sin(walkStepTimer)) * 0.16; // Low lunar gravity gentle bounce
+          const bounceHeight = destination === 'MOON' ? 0.16 : destination === 'MARS' ? 0.11 : 0.06;
+          p.astroBounceY = Math.abs(Math.sin(walkStepTimer)) * bounceHeight;
           p.isWalking = true;
         } else {
           p.astroBounceY = 0;
@@ -1405,13 +1944,13 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
         const currentTasks = evaTasksRef.current;
         if (dFlag < 3.0 && !currentTasks.flagPlanted) {
-          setActiveEvaPrompt('🚩 NEAR FLAG SITE · PRESS [E] OR CLICK [PLANT AMERICAN FLAG]');
+          setActiveEvaPrompt(taskInfo.prompt1);
         } else if (dDrill < 3.0 && !currentTasks.sampleDrilled) {
-          setActiveEvaPrompt('⛏️ NEAR BASALT ROCKS · PRESS [E] OR CLICK [DRILL REGOLITH CORE]');
+          setActiveEvaPrompt(taskInfo.prompt2);
         } else if (dSeismic < 3.0 && !currentTasks.seismicDeployed) {
-          setActiveEvaPrompt('📡 NEAR SEISMIC SITE · PRESS [E] OR CLICK [DEPLOY SEISMIC STATION]');
+          setActiveEvaPrompt(taskInfo.prompt3);
         } else if (dLm < 3.2 && currentTasks.flagPlanted && currentTasks.sampleDrilled && currentTasks.seismicDeployed) {
-          setActiveEvaPrompt('🚀 NEAR LM LADDER · PRESS [E] OR CLICK [BOARD LM & LAUNCH ASCENT]');
+          setActiveEvaPrompt(taskInfo.promptBoard);
         } else {
           setActiveEvaPrompt(null);
         }
@@ -1861,17 +2400,54 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
         {/* Phase Breadcrumbs / Interactive Quick Phase Jumper */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
-          {[
-            { phase: 'PAD_READY', label: '1. 🚀 Pad 39A Launch (Earth)' },
-            { phase: 'ASCENT', label: '2. 🔥 Staged Liftoff' },
-            { phase: 'ORBIT_COAST', label: '3. 🌍 Earth Orbit' },
-            { phase: 'TLI_BURN', label: '4. 🌕 TLI to Moon' },
-            { phase: 'RETRO_DESCENT', label: '5. 🦿 Lunar Landing' },
-            { phase: 'SURFACE_EVA', label: '6. 🧑‍🚀 Walk on Moon (EVA)' },
-            { phase: 'SURFACE_ASCENT', label: '7. 🚀 Lunar Ascent' },
-            { phase: 'SPLASHDOWN', label: '8. 🪂 Earth Return' },
-            { phase: 'VAB_BUILD', label: '🔧 Custom VAB Stages' },
-          ].map((item) => {
+          {(destination === 'MARS'
+            ? [
+                { phase: 'PAD_READY', label: '1. 🚀 Pad 39A Launch (Earth)' },
+                { phase: 'ASCENT', label: '2. 🔥 Staged Liftoff' },
+                { phase: 'ORBIT_COAST', label: '3. 🌍 Earth Orbit' },
+                { phase: 'TLI_BURN', label: '4. 🎯 Trans-Mars Injection (TMI)' },
+                { phase: 'RETRO_DESCENT', label: '5. 🔴 Mars EDL & Delta Landing' },
+                { phase: 'SURFACE_EVA', label: '6. 🧑‍🚀 Walk on Mars (EVA Sortie)' },
+                { phase: 'SURFACE_ASCENT', label: '7. 🚀 Mars Ascent (MAV Liftoff)' },
+                { phase: 'SPLASHDOWN', label: '8. 🌊 Pacific Return' },
+                { phase: 'VAB_BUILD', label: '🔧 Custom VAB Stages' },
+              ]
+            : destination === 'SUBORBITAL'
+            ? [
+                { phase: 'PAD_READY', label: '1. 🚀 Pad 39A Launch (Earth)' },
+                { phase: 'ASCENT', label: '2. 🔥 Sub-Orbital Boost' },
+                { phase: 'ORBIT_COAST', label: '3. 🌌 100 km Kármán Apogee' },
+                { phase: 'TLI_BURN', label: '4. 🎯 Microgravity Coast' },
+                { phase: 'RETRO_DESCENT', label: '5. 🏜️ Desert Descent & Touchdown' },
+                { phase: 'SURFACE_EVA', label: '6. 🧑‍🚀 Ground Sortie & Recovery' },
+                { phase: 'SURFACE_ASCENT', label: '7. 🚙 Recovery Transport' },
+                { phase: 'SPLASHDOWN', label: '8. 🏁 Mission Accomplished' },
+                { phase: 'VAB_BUILD', label: '🔧 Custom VAB Stages' },
+              ]
+            : destination === 'ORBITAL'
+            ? [
+                { phase: 'PAD_READY', label: '1. 🚀 Pad 39A Launch (Earth)' },
+                { phase: 'ASCENT', label: '2. 🔥 Multi-Stage Ascent' },
+                { phase: 'ORBIT_COAST', label: '3. 🛰️ 200 km LEO Orbit Insertion' },
+                { phase: 'TLI_BURN', label: '4. 🔄 De-Orbit Retrograde Burn' },
+                { phase: 'RETRO_DESCENT', label: '5. 🌊 Pacific Ocean Parachute Entry' },
+                { phase: 'SURFACE_EVA', label: '6. 🧑‍🚀 Ocean Flotation & Retrieval' },
+                { phase: 'SURFACE_ASCENT', label: '7. 🚁 Helicopter Winch Airlift' },
+                { phase: 'SPLASHDOWN', label: '8. 🚢 Carrier USS Hornet Recovery' },
+                { phase: 'VAB_BUILD', label: '🔧 Custom VAB Stages' },
+              ]
+            : [
+                { phase: 'PAD_READY', label: '1. 🚀 Pad 39A Launch (Earth)' },
+                { phase: 'ASCENT', label: '2. 🔥 Staged Liftoff' },
+                { phase: 'ORBIT_COAST', label: '3. 🌍 Earth Orbit' },
+                { phase: 'TLI_BURN', label: '4. 🌕 TLI to Moon' },
+                { phase: 'RETRO_DESCENT', label: '5. 🦿 Lunar Landing' },
+                { phase: 'SURFACE_EVA', label: '6. 🧑‍🚀 Walk on Moon (EVA)' },
+                { phase: 'SURFACE_ASCENT', label: '7. 🚀 Lunar Ascent' },
+                { phase: 'SPLASHDOWN', label: '8. 🪂 Earth Return' },
+                { phase: 'VAB_BUILD', label: '🔧 Custom VAB Stages' },
+              ]
+          ).map((item) => {
             const isActive = missionPhase === item.phase;
             return (
               <button
@@ -2120,15 +2696,15 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38bdf8', fontWeight: 900, fontSize: '13px' }}>
               <span>🧑‍🚀</span>
-              <span>APOLLO 11 TRANQUILITY BASE EVA</span>
+              <span>{destProfile.name.toUpperCase()}</span>
             </div>
             <span style={{ fontSize: '10px', background: 'rgba(34, 197, 94, 0.2)', border: '1px solid #22c55e', color: '#4ade80', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
-              NEIL ARMSTRONG
+              {destination === 'MARS' ? 'CADET COMMANDER' : destination === 'SUBORBITAL' ? 'CHIEF PILOT' : destination === 'ORBITAL' ? 'MISSION COMMANDER' : 'NEIL ARMSTRONG'}
             </span>
           </div>
 
           <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-            Walk across the lunar crater surface, visit the mission waypoints, and press <strong style={{ color: '#38bdf8' }}>[E]</strong> to complete surface operations:
+            {taskInfo.subtitle} — Navigate around terrain obstacles and press <strong style={{ color: '#38bdf8' }}>[E]</strong> to interact:
           </div>
 
           {/* Checklist */}
@@ -2152,17 +2728,17 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 border: `1.5px solid ${evaTasks.flagPlanted ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
                 cursor: 'pointer',
               }}
-              title="Click to warp astronaut near Flag site"
+              title="Click to warp astronaut near Task 1 waypoint"
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>🚩</span>
+                <span style={{ fontSize: '16px' }}>{taskInfo.task1.icon}</span>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>Plant American Flag</div>
-                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>Walk to glowing cyan ring (6.5m, -3.0m)</div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{taskInfo.task1.title}</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>{taskInfo.task1.desc}</div>
                 </div>
               </div>
               <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.flagPlanted ? '#4ade80' : '#fbbf24' }}>
-                {evaTasks.flagPlanted ? 'PLANTED ✓' : 'PENDING'}
+                {evaTasks.flagPlanted ? taskInfo.task1.doneLabel : 'PENDING'}
               </span>
             </div>
 
@@ -2185,17 +2761,17 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 border: `1.5px solid ${evaTasks.sampleDrilled ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
                 cursor: 'pointer',
               }}
-              title="Click to warp astronaut near Basalt Rocks"
+              title="Click to warp astronaut near Task 2 waypoint"
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>⛏️</span>
+                <span style={{ fontSize: '16px' }}>{taskInfo.task2.icon}</span>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>Drill Lunar Regolith Core</div>
-                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>Walk to basalt boulders (-7.0m, 8.0m)</div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{taskInfo.task2.title}</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>{taskInfo.task2.desc}</div>
                 </div>
               </div>
               <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.sampleDrilled ? '#4ade80' : '#fbbf24' }}>
-                {evaTasks.sampleDrilled ? 'SECURED ✓' : 'PENDING'}
+                {evaTasks.sampleDrilled ? taskInfo.task2.doneLabel : 'PENDING'}
               </span>
             </div>
 
@@ -2218,17 +2794,17 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 border: `1.5px solid ${evaTasks.seismicDeployed ? '#22c55e' : 'rgba(255, 255, 255, 0.1)'}`,
                 cursor: 'pointer',
               }}
-              title="Click to warp astronaut near Seismic Station"
+              title="Click to warp astronaut near Task 3 waypoint"
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>📡</span>
+                <span style={{ fontSize: '16px' }}>{taskInfo.task3.icon}</span>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>Deploy ALSEP Seismic Station</div>
-                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>Walk to passive seismic site (10.0m, 6.0m)</div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{taskInfo.task3.title}</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>{taskInfo.task3.desc}</div>
                 </div>
               </div>
               <span style={{ fontSize: '11px', fontWeight: 900, color: evaTasks.seismicDeployed ? '#4ade80' : '#fbbf24' }}>
-                {evaTasks.seismicDeployed ? 'ONLINE ✓' : 'PENDING'}
+                {evaTasks.seismicDeployed ? taskInfo.task3.doneLabel : 'PENDING'}
               </span>
             </div>
 
@@ -2252,17 +2828,17 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 border: `1.5px solid ${(evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)'}`,
                 cursor: (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? 'pointer' : 'default',
               }}
-              title="Board Lunar Module Eagle & Launch Ascent"
+              title={taskInfo.vehicle.title}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>🚀</span>
+                <span style={{ fontSize: '16px' }}>{taskInfo.vehicle.icon}</span>
                 <div>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>Board LM & Launch Ascent</div>
-                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>Return to Lunar Module ladder (2.2m, 2.2m)</div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{taskInfo.vehicle.title}</div>
+                  <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>{taskInfo.vehicle.desc}</div>
                 </div>
               </div>
               <span style={{ fontSize: '11px', fontWeight: 900, color: (evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? '#38bdf8' : '#64748b' }}>
-                {(evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? 'READY [E]' : 'LOCKED'}
+                {(evaTasks.flagPlanted && evaTasks.sampleDrilled && evaTasks.seismicDeployed) ? taskInfo.vehicle.readyLabel : 'LOCKED'}
               </span>
             </div>
           </div>
@@ -2270,9 +2846,10 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           {/* Controls Footer */}
           <div style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '8px', fontSize: '10px', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <div style={{ fontWeight: 800, color: '#38bdf8' }}>🎮 EVA CONTROLS:</div>
-            <div>• <strong>[W][A][S][D] / Arrows</strong>: 3D Lunar Walk & 1/6g Hop</div>
+            <div>• <strong>[W][A][S][D] / Arrows</strong>: 3D Surface Walk & Low-G Hop</div>
             <div>• <strong>[E] / Interact Button</strong>: Deploy / Sample / Board</div>
-            <div>• <strong>Mouse Drag</strong>: 360° Panoramic Lunar Orbit Camera</div>
+            <div>• <strong>Terrain Obstacles</strong>: Physical Collision Blocking</div>
+            <div>• <strong>Mouse Drag</strong>: 360° Panoramic Orbit Camera</div>
           </div>
         </div>
       )}
@@ -2368,15 +2945,17 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', fontFamily: 'monospace' }}>A7L SPACESUIT VITALS</span>
+            <span style={{ fontSize: '10px', fontWeight: 900, color: '#38bdf8', fontFamily: 'monospace' }}>{taskInfo.suitTitle}</span>
             <span style={{ fontSize: '9px', color: '#22c55e', fontWeight: 800 }}>NOMINAL</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
             <span style={{ color: '#94a3b8' }}>ASTRONAUT:</span>
-            <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>NEIL ARMSTRONG</strong>
+            <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>
+              {destination === 'MARS' ? 'CADET ARTEMIS' : destination === 'SUBORBITAL' ? 'CHIEF PILOT' : destination === 'ORBITAL' ? 'CDR. ARMSTRONG' : 'NEIL ARMSTRONG'}
+            </strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>PLSS OXYGEN:</span>
+            <span style={{ color: '#94a3b8' }}>LIFE SUPPORT:</span>
             <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>100% (4.2 PSI)</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
@@ -2385,16 +2964,44 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
             <span style={{ color: '#94a3b8' }}>SURFACE TEMP:</span>
-            <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>-130°C / +120°C</strong>
+            <strong style={{ color: '#fbbf24', fontFamily: 'monospace' }}>{taskInfo.temp}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>LUNAR GRAVITY:</span>
-            <strong style={{ color: '#a855f7', fontFamily: 'monospace' }}>0.166 g (1.62 m/s²)</strong>
+            <span style={{ color: '#94a3b8' }}>GRAVITY:</span>
+            <strong style={{ color: '#a855f7', fontFamily: 'monospace' }}>{taskInfo.gravity}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: '#94a3b8' }}>LOCATION:</span>
-            <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>TRANQUILITY BASE</strong>
+            <span style={{ color: '#94a3b8' }}>ATMOSPHERE:</span>
+            <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{taskInfo.atmo}</strong>
           </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* OBSTACLE WARNING ALERT BANNER                                       */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {missionPhase === 'SURFACE_EVA' && obstacleAlert && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '160px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95))',
+            border: '2px solid #f87171',
+            borderRadius: '12px',
+            padding: '10px 22px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 0 35px rgba(239, 68, 68, 0.7)',
+            zIndex: 110,
+          }}
+        >
+          <AlertTriangle size={20} color="#ffffff" />
+          <span style={{ fontWeight: 900, fontSize: '12.5px', color: '#ffffff', letterSpacing: '0.04em' }}>
+            {obstacleAlert}
+          </span>
         </div>
       )}
 
@@ -2660,7 +3267,15 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             <button
               onClick={() => {
                 setMissionPhase('SURFACE_EVA');
-                setDirectorCallout('🧑‍🚀 NEIL ARMSTRONG ON MOON! WALK WITH [W][A][S][D] / ARROWS TO OBJECTIVES');
+                setDirectorCallout(
+                  destination === 'MARS'
+                    ? '🔴 COMMENCE MARS SURFACE EVA! WALK WITH [W][A][S][D] / ARROWS TO ACTIVATE MOXIE & SAMPLE DELTA'
+                    : destination === 'SUBORBITAL'
+                    ? '🏜️ COMMENCE DESERT RECOVERY SORTIE! WALK WITH [W][A][S][D] / ARROWS TO SECURE PAYLOAD'
+                    : destination === 'ORBITAL'
+                    ? '🌊 COMMENCE PACIFIC RETRIEVAL! SWIM/RAFT WITH [W][A][S][D] / ARROWS TO SECURE BLACK BOX'
+                    : '🧑‍🚀 NEIL ARMSTRONG ON MOON! WALK WITH [W][A][S][D] / ARROWS TO OBJECTIVES'
+                );
                 confetti({ particleCount: 200, spread: 100 });
                 if (soundEnabled) soundFx.playVictory();
               }}
@@ -2676,7 +3291,14 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 boxShadow: '0 0 30px rgba(56, 189, 248, 0.6)',
               }}
             >
-              <span>🧑‍🚀</span> STEP OUT ON MOON EVA (WALK WITH WASD)
+              <span>🧑‍🚀</span>{' '}
+              {destination === 'MARS'
+                ? 'COMMENCE MARS SURFACE EVA (WALK WITH WASD)'
+                : destination === 'SUBORBITAL'
+                ? 'COMMENCE DESERT SORTIE (WALK WITH WASD)'
+                : destination === 'ORBITAL'
+                ? 'COMMENCE OCEAN RETRIEVAL (SWIM/RAFT WITH WASD)'
+                : 'STEP OUT ON MOON EVA (WALK WITH WASD)'}
             </button>
           )}
 

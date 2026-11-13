@@ -30,7 +30,7 @@ interface Obstacle {
   x: number;
   y: number;
   radius: number;
-  type: 'crater' | 'boulder';
+  type: 'crater' | 'boulder' | 'dune' | 'dust_devil' | 'ice_crevasse' | 'lava_rock';
 }
 
 export interface RoverMissionConfig {
@@ -61,11 +61,11 @@ export const ROVER_CONFIGS: RoverMissionConfig[] = [
     ],
     obstacles: [
       { x: 340, y: 320, radius: 45, type: 'crater' },
-      { x: 580, y: 350, radius: 35, type: 'crater' },
-      { x: 380, y: 220, radius: 25, type: 'boulder' },
-      { x: 620, y: 180, radius: 28, type: 'boulder' },
+      { x: 580, y: 350, radius: 35, type: 'dust_devil' },
+      { x: 380, y: 220, radius: 25, type: 'lava_rock' },
+      { x: 620, y: 180, radius: 32, type: 'dune' },
       { x: 260, y: 280, radius: 22, type: 'boulder' },
-      { x: 500, y: 260, radius: 40, type: 'crater' },
+      { x: 500, y: 260, radius: 40, type: 'dust_devil' },
     ],
   },
   {
@@ -83,9 +83,9 @@ export const ROVER_CONFIGS: RoverMissionConfig[] = [
     ],
     obstacles: [
       { x: 320, y: 300, radius: 42, type: 'crater' },
-      { x: 560, y: 320, radius: 36, type: 'boulder' },
+      { x: 560, y: 320, radius: 36, type: 'dune' },
       { x: 400, y: 200, radius: 24, type: 'boulder' },
-      { x: 640, y: 240, radius: 30, type: 'crater' },
+      { x: 640, y: 240, radius: 30, type: 'lava_rock' },
       { x: 220, y: 270, radius: 20, type: 'boulder' },
     ],
   },
@@ -104,7 +104,7 @@ export const ROVER_CONFIGS: RoverMissionConfig[] = [
     ],
     obstacles: [
       { x: 360, y: 310, radius: 40, type: 'crater' },
-      { x: 600, y: 340, radius: 32, type: 'crater' },
+      { x: 600, y: 340, radius: 32, type: 'dune' },
       { x: 390, y: 230, radius: 22, type: 'boulder' },
       { x: 510, y: 250, radius: 38, type: 'crater' },
     ],
@@ -203,9 +203,9 @@ export const ROVER_CONFIGS: RoverMissionConfig[] = [
     ],
     obstacles: [
       { x: 340, y: 320, radius: 45, type: 'crater' },
-      { x: 580, y: 350, radius: 35, type: 'crater' },
+      { x: 580, y: 350, radius: 35, type: 'ice_crevasse' },
       { x: 380, y: 220, radius: 25, type: 'boulder' },
-      { x: 620, y: 180, radius: 28, type: 'boulder' },
+      { x: 620, y: 180, radius: 28, type: 'ice_crevasse' },
     ],
   },
 ];
@@ -402,9 +402,29 @@ export const RoverExplorationModal: React.FC<RoverExplorationModalProps> = ({
         for (const obs of obstaclesRef.current) {
           const dist = Math.hypot(r.x - obs.x, r.y - obs.y);
           if (dist < obs.radius + 14) {
-            r.speed = -r.speed * 0.4;
-            r.health = Math.max(0, r.health - (obs.type === 'crater' ? 0.8 : 2.0));
-            soundFx.playImpact();
+            if (obs.type === 'dust_devil') {
+              // Mars atmospheric vortex wind shear pushes rover and drains battery slightly
+              r.speed *= 0.65;
+              r.battery = Math.max(0, r.battery - 0.3 * dt);
+            } else if (obs.type === 'dune') {
+              // Soft aeolian sand dune slows wheels heavily
+              r.speed *= 0.4;
+            } else if (obs.type === 'ice_crevasse') {
+              // Cold-trap shadowed ice fissure - severe chassis hazard
+              r.speed = -r.speed * 0.5;
+              r.health = Math.max(0, r.health - 2.5);
+              soundFx.playImpact();
+            } else if (obs.type === 'lava_rock') {
+              // Jagged basalt volcanic spine
+              r.speed = -r.speed * 0.4;
+              r.health = Math.max(0, r.health - 2.0);
+              soundFx.playImpact();
+            } else {
+              // Crater / Boulder
+              r.speed = -r.speed * 0.4;
+              r.health = Math.max(0, r.health - (obs.type === 'crater' ? 0.8 : 2.0));
+              soundFx.playImpact();
+            }
           }
         }
 
@@ -549,7 +569,7 @@ export const RoverExplorationModal: React.FC<RoverExplorationModalProps> = ({
         ctx.restore();
       }
 
-      // 3. Obstacles (Craters and Boulders)
+      // 3. Obstacles (Craters, Boulders, Dunes, Dust Devils, Ice Crevasses, Lava Spires)
       for (const obs of obstaclesRef.current) {
         if (obs.type === 'crater') {
           // Crater shadow and rim
@@ -564,6 +584,67 @@ export const RoverExplorationModal: React.FC<RoverExplorationModalProps> = ({
           ctx.strokeStyle = '#475569';
           ctx.lineWidth = 2;
           ctx.stroke();
+        } else if (obs.type === 'dust_devil') {
+          // Swirling animated Mars Dust Devil vortex
+          const now = Date.now() * 0.005;
+          const grad = ctx.createRadialGradient(obs.x, obs.y, 0, obs.x, obs.y, obs.radius);
+          grad.addColorStop(0, 'rgba(251, 146, 60, 0.45)');
+          grad.addColorStop(0.6, 'rgba(234, 88, 12, 0.25)');
+          grad.addColorStop(1, 'rgba(234, 88, 12, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(254, 215, 170, 0.8)';
+          ctx.lineWidth = 2;
+          for (let a = 0; a < 3; a++) {
+            ctx.beginPath();
+            const startAngle = now + (a * (Math.PI * 2)) / 3;
+            ctx.arc(obs.x, obs.y, obs.radius * 0.7, startAngle, startAngle + 1.2);
+            ctx.stroke();
+          }
+        } else if (obs.type === 'dune') {
+          // Transverse Aeolian Sand Dune Ridge
+          ctx.save();
+          ctx.fillStyle = effectiveIsMoon ? '#334155' : '#c2410c';
+          ctx.beginPath();
+          ctx.ellipse(obs.x, obs.y, obs.radius * 1.3, obs.radius * 0.65, Math.PI / 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = effectiveIsMoon ? '#64748b' : '#ea580c';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        } else if (obs.type === 'ice_crevasse') {
+          // Permanently Shadowed Polar Ice Crevasse
+          ctx.save();
+          ctx.fillStyle = '#0f172a';
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.ellipse(obs.x, obs.y, obs.radius * 1.2, obs.radius * 0.5, -Math.PI / 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          // Inner icy shimmer
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.beginPath();
+          ctx.ellipse(obs.x, obs.y, obs.radius * 0.6, obs.radius * 0.22, -Math.PI / 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (obs.type === 'lava_rock') {
+          // Jagged Volcanic Lava Rock
+          ctx.fillStyle = '#450a0a';
+          ctx.beginPath();
+          ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          // Hot core
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.arc(obs.x, obs.y, obs.radius * 0.35, 0, Math.PI * 2);
+          ctx.fill();
         } else {
           // Sharp boulder
           ctx.fillStyle = effectiveIsMoon ? '#64748b' : '#9a3412';
