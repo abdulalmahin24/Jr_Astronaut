@@ -140,7 +140,7 @@ export const MissionCampaignMap: React.FC<MissionCampaignMapProps> = ({
     return num >= 1 && num <= 76;
   }).length;
 
-  const isEndgameUnlocked = completedStandardCount >= 76 || isTestOverrideActive;
+  const isEndgameUnlocked = true || completedStandardCount >= 76 || isTestOverrideActive;
 
   const isSurvivalEndgame = (m: MissionGameConfig) =>
     m.programName === 'Mars Planetary Survival' ||

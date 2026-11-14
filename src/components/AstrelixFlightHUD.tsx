@@ -1412,11 +1412,14 @@ export const AstrelixFlightHUD: React.FC<AstrelixFlightHUDProps> = ({
                 onKeyHold('w', false);
               }}
               onClick={() => {
-                if (mission.gameType === 'launch') onSetThrottle(Math.min(1, telemetry.throttle + 0.15));
-                else if (mission.gameType === 'lunar_landing') onSimAction('lunar_thrust');
-                else if (mission.gameType === 'rover') onSimAction('rover_forward');
-                else if (mission.gameType === 'docking') onSimAction('dock_forward');
-                else if (mission.gameType === 'deep_space') onSimAction('deep_prograde');
+                if (mission.gameType === 'launch') {
+                  if (telemetry.altitudeKm < 0.05 && telemetry.throttle < 0.5) onSetThrottle(1.0);
+                  else onSetThrottle(Math.min(1, telemetry.throttle + 0.15));
+                }
+                else if (mission.gameType === 'lunar_landing') onSimAction('lunar_burn');
+                else if (mission.gameType === 'rover') onSimAction('rover_fwd');
+                else if (mission.gameType === 'docking') onSimAction('dock_fwd');
+                else if (mission.gameType === 'deep_space') onSimAction('deep_thrust_fwd');
                 else onSimAction('focus_in');
               }}
               style={{
@@ -1532,9 +1535,10 @@ export const AstrelixFlightHUD: React.FC<AstrelixFlightHUDProps> = ({
               }}
               onClick={() => {
                 if (mission.gameType === 'launch') onSetThrottle(Math.max(0, telemetry.throttle - 0.15));
-                else if (mission.gameType === 'rover') onSimAction('rover_reverse');
-                else if (mission.gameType === 'docking') onSimAction('dock_brake');
-                else if (mission.gameType === 'deep_space') onSimAction('deep_retrograde');
+                else if (mission.gameType === 'lunar_landing') onSetThrottle(Math.max(0, telemetry.throttle - 0.15));
+                else if (mission.gameType === 'rover') onSimAction('rover_rev');
+                else if (mission.gameType === 'docking') onSimAction('dock_back');
+                else if (mission.gameType === 'deep_space') onSimAction('deep_thrust_rev');
                 else onSimAction('focus_out');
               }}
               style={{

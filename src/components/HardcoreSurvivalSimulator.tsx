@@ -884,41 +884,50 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
       if (physStateRef.current.outcome !== 'IN_PROGRESS') return;
 
       const key = e.key.toLowerCase();
-      if (key === 'w') {
+      if (key === 'w' || key === 'arrowup') {
         if (!activeMission.mainEngineAvailable) return;
-        physStateRef.current.throttle = Math.min(100, physStateRef.current.throttle + 10);
+        e.preventDefault();
+        physStateRef.current.throttle = physStateRef.current.throttle === 0 ? 50 : Math.min(100, physStateRef.current.throttle + 20);
         setTelemetry((prev) => ({ ...prev, throttlePct: physStateRef.current.throttle }));
-      } else if (key === 's') {
-        physStateRef.current.throttle = Math.max(0, physStateRef.current.throttle - 10);
+        if (soundEnabled) soundFx.playThruster();
+      } else if (key === 's' || key === 'arrowdown') {
+        e.preventDefault();
+        physStateRef.current.throttle = Math.max(0, physStateRef.current.throttle - 20);
         setTelemetry((prev) => ({ ...prev, throttlePct: physStateRef.current.throttle }));
       } else if (key === 'z') {
         if (activeMission.mainEngineAvailable && physStateRef.current.overheatCooldown <= 0) {
           physStateRef.current.throttle = 100;
           setTelemetry((prev) => ({ ...prev, throttlePct: 100 }));
+          if (soundEnabled) soundFx.playReactorStart();
         }
       } else if (key === 'x') {
         physStateRef.current.throttle = 0;
         setTelemetry((prev) => ({ ...prev, throttlePct: 0 }));
-      } else if (key === 'a') {
-        physStateRef.current.pitchRad += 0.05;
-        physStateRef.current.rcsTimer = 0.3;
+      } else if (key === 'a' || key === 'arrowleft') {
+        e.preventDefault();
+        physStateRef.current.pitchRad += 0.08;
+        physStateRef.current.rcsTimer = 0.35;
         setAutopilotMode('OFF');
         if (physStateRef.current.pitchRad > Math.PI) physStateRef.current.pitchRad -= Math.PI * 2;
         setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
-      } else if (key === 'd') {
-        physStateRef.current.pitchRad -= 0.05;
-        physStateRef.current.rcsTimer = 0.3;
+      } else if (key === 'd' || key === 'arrowright') {
+        e.preventDefault();
+        physStateRef.current.pitchRad -= 0.08;
+        physStateRef.current.rcsTimer = 0.35;
         setAutopilotMode('OFF');
         if (physStateRef.current.pitchRad < -Math.PI) physStateRef.current.pitchRad += Math.PI * 2;
         setTelemetry((prev) => ({ ...prev, pitchDeg: (physStateRef.current.pitchRad * 180) / Math.PI }));
       } else if (key === ' ' || e.code === 'Space') {
-        // RCS Translation Pulse
+        // RCS Translation Pulse + Main Engine Ignition if throttle is 0
         e.preventDefault();
-        physStateRef.current.rcsTimer = 0.3;
+        physStateRef.current.rcsTimer = 0.35;
         if (activeMission.rcsOnly) {
-          physStateRef.current.pitchRad += 0.04;
-          physStateRef.current.vxKms += 0.06;
+          physStateRef.current.pitchRad += 0.05;
+          physStateRef.current.vxKms += 0.08;
           physStateRef.current.countdownTimer = Math.max(0, physStateRef.current.countdownTimer - 1.2);
+        } else if (activeMission.mainEngineAvailable && physStateRef.current.overheatCooldown <= 0) {
+          physStateRef.current.throttle = physStateRef.current.throttle < 100 ? 100 : 0;
+          setTelemetry((prev) => ({ ...prev, throttlePct: physStateRef.current.throttle }));
         }
         if (soundEnabled) soundFx.playThruster();
       } else if (key === 'c') {
@@ -1228,8 +1237,8 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
           }
         }
 
-        // Thrust force: ~0.035 km/s^2 at max
-        const thrustAccelKms2 = (effectiveThrottle / 100) * (activeMission.id === 'suicide-burn' ? 0.0285 : 0.038);
+        // Thrust force: responsive orbital & descent impulse
+        const thrustAccelKms2 = (effectiveThrottle / 100) * (activeMission.id === 'suicide-burn' ? 0.0285 : 0.065);
 
         // Vector updates
         const thrustY = thrustAccelKms2 * Math.sin(p.pitchRad);
@@ -1242,7 +1251,10 @@ export const HardcoreSurvivalSimulator: React.FC<HardcoreSurvivalSimulatorProps>
         p.vyKms += (thrustY - gravAccelKms2 + centrifugalKms2) * dt;
         p.vxKms += (thrustX - coriolisKms2) * dt;
 
-        p.altKm += p.vyKms * dt;
+        const isOrbitalClimb = activeMission.id !== 'suicide-burn' && activeMission.id !== 'lunar-voyager' && activeMission.id !== 'mars-voyager';
+        const activeOrbitalClimbKm = isOrbitalClimb && effectiveThrottle > 0 ? (effectiveThrottle / 100) * Math.cos(p.pitchRad) * 14.0 * dt : 0;
+
+        p.altKm += p.vyKms * dt + activeOrbitalClimbKm;
         p.maxAltitudeKm = Math.max(p.maxAltitudeKm || 0, p.altKm);
         p.rKm = bodyConfig.radiusKm + p.altKm;
         p.vKms = Math.sqrt(p.vyKms * p.vyKms + p.vxKms * p.vxKms);

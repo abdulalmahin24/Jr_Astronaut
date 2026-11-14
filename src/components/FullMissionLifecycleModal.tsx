@@ -988,35 +988,103 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
         return;
       }
 
-      // EVA Moon Walking: [E] Interact
-      if (missionPhase === 'SURFACE_EVA' && (e.key === 'e' || e.key === 'E')) {
+      // EVA Moon Walking: [E] or [Space] Interact
+      if (missionPhase === 'SURFACE_EVA' && (e.key === 'e' || e.key === 'E' || e.code === 'Space')) {
         e.preventDefault();
         handleEvaInteract();
         return;
       }
 
-      // Flight Throttle
-      if (['ASCENT', 'ORBIT_INSERTION', 'TLI_BURN', 'RETRO_DESCENT'].includes(missionPhase)) {
+      // Pad Ready: [Space], [W], [Z], or [ArrowUp] immediately ignites & launches!
+      if (missionPhase === 'PAD_READY') {
+        if (e.code === 'Space' || e.key === 'w' || e.key === 'W' || e.key === 'z' || e.key === 'Z' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          handleStageTrigger();
+          return;
+        }
+      }
+
+      // Phase progression via [Space] in orbital/cruise/landed phases
+      if (e.code === 'Space') {
+        if (missionPhase === 'ORBIT_COAST') {
+          e.preventDefault();
+          jumpToPhase('TLI_BURN');
+          return;
+        } else if (missionPhase === 'TLI_BURN') {
+          e.preventDefault();
+          jumpToPhase('DEEP_CRUISE');
+          return;
+        } else if (missionPhase === 'DEEP_CRUISE') {
+          e.preventDefault();
+          jumpToPhase('LUNAR_CAPTURE');
+          return;
+        } else if (missionPhase === 'LUNAR_CAPTURE') {
+          e.preventDefault();
+          jumpToPhase('RETRO_DESCENT');
+          return;
+        } else if (missionPhase === 'SURFACE_LANDED') {
+          e.preventDefault();
+          jumpToPhase('SURFACE_EVA');
+          return;
+        } else if (missionPhase === 'SURFACE_ASCENT') {
+          e.preventDefault();
+          jumpToPhase('TEI_RETURN');
+          return;
+        } else if (missionPhase === 'TEI_RETURN') {
+          e.preventDefault();
+          jumpToPhase('REENTRY_PLASMA');
+          return;
+        } else if (missionPhase === 'REENTRY_PLASMA') {
+          e.preventDefault();
+          handleDeployChutes();
+          return;
+        } else if (missionPhase === 'PARACHUTE_DESCENT') {
+          e.preventDefault();
+          jumpToPhase('SPLASHDOWN');
+          return;
+        }
+      }
+
+      // Flight Throttle & Attitude Controls
+      if (['ASCENT', 'ORBIT_INSERTION', 'TLI_BURN', 'RETRO_DESCENT', 'SURFACE_ASCENT'].includes(missionPhase)) {
         if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
           e.preventDefault();
-          setThrottle((prev) => Math.min(100, prev + 5));
+          setThrottle((prev) => {
+            const next = Math.min(100, prev + 10);
+            simRef.current.throttle = next;
+            return next;
+          });
           if (soundEnabled) soundFx.playThruster();
         } else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
           e.preventDefault();
-          setThrottle((prev) => Math.max(0, prev - 5));
+          setThrottle((prev) => {
+            const next = Math.max(0, prev - 10);
+            simRef.current.throttle = next;
+            return next;
+          });
         } else if (e.key === 'z' || e.key === 'Z') {
           e.preventDefault();
           setThrottle(100);
+          simRef.current.throttle = 100;
           if (soundEnabled) soundFx.playReactorStart();
         } else if (e.key === 'x' || e.key === 'X') {
           e.preventDefault();
           setThrottle(0);
+          simRef.current.throttle = 0;
         } else if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
           e.preventDefault();
-          setPitchDeg((prev) => Math.min(90, prev + 3));
+          setPitchDeg((prev) => {
+            const next = Math.min(90, prev + 4);
+            simRef.current.pitchDeg = next;
+            return next;
+          });
         } else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
           e.preventDefault();
-          setPitchDeg((prev) => Math.max(0, prev - 3));
+          setPitchDeg((prev) => {
+            const next = Math.max(0, prev - 4);
+            simRef.current.pitchDeg = next;
+            return next;
+          });
         } else if (e.code === 'Space') {
           e.preventDefault();
           handleStageTrigger();
@@ -1052,7 +1120,11 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
   // Stage Trigger Handler
   const handleStageTrigger = () => {
-    if (missionPhase === 'PAD_READY') {
+    if (missionPhase === 'PAD_READY' || simRef.current.missionPhase === 'PAD_READY') {
+      simRef.current.missionPhase = 'ASCENT';
+      simRef.current.throttle = 100;
+      simRef.current.vyMs = Math.max(simRef.current.vyMs, 45);
+      simRef.current.velMs = Math.max(simRef.current.velMs, 45);
       setMissionPhase('ASCENT');
       setThrottle(100);
       setDirectorCallout('🔥 T-0 IGNITION & LIFTOFF! CLEARING PAD TOWER — STEER GRAVITY TURN (45° @ 30 KM)');
@@ -1064,21 +1136,34 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       setRocketStage(2);
       simRef.current.stage = 2;
       simRef.current.boostersSeparated = true;
+      simRef.current.vyMs += 180;
+      simRef.current.vxMs += 450;
       setDirectorCallout('✨ SOLID BOOSTER JETTISON! CORE S-II IGNITION — ACCELERATING TO 7.8 km/s');
       if (soundEnabled) soundFx.playReactorStart();
     } else if (rocketStage === 2) {
       setRocketStage(3);
       simRef.current.stage = 3;
+      simRef.current.vyMs += 120;
+      simRef.current.vxMs += 650;
       setDirectorCallout('⚡ STAGE 2 SEPARATION! UPPER VACUUM S-IVB ARMED');
       if (soundEnabled) soundFx.playReactorStart();
+    } else if (missionPhase === 'ASCENT') {
+      jumpToPhase('ORBIT_COAST');
     }
   };
 
   // Parachute deploy
   const handleDeployChutes = () => {
-    if (flightAltM <= 6000 && !parachutesDeployed) {
+    if (!parachutesDeployed) {
       setParachutesDeployed(true);
       simRef.current.chutesDeployed = true;
+      simRef.current.missionPhase = 'PARACHUTE_DESCENT';
+      if (simRef.current.altM > 5000 || simRef.current.altM <= 0) {
+        simRef.current.altM = 3200;
+        setFlightAltM(3200);
+      }
+      simRef.current.vyMs = -18;
+      setFlightVyMs(-18);
       setMissionPhase('PARACHUTE_DESCENT');
       setDirectorCallout('🪂 TRIPLE MAIN PARACHUTES DEPLOYED! DESCENT DECELERATING TO 6.5 m/s');
       if (soundEnabled) soundFx.playReactorStart();
@@ -1095,31 +1180,46 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
     const currentTasks = evaTasksRef.current;
 
-    if (distFlag < 3.2 && !currentTasks.flagPlanted) {
+    if ((distFlag < 3.5 || !currentTasks.flagPlanted) && !currentTasks.flagPlanted) {
+      p.astroX = 6.5;
+      p.astroZ = -3.0;
+      setAstroWalkPos({ x: p.astroX, z: p.astroZ, rot: p.astroRot });
       const next = { ...currentTasks, flagPlanted: true };
       setEvaTasks(next);
       evaTasksRef.current = next;
       setDirectorCallout(taskInfo.callout1);
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playVictory();
-    } else if (distDrill < 3.2 && !currentTasks.sampleDrilled) {
+    } else if ((distDrill < 3.5 || !currentTasks.sampleDrilled) && !currentTasks.sampleDrilled) {
+      p.astroX = -7.0;
+      p.astroZ = 8.0;
+      setAstroWalkPos({ x: p.astroX, z: p.astroZ, rot: p.astroRot });
       const next = { ...currentTasks, sampleDrilled: true };
       setEvaTasks(next);
       evaTasksRef.current = next;
       setDirectorCallout(taskInfo.callout2);
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playReactorStart();
-    } else if (distSeismic < 3.2 && !currentTasks.seismicDeployed) {
+    } else if ((distSeismic < 3.5 || !currentTasks.seismicDeployed) && !currentTasks.seismicDeployed) {
+      p.astroX = 10.0;
+      p.astroZ = 6.0;
+      setAstroWalkPos({ x: p.astroX, z: p.astroZ, rot: p.astroRot });
       const next = { ...currentTasks, seismicDeployed: true };
       setEvaTasks(next);
       evaTasksRef.current = next;
       setDirectorCallout(taskInfo.callout3);
       confetti({ particleCount: 100, spread: 70 });
       if (soundEnabled) soundFx.playTelemetryChirp();
-    } else if (distLm < 3.5 && currentTasks.flagPlanted && currentTasks.sampleDrilled && currentTasks.seismicDeployed) {
+    } else if (distLm < 15.0 && currentTasks.flagPlanted && currentTasks.sampleDrilled && currentTasks.seismicDeployed) {
       // Board LM and launch ascent stage
+      p.astroX = 2.2;
+      p.astroZ = 2.2;
       setMissionPhase('SURFACE_ASCENT');
       simRef.current.missionPhase = 'SURFACE_ASCENT';
+      simRef.current.altM = 100;
+      simRef.current.vyMs = 85;
+      simRef.current.velMs = 85;
+      simRef.current.throttle = 100;
       setFlightAltM(100);
       setFlightVyMs(85);
       setThrottle(100);
@@ -2016,27 +2116,33 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
 
       if (p.missionPhase === 'ASCENT' || p.missionPhase === 'ORBIT_INSERTION') {
         const g = 9.81 * ((6371000 / (6371000 + p.altM)) ** 2);
-        const thrustKn = p.stage === 1 ? 38000 : p.stage === 2 ? 12000 : 3500;
-        const massTons = 2400 * (0.35 + 0.65 * (p.fuelPct / 100));
+        const thrustKn = p.stage === 1 ? 85000 : p.stage === 2 ? 42000 : 28000;
+        const massTons = 1200 * (0.35 + 0.65 * (p.fuelPct / 100));
 
         if (p.fuelPct > 0 && throttleNorm > 0) {
-          p.fuelPct = Math.max(0, p.fuelPct - throttleNorm * 0.18 * dt);
+          p.fuelPct = Math.max(0, p.fuelPct - throttleNorm * 0.35 * dt);
+        }
+
+        // Auto-gravity turn assist above 8 km if player hasn't pitched over yet
+        if (p.altM > 8000 && p.pitchDeg > 35) {
+          p.pitchDeg = Math.max(25, p.pitchDeg - dt * 4.5);
+          setPitchDeg(Math.round(p.pitchDeg));
         }
 
         const effectiveThrustKn = p.fuelPct > 0 ? thrustKn * throttleNorm : 0;
-        const aThrust = effectiveThrustKn / massTons;
+        const aThrust = (effectiveThrustKn / massTons) * 8.5;
 
         const density = Math.exp(-p.altM / 8500);
-        const dragN = 0.5 * density * 1.225 * (p.velMs ** 2) * 0.28 * 6.0;
+        const dragN = 0.5 * density * 1.225 * (p.velMs ** 2) * 0.28 * 2.0;
         const aDrag = (dragN / 1000) / massTons;
 
         const ay = aThrust * Math.sin(pitchRad) - (aDrag * (p.vyMs / Math.max(1, p.velMs))) - g;
-        const ax = aThrust * Math.cos(pitchRad) - (aDrag * (p.vxMs / Math.max(1, p.velMs)));
+        const ax = aThrust * Math.cos(pitchRad) - (aDrag * (p.vxMs / Math.max(1, p.velMs))) + (p.altM > 5000 ? aThrust * 0.55 : 0);
 
-        p.vyMs += ay * dt;
-        p.vxMs += ax * dt;
+        p.vyMs = Math.max(0, p.vyMs + ay * dt);
+        p.vxMs = Math.max(0, p.vxMs + ax * dt);
         p.velMs = Math.sqrt(p.vyMs ** 2 + p.vxMs ** 2);
-        p.altM = Math.max(0, p.altM + p.vyMs * dt);
+        p.altM = Math.max(0, p.altM + p.vyMs * dt * 8.0);
 
         armPivots.forEach((arm) => {
           arm.rotation.y = THREE.MathUtils.lerp(arm.rotation.y, -Math.PI / 3, dt * 1.5);
@@ -2056,7 +2162,11 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           bRight.position.y -= dt * 4;
         }
 
-        if (p.velMs >= 7750 && p.altM >= 180000 && p.missionPhase === 'ASCENT') {
+        if ((p.velMs >= 7500 || p.altM >= 180000) && p.missionPhase === 'ASCENT') {
+          p.altM = Math.max(p.altM, 200000);
+          p.velMs = Math.max(p.velMs, 7750);
+          p.vxMs = 7750;
+          p.vyMs = 0;
           p.missionPhase = 'ORBIT_COAST';
           setMissionPhase('ORBIT_COAST');
           setDirectorCallout('🌍 STABLE 200x200 km LOW EARTH ORBIT (LEO) ACHIEVED! READY FOR TRANS-LUNAR INJECTION (TLI)');
@@ -2193,12 +2303,25 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
       if (p.missionPhase === 'VAB_BUILD') {
         rocketMasterGroup.visible = true;
         rocketMasterGroup.position.set(0, 8.5, 0);
+        groundSceneGroup.position.y = 0;
         earthMesh.visible = false;
         moonMesh.visible = false;
       } else if (p.missionPhase === 'PAD_READY') {
         rocketMasterGroup.position.set(0, 10.5, 0);
+        groundSceneGroup.position.y = 0;
         earthMesh.visible = false;
         moonMesh.visible = false;
+      } else if (p.missionPhase === 'ASCENT' || p.missionPhase === 'ORBIT_INSERTION') {
+        // Visually lift rocket off Pad 39A and drop launch tower away beneath it
+        groundSceneGroup.position.y = -Math.min(p.altM * 0.45, 2500);
+        rocketMasterGroup.position.set(0, 10.5 + Math.min(p.altM * 0.025, 48), 0);
+        earthMesh.visible = p.altM > 3500;
+        moonMesh.visible = p.altM > 25000;
+      } else if (['ORBIT_COAST', 'TLI_BURN', 'TEI_RETURN', 'REENTRY_PLASMA', 'PARACHUTE_DESCENT', 'SPLASHDOWN'].includes(p.missionPhase)) {
+        groundSceneGroup.position.y = -2500;
+        rocketMasterGroup.position.set(0, 18.0, 0);
+        earthMesh.visible = true;
+        moonMesh.visible = ['TLI_BURN', 'TEI_RETURN'].includes(p.missionPhase);
       } else if (isLunarSurfaceMode) {
         earthMesh.visible = false;
         moonMesh.visible = true;
@@ -2965,9 +3088,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           {missionPhase === 'ORBIT_COAST' && (
             <button
               onClick={() => {
-                setMissionPhase('TLI_BURN');
-                setThrottle(100);
-                setDirectorCallout('🔥 EXECUTING TRANS-LUNAR INJECTION (TLI) BURN (+3,050 m/s Δv)!');
+                jumpToPhase('TLI_BURN');
                 if (soundEnabled) soundFx.playReactorStart();
               }}
               style={{
@@ -2989,9 +3110,9 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           {missionPhase === 'TLI_BURN' && (
             <button
               onClick={() => {
-                setMissionPhase('DEEP_CRUISE');
+                jumpToPhase('DEEP_CRUISE');
                 setTimeWarp(100);
-                setDirectorCallout('⏩ FLYING ALONG 3D TRANSLUNAR TRAJECTORY (100x TIME WARP)!');
+                simRef.current.timeWarp = 100;
               }}
               style={{
                 padding: '14px 28px',
@@ -3012,7 +3133,9 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             <button
               onClick={() => {
                 setMissionPhase('LUNAR_CAPTURE');
+                simRef.current.missionPhase = 'LUNAR_CAPTURE';
                 setTimeWarp(1);
+                simRef.current.timeWarp = 1;
                 setDirectorCallout('🌑 ENTERING MOON ORBIT (LOI)! CSM SEPARATES FROM LUNAR MODULE');
               }}
               style={{
@@ -3033,12 +3156,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           {missionPhase === 'LUNAR_CAPTURE' && (
             <button
               onClick={() => {
-                setMissionPhase('RETRO_DESCENT');
-                setFlightAltM(12000);
-                setFlightVyMs(-35);
-                setThrottle(40);
-                setLandingLegsDeployed(true);
-                setDirectorCallout('🌕 POWERED DESCENT INITIATION (PDI)! CONTROL THROTTLE [W]/[S] (< 3.5 m/s)');
+                jumpToPhase('RETRO_DESCENT');
                 if (soundEnabled) soundFx.playReactorStart();
               }}
               style={{
@@ -3060,12 +3178,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           {missionPhase === 'RETRO_DESCENT' && (
             <button
               onClick={() => {
-                setLandingLegsDeployed(true);
-                setFlightAltM(0);
-                setFlightVyMs(-1.8);
-                setTouchdownStatus('SAFE');
-                setMissionPhase('SURFACE_LANDED');
-                setDirectorCallout('🎉 NOMINAL TOUCHDOWN! HOUSTON, TRANQUILITY BASE HERE. THE EAGLE HAS LANDED');
+                jumpToPhase('SURFACE_LANDED');
                 confetti({ particleCount: 180, spread: 100 });
                 if (soundEnabled) soundFx.playVictory();
               }}
@@ -3087,7 +3200,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           {missionPhase === 'SURFACE_LANDED' && (
             <button
               onClick={() => {
-                setMissionPhase('SURFACE_EVA');
+                jumpToPhase('SURFACE_EVA');
                 setDirectorCallout(
                   destination === 'MARS'
                     ? '🔴 COMMENCE MARS SURFACE EVA! WALK WITH [W][A][S][D] / ARROWS TO ACTIVATE MOXIE & SAMPLE DELTA'
@@ -3148,6 +3261,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 <button
                   onMouseDown={() => { keysDownRef.current['w'] = true; }}
                   onMouseUp={() => { keysDownRef.current['w'] = false; }}
+                  onClick={() => { simRef.current.astroZ -= 1.2; setAstroWalkPos({ x: simRef.current.astroX, z: simRef.current.astroZ, rot: 0 }); }}
                   style={{ padding: '6px', background: '#38bdf8', border: 'none', borderRadius: '4px', color: '#000', cursor: 'pointer' }}
                 >
                   <ArrowUp size={14} />
@@ -3156,6 +3270,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 <button
                   onMouseDown={() => { keysDownRef.current['a'] = true; }}
                   onMouseUp={() => { keysDownRef.current['a'] = false; }}
+                  onClick={() => { simRef.current.astroX -= 1.2; setAstroWalkPos({ x: simRef.current.astroX, z: simRef.current.astroZ, rot: -Math.PI / 2 }); }}
                   style={{ padding: '6px', background: '#38bdf8', border: 'none', borderRadius: '4px', color: '#000', cursor: 'pointer' }}
                 >
                   <ArrowLeft size={14} />
@@ -3163,6 +3278,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 <button
                   onMouseDown={() => { keysDownRef.current['s'] = true; }}
                   onMouseUp={() => { keysDownRef.current['s'] = false; }}
+                  onClick={() => { simRef.current.astroZ += 1.2; setAstroWalkPos({ x: simRef.current.astroX, z: simRef.current.astroZ, rot: Math.PI }); }}
                   style={{ padding: '6px', background: '#38bdf8', border: 'none', borderRadius: '4px', color: '#000', cursor: 'pointer' }}
                 >
                   <ArrowDown size={14} />
@@ -3170,6 +3286,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
                 <button
                   onMouseDown={() => { keysDownRef.current['d'] = true; }}
                   onMouseUp={() => { keysDownRef.current['d'] = false; }}
+                  onClick={() => { simRef.current.astroX += 1.2; setAstroWalkPos({ x: simRef.current.astroX, z: simRef.current.astroZ, rot: Math.PI / 2 }); }}
                   style={{ padding: '6px', background: '#38bdf8', border: 'none', borderRadius: '4px', color: '#000', cursor: 'pointer' }}
                 >
                   <ArrowRight size={14} />
@@ -3182,6 +3299,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             <button
               onClick={() => {
                 setMissionPhase('TEI_RETURN');
+                simRef.current.missionPhase = 'TEI_RETURN';
                 setDirectorCallout('🌍 RENDEZVOUS COMPLETE! BURNING TRANS-EARTH INJECTION (TEI)');
               }}
               style={{
@@ -3203,6 +3321,9 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
             <button
               onClick={() => {
                 setMissionPhase('REENTRY_PLASMA');
+                simRef.current.missionPhase = 'REENTRY_PLASMA';
+                simRef.current.altM = 65000;
+                simRef.current.vyMs = -180;
                 setFlightAltM(65000);
                 setFlightVyMs(-180);
                 setDirectorCallout('🔥 HYPERSONIC RE-ENTRY AT 11 KM/S! HEAT SHIELD PLASMA GLOWING');
@@ -3246,10 +3367,7 @@ export const FullMissionLifecycleModal: React.FC<FullMissionLifecycleModalProps>
           {missionPhase === 'PARACHUTE_DESCENT' && (
             <button
               onClick={() => {
-                setFlightAltM(0);
-                setFlightVyMs(-2);
-                setMissionPhase('SPLASHDOWN');
-                setDirectorCallout('🏆 PACIFIC OCEAN SPLASHDOWN NOMINAL! USS HORNET RETRIEVAL COMPLETE');
+                jumpToPhase('SPLASHDOWN');
                 confetti({ particleCount: 220, spread: 100 });
                 if (soundEnabled) soundFx.playVictory();
                 awardCadetCredits(1500);
